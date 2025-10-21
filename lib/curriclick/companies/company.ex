@@ -19,11 +19,11 @@ defmodule Curriclick.Companies.Company do
     defaults [:read, :destroy]
 
     create :create do
-      accept [:name, :industry, :cnpj, :description]
+      accept [:name, :description]
     end
 
     update :update do
-      accept [:name, :industry, :description]
+      accept [:name, :description]
     end
   end
 
@@ -44,21 +44,22 @@ defmodule Curriclick.Companies.Company do
       constraints max_length: 255
     end
 
-    attribute :industry, :string do
-      description "Company's industry (e.g., Education, Technology, Mining, Oil and Gas)"
-      allow_nil? false
-      public? true
-      constraints max_length: 100
-    end
-
-    attribute :cnpj, :string do
-      description "Brazilian company registration number (CNPJ)"
-      allow_nil? false
-      public? true
-
-      constraints match: ~r/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$|^\d{14}$/,
-                  max_length: 18
-    end
+    #
+    # attribute :industry, :string do
+    #   description "Company's industry (e.g., Education, Technology, Mining, Oil and Gas)"
+    #   allow_nil? false
+    #   public? true
+    #   constraints max_length: 100
+    # end
+    #
+    # attribute :cnpj, :string do
+    #   description "Brazilian company registration number (CNPJ)"
+    #   allow_nil? false
+    #   public? true
+    #
+    #   constraints match: ~r/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$|^\d{14}$/,
+    #               max_length: 18
+    # end
 
     attribute :description, :string do
       description "Detailed description of the company"
@@ -78,9 +79,8 @@ defmodule Curriclick.Companies.Company do
   end
 
   identities do
-    identity :unique_cnpj, [:cnpj] do
-      message "Uma empresa com esse mesmo CNPJ já existe. Forneça um CNPJ diferente."
+    identity :unique_name, [:name] do
+      message "Uma empresa com esse mesmo nome já existe. Forneça um nome diferente."
     end
   end
 end
-

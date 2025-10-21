@@ -5,7 +5,11 @@
 # is restricted to this project.
 
 # General application configuration
+
 import Config
+
+config :curriclick, Curriclick.Repo,
+  types: Curriclick.PostgrexTypes
 
 config :ash_typescript,
   output_file: "assets/js/ash_rpc.ts",
@@ -22,6 +26,12 @@ config :ash_typescript,
   phoenix_import_path: "phoenix"
 
 config :ash_oban, pro?: false
+
+# Configure AshAi with OpenAI for embeddings
+config :ash_ai,
+  embedding_models: [
+    {AshAi.OpenAI.Embedding, name: :openai_text_embedding_3_small, model: "text-embedding-3-small"}
+  ]
 
 config :curriclick, Oban,
   engine: Oban.Engines.Basic,

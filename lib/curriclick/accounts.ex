@@ -1,5 +1,5 @@
 defmodule Curriclick.Accounts do
-  use Ash.Domain, otp_app: :curriclick, extensions: [AshAdmin.Domain]
+  use Ash.Domain, otp_app: :curriclick, extensions: [AshAdmin.Domain, AshPhoenix]
 
   admin do
     show? true

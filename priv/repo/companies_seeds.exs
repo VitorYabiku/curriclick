@@ -1,120 +1,105 @@
-# Sample data for testing the Companies domain
 
-# First, let's create a few companies
-tech_company = 
-  Curriclick.Companies.Company
-  |> Ash.Changeset.for_create(:create, %{
-    name: "TechCorp Brasil",
-    industry: "Technology",
-    cnpj: "12.345.678/0001-90",
-    description: "A leading technology company in Brazil, specializing in web development and AI solutions."
-  })
-  |> Ash.create!()
+# ======================================================================
+# Populate companies and job listings from priv/repo/postings.csv
+# - Creates a Company for each distinct company_name if it doesn't exist
+# - Creates the first 5000 JobListing records with title and description
+# ======================================================================
 
-education_company = 
-  Curriclick.Companies.Company
-  |> Ash.Changeset.for_create(:create, %{
-    name: "EduLearn",
-    industry: "Education", 
-    cnpj: "98.765.432/0001-10",
-    description: "An innovative education technology company focused on online learning platforms."
-  })
-  |> Ash.create!()
+defmodule CompaniesCSVSeeder do
+  alias Curriclick.Companies.{Company, JobListing}
+  require Ash.Query
 
-# Create some job listings
-senior_ml_job = 
-  Curriclick.Companies.JobListing
-  |> Ash.Changeset.for_create(:create, %{
-    job_role_name: "Senior Machine Learning Engineer",
-    job_description: "Lead the development of ML models for our AI-powered products. You will work with large datasets, implement ML algorithms, and collaborate with product teams to deploy models to production.",
-    company_id: tech_company.id
-  })
-  |> Ash.create!()
+  # Minimal RFC4180-ish CSV parser supporting quotes, commas, and newlines in fields
+  def parse_csv(binary) when is_binary(binary) do
+    bin = String.replace(binary, "\r\n", "\n")
+    do_parse(bin, [], [], false, []) |> Enum.reverse()
+  end
 
-junior_dev_job = 
-  Curriclick.Companies.JobListing
-  |> Ash.Changeset.for_create(:create, %{
-    job_role_name: "Junior Full-Stack Developer",
-    job_description: "Join our development team to build modern web applications using Phoenix LiveView and React. You'll contribute to both frontend and backend development while learning from senior developers.",
-    company_id: tech_company.id
-  })
-  |> Ash.create!()
+  defp do_parse(<<>>, field, row, _in_q?, rows) do
+    # finalize last field/row
+    value = IO.iodata_to_binary(Enum.reverse(field))
+    row = [value | row] |> Enum.reverse()
+    [row | rows]
+  end
 
-product_manager_job = 
-  Curriclick.Companies.JobListing
-  |> Ash.Changeset.for_create(:create, %{
-    job_role_name: "Product Manager - EdTech",
-    job_description: "Drive product strategy and roadmap for our educational platform. Work closely with engineering, design, and stakeholders to deliver features that improve student learning outcomes.",
-    company_id: education_company.id
-  })
-  |> Ash.create!()
+  defp do_parse(<<?\n, rest::binary>>, field, row, false, rows) do
+    value = IO.iodata_to_binary(Enum.reverse(field))
+    row = [value | row] |> Enum.reverse()
+    do_parse(rest, [], [], false, [row | rows])
+  end
 
-# Add job requirements for the Senior ML Engineer position
-Curriclick.Companies.JobRequirement
-|> Ash.Changeset.for_create(:create, %{
-  requirement_text: "5+ years of experience in Machine Learning and Python",
-  is_required: true,
-  job_listing_id: senior_ml_job.id
-})
-|> Ash.create!()
+  defp do_parse(<<?,, rest::binary>>, field, row, false, rows) do
+    value = IO.iodata_to_binary(Enum.reverse(field))
+    do_parse(rest, [], [value | row], false, rows)
+  end
 
-Curriclick.Companies.JobRequirement
-|> Ash.Changeset.for_create(:create, %{
-  requirement_text: "Experience with TensorFlow or PyTorch",
-  is_required: true,
-  job_listing_id: senior_ml_job.id
-})
-|> Ash.create!()
+  # handle quote toggling and escaped quotes inside quoted field
+  defp do_parse(<<?", ?", rest::binary>>, field, row, true, rows) do
+    # escaped quote inside quotes -> add a single double-quote character
+    do_parse(rest, [?" | field], row, true, rows)
+  end
 
-Curriclick.Companies.JobRequirement
-|> Ash.Changeset.for_create(:create, %{
-  requirement_text: "Knowledge of cloud platforms (AWS, GCP, or Azure)",
-  is_required: false,
-  job_listing_id: senior_ml_job.id
-})
-|> Ash.create!()
+  defp do_parse(<<?", rest::binary>>, field, row, in_q?, rows) do
+    do_parse(rest, field, row, !in_q?, rows)
+  end
 
-# Add job requirements for the Junior Developer position  
-Curriclick.Companies.JobRequirement
-|> Ash.Changeset.for_create(:create, %{
-  requirement_text: "Bachelor's degree in Computer Science or related field",
-  is_required: true,
-  job_listing_id: junior_dev_job.id
-})
-|> Ash.create!()
+  defp do_parse(<<char, rest::binary>>, field, row, in_q?, rows) do
+    do_parse(rest, [char | field], row, in_q?, rows)
+  end
 
-Curriclick.Companies.JobRequirement
-|> Ash.Changeset.for_create(:create, %{
-  requirement_text: "Basic understanding of web development (HTML, CSS, JavaScript)",
-  is_required: true,
-  job_listing_id: junior_dev_job.id
-})
-|> Ash.create!()
+  def seed_from_csv(path, limit) do
+    IO.puts("\nSeeding companies and job listings from #{path} (limit=#{limit})...")
+    csv = File.read!(path)
+    [header | rows] = parse_csv(csv)
 
-Curriclick.Companies.JobRequirement
-|> Ash.Changeset.for_create(:create, %{
-  requirement_text: "Experience with Elixir/Phoenix framework",
-  is_required: false,
-  job_listing_id: junior_dev_job.id
-})
-|> Ash.create!()
+    # Map header names to indices
+    header_index = fn name -> Enum.find_index(header, &(&1 == name)) || raise("Missing column: #{name}") end
+    idx_company = header_index.("company_name")
+    idx_title = header_index.("title")
+    idx_desc = header_index.("description")
 
-# Add job requirements for the Product Manager position
-Curriclick.Companies.JobRequirement
-|> Ash.Changeset.for_create(:create, %{
-  requirement_text: "3+ years of product management experience",
-  is_required: true,
-  job_listing_id: product_manager_job.id
-})
-|> Ash.create!()
+    rows
+    |> Enum.take(limit)
+    |> Enum.reduce(0, fn row, acc ->
+      company_name = Enum.at(row, idx_company) |> to_string() |> String.trim() |> String.slice(0, 255)
+      title = Enum.at(row, idx_title) |> to_string() |> String.trim() |> String.slice(0, 255)
+      description = Enum.at(row, idx_desc) |> to_string() |> String.trim() |> String.slice(0, 3000)
 
-Curriclick.Companies.JobRequirement
-|> Ash.Changeset.for_create(:create, %{
-  requirement_text: "Experience in EdTech or Education industry",
-  is_required: false,
-  job_listing_id: product_manager_job.id
-})
-|> Ash.create!()
+      cond do
+        company_name == "" or title == "" or description == "" -> acc
+        true ->
+          company = get_or_create_company(company_name)
+          create_job_listing(company.id, title, description)
+          acc + 1
+      end
+    end)
+    |> then(fn count -> IO.puts("Inserted up to #{count} job listings from CSV.") end)
+  end
 
-IO.puts("✅ Sample companies, job listings, and job requirements created successfully!")
-IO.puts("Visit http://localhost:4000/admin to view and manage the data.")
+  defp get_or_create_company(name) do
+    alias Ash.Query
+
+    case Company
+         |> Query.for_read(:read, %{})
+         |> Query.filter(name == ^name)
+         |> Ash.read!() do
+      [company | _] -> company
+      [] ->
+        Company
+        |> Ash.Changeset.for_create(:create, %{name: name})
+        |> Ash.create!()
+    end
+  end
+
+  defp create_job_listing(company_id, title, description) do
+    JobListing
+    |> Ash.Changeset.for_create(:create, %{
+      job_role_name: title,
+      description: description,
+      company_id: company_id
+    })
+    |> Ash.create!()
+  end
+end
+
+CompaniesCSVSeeder.seed_from_csv("priv/repo/postings.csv", 5000)

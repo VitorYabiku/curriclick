@@ -12,7 +12,7 @@ import type {
   ListJobRequirementsFields,
   ListCompaniesFields,
   UUID,
-} from './ash_rpc';
+} from "./ash_rpc";
 
 // Base types extracted from Ash schemas
 export type BaseJobListing = {
@@ -47,27 +47,16 @@ export type CompanyApiData = {
 };
 
 // Field selections for API calls - mutable arrays to match API requirements
-export const JOB_LISTING_FIELDS: Array<"id" | "jobRoleName" | "jobDescription" | "companyId"> = [
-  "id",
-  "jobRoleName", 
-  "jobDescription",
-  "companyId",
-];
+export const JOB_LISTING_FIELDS: Array<
+  "id" | "jobRoleName" | "jobDescription" | "companyId"
+> = ["id", "jobRoleName", "jobDescription", "companyId"];
 
-export const JOB_REQUIREMENT_FIELDS: Array<"id" | "title" | "requirementText" | "isRequired" | "jobListingId"> = [
-  "id",
-  "title",
-  "requirementText", 
-  "isRequired",
-  "jobListingId",
-];
+export const JOB_REQUIREMENT_FIELDS: Array<
+  "id" | "title" | "requirementText" | "isRequired" | "jobListingId"
+> = ["id", "title", "requirementText", "isRequired", "jobListingId"];
 
-export const COMPANY_FIELDS: Array<"id" | "name" | "industry" | "description"> = [
-  "id",
-  "name", 
-  "industry",
-  "description",
-];
+export const COMPANY_FIELDS: Array<"id" | "name" | "industry" | "description"> =
+  ["id", "name", "industry", "description"];
 
 // Type-safe field selections
 export type JobListingFieldSelection = typeof JOB_LISTING_FIELDS;
@@ -75,8 +64,10 @@ export type JobRequirementFieldSelection = typeof JOB_REQUIREMENT_FIELDS;
 export type CompanyFieldSelection = typeof COMPANY_FIELDS;
 
 // API result types using the generated types
-export type JobListingsApiResult = ListJobListingsResult<JobListingFieldSelection>;
-export type JobRequirementsApiResult = ListJobRequirementsResult<JobRequirementFieldSelection>;
+export type JobListingsApiResult =
+  ListJobListingsResult<JobListingFieldSelection>;
+export type JobRequirementsApiResult =
+  ListJobRequirementsResult<JobRequirementFieldSelection>;
 export type CompaniesApiResult = ListCompaniesResult<CompanyFieldSelection>;
 
 // Frontend UI types derived from the API types
@@ -98,11 +89,15 @@ export type SkillUI = {
   required: boolean;
 };
 
-export type CompanyUI = Pick<CompanyApiData, 'name' | 'industry' | 'description'>;
+export type CompanyUI = Pick<
+  CompanyApiData,
+  "name" | "industry" | "description"
+>;
 
 export type JobCardData = BaseJobListing & {
-  skills: SkillUI[];
   company?: CompanyUI;
+  description: string;
+  matchScore?: number;
 };
 
 // API response wrapper types
@@ -113,18 +108,23 @@ export type PaginatedResult<T> = {
 };
 
 // Utility types for transforming API responses to UI data
-export type TransformJobRequirementToSkill = (requirement: BaseJobRequirement) => SkillUI;
+export type TransformJobRequirementToSkill = (
+  requirement: BaseJobRequirement,
+) => SkillUI;
 export type TransformCompanyToUI = (company: CompanyApiData) => CompanyUI;
 export type TransformJobListingToCard = (
   job: BaseJobListing,
   requirements: BaseJobRequirement[],
-  company?: CompanyApiData
+  company?: CompanyApiData,
 ) => JobCardData;
 
 // Helper functions for type transformations
-export const transformJobRequirementToSkill: TransformJobRequirementToSkill = (requirement) => {
+export const transformJobRequirementToSkill: TransformJobRequirementToSkill = (
+  requirement,
+) => {
   const fullName = requirement.title || requirement.requirementText;
-  const short = fullName.length > 30 ? fullName.substring(0, 30) + "..." : fullName;
+  const short =
+    fullName.length > 30 ? fullName.substring(0, 30) + "..." : fullName;
   return {
     name: short,
     fullName,
@@ -139,7 +139,11 @@ export const transformCompanyToUI: TransformCompanyToUI = (company) => ({
   description: company.description,
 });
 
-export const transformJobListingToCard: TransformJobListingToCard = (job, requirements, company) => ({
+export const transformJobListingToCard: TransformJobListingToCard = (
+  job,
+  requirements,
+  company,
+) => ({
   id: job.id,
   jobRoleName: job.jobRoleName,
   jobDescription: job.jobDescription,
@@ -149,9 +153,10 @@ export const transformJobListingToCard: TransformJobListingToCard = (job, requir
 });
 
 // Field validation helpers using the generated types
-export type ValidateFields<T extends readonly string[], U> = T extends readonly (keyof U)[]
-  ? T
-  : never;
+export type ValidateFields<
+  T extends readonly string[],
+  U,
+> = T extends readonly (keyof U)[] ? T : never;
 
 // Ensure our field selections are valid against the generated types
 type _ValidateJobListingFields = ValidateFields<
@@ -166,3 +171,4 @@ type _ValidateCompanyFields = ValidateFields<
   typeof COMPANY_FIELDS,
   CompanyResourceSchema
 >;
+

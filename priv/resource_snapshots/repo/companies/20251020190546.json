@@ -21,20 +21,8 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "api_key_hash",
-      "type": "binary"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "expires_at",
-      "type": "utc_datetime_usec"
+      "source": "name",
+      "type": "text"
     },
     {
       "allow_nil?": true,
@@ -42,30 +30,35 @@
       "generated?": false,
       "precision": null,
       "primary_key?": false,
-      "references": {
-        "deferrable": false,
-        "destination_attribute": "id",
-        "destination_attribute_default": null,
-        "destination_attribute_generated": null,
-        "index?": false,
-        "match_type": null,
-        "match_with": null,
-        "multitenancy": {
-          "attribute": null,
-          "global": null,
-          "strategy": null
-        },
-        "name": "api_keys_user_id_fkey",
-        "on_delete": null,
-        "on_update": null,
-        "primary_key?": true,
-        "schema": "public",
-        "table": "users"
-      },
+      "references": null,
       "scale": null,
       "size": null,
-      "source": "user_id",
-      "type": "uuid"
+      "source": "description",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "inserted_at",
+      "type": "utc_datetime_usec"
+    },
+    {
+      "allow_nil?": false,
+      "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "updated_at",
+      "type": "utc_datetime_usec"
     }
   ],
   "base_filter": null,
@@ -73,19 +66,19 @@
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "236A091A7B15B80B3477D27842437DF7A44634D94E5E4AB23EB30586DC4AE642",
+  "hash": "770C4F3CB9A9D3AF233D8EE6C4C1F64E4AE8B50A0F7F06083202DC6298B8238F",
   "identities": [
     {
       "all_tenants?": false,
       "base_filter": null,
-      "index_name": "api_keys_unique_api_key_index",
+      "index_name": "companies_unique_name_index",
       "keys": [
         {
           "type": "atom",
-          "value": "api_key_hash"
+          "value": "name"
         }
       ],
-      "name": "unique_api_key",
+      "name": "unique_name",
       "nils_distinct?": true,
       "where": null
     }
@@ -97,5 +90,5 @@
   },
   "repo": "Elixir.Curriclick.Repo",
   "schema": null,
-  "table": "api_keys"
+  "table": "companies"
 }
