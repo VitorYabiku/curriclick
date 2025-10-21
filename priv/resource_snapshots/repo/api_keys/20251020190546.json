@@ -21,8 +21,8 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "job_role_name",
-      "type": "text"
+      "source": "api_key_hash",
+      "type": "binary"
     },
     {
       "allow_nil?": false,
@@ -33,11 +33,11 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "job_description",
-      "type": "text"
+      "source": "expires_at",
+      "type": "utc_datetime_usec"
     },
     {
-      "allow_nil?": false,
+      "allow_nil?": true,
       "default": "nil",
       "generated?": false,
       "precision": null,
@@ -55,41 +55,17 @@
           "global": null,
           "strategy": null
         },
-        "name": "job_listings_company_id_fkey",
+        "name": "api_keys_user_id_fkey",
         "on_delete": null,
         "on_update": null,
         "primary_key?": true,
         "schema": "public",
-        "table": "companies"
+        "table": "users"
       },
       "scale": null,
       "size": null,
-      "source": "company_id",
+      "source": "user_id",
       "type": "uuid"
-    },
-    {
-      "allow_nil?": false,
-      "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "inserted_at",
-      "type": "utc_datetime_usec"
-    },
-    {
-      "allow_nil?": false,
-      "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "updated_at",
-      "type": "utc_datetime_usec"
     }
   ],
   "base_filter": null,
@@ -97,8 +73,23 @@
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "6468E21730115F65C59F1F958BD381024E2525EC75E66385DA13F8477F41B1D6",
-  "identities": [],
+  "hash": "57852E8D7BEC4770928C21FF65D4AA661EC7239EA9598D6DB58320286A467EEA",
+  "identities": [
+    {
+      "all_tenants?": false,
+      "base_filter": null,
+      "index_name": "api_keys_unique_api_key_index",
+      "keys": [
+        {
+          "type": "atom",
+          "value": "api_key_hash"
+        }
+      ],
+      "name": "unique_api_key",
+      "nils_distinct?": true,
+      "where": null
+    }
+  ],
   "multitenancy": {
     "attribute": null,
     "global": null,
@@ -106,5 +97,5 @@
   },
   "repo": "Elixir.Curriclick.Repo",
   "schema": null,
-  "table": "job_listings"
+  "table": "api_keys"
 }

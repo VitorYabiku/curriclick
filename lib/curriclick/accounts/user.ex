@@ -4,7 +4,11 @@ defmodule Curriclick.Accounts.User do
     domain: Curriclick.Accounts,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshAuthentication]
+    extensions: [AshAuthentication, AshAi, AshTypescript.Resource]
+
+typescript do
+    type_name "User"
+  end
 
   authentication do
     add_ons do
@@ -59,12 +63,23 @@ defmodule Curriclick.Accounts.User do
     end
   end
 
+  vectorize do
+    # Vectorize the user's ideal job description for matching
+    attributes ideal_job_description: :ideal_job_vector
+    
+    # Use after_action strategy to automatically generate embeddings
+    strategy :after_action
+    
+    # Use the same embedding model as job listings
+    embedding_model Curriclick.Ai.OpenAiEmbeddingModel
+  end
+
   postgres do
     table "users"
     repo Curriclick.Repo
   end
 
-  actions do
+actions do
     defaults [:read]
 
     read :get_by_subject do
@@ -272,6 +287,29 @@ defmodule Curriclick.Accounts.User do
       argument :api_key, :string, allow_nil?: false
       prepare AshAuthentication.Strategy.ApiKey.SignInPreparation
     end
+
+    # Update the current (actor) user's ideal_job_description without requiring an ID
+    action :update_ideal_job_description do
+      description "Update the authenticated user's ideal job description"
+      argument :ideal_job_description, :string, allow_nil?: false
+
+      run fn input, %{actor: actor} ->
+        case actor do
+          user when is_struct(user, __MODULE__) ->
+            changeset =
+              user
+              |> Ash.Changeset.for_update(:update, %{ideal_job_description: input.ideal_job_description})
+
+            case Ash.update(changeset) do
+              {:ok, updated} -> {:ok, %{id: updated.id, ideal_job_description: updated.ideal_job_description}}
+              {:error, reason} -> {:error, reason}
+            end
+
+          _ ->
+            {:error, %{message: "not_authenticated"}}
+        end
+      end
+    end
   end
 
   policies do
@@ -290,6 +328,13 @@ defmodule Curriclick.Accounts.User do
 
     attribute :hashed_password, :string do
       sensitive? true
+    end
+
+    attribute :ideal_job_description, :string do
+      description "Description of the ideal job for the user"
+      allow_nil? true
+      public? true
+      constraints max_length: 2000
     end
 
     attribute :confirmed_at, :utc_datetime_usec
