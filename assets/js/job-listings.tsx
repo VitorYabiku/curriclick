@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import {
   QueryClient,
   QueryClientProvider,
   useQuery,
+  useMutation,
 } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
 import { Button } from "./components/ui/button";
@@ -11,18 +12,10 @@ import { JobHeader } from "./components/job-header";
 import { JobFilters } from "./components/job-filters";
 import { AIRecommendations } from "./components/ai-recommendations";
 import { JobCard } from "./components/job-card";
-import {
-  listJobListings,
-  buildCSRFHeaders,
-} from "./ash_rpc";
-import type {
-  JobCardData,
-  PaginatedResult,
-} from "./types";
-import {
-  transformJobListingToCard,
-} from "./types";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { findMatchingJobs, buildCSRFHeaders } from "./ash_rpc";
+import type { FindMatchingJobsFields } from "./ash_rpc";
+import type { JobCardData, PaginatedResult } from "./types";
+import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -30,86 +23,95 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes
       retry: 1,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      refetchOnMount: false,
     },
   },
 });
 
-// Custom hook for fetching job listings with pagination
-function useJobListings(page: number, pageSize: number = 25): {
+// Custom hook for fetching job listings with AI matching or regular listing
+function useJobListings(
+  page: number,
+  pageSize: number = 25,
+  idealJobDescription?: string,
+): {
   data: PaginatedResult<JobCardData> | undefined;
   isLoading: boolean;
   error: Error | null;
 } {
   return useQuery({
-    queryKey: ["jobListings", page, pageSize],
+    queryKey: ["jobListings", page, pageSize, idealJobDescription],
     queryFn: async (): Promise<PaginatedResult<JobCardData>> => {
-      try {
-        console.log("Fetching job listings and requirements separately...");
+      const headers = buildCSRFHeaders();
 
-        // Fetch job listings
-        const headers = buildCSRFHeaders();
-        const jobListingsResult = await listJobListings({
-          fields: [
-            "id",
-            "jobRoleName",
-            "jobDescription",
-            "companyId",
-            {
-              jobRequirements: [
-                "id",
-                "title",
-                "requirementText",
-                "isRequired",
-                "jobListingId",
-              ],
-            },
-          ],
-          headers,
+      if (idealJobDescription && idealJobDescription.trim().length > 0) {
+        // Use AI matching when ideal job description is provided
+        const fields: FindMatchingJobsFields = [
+          "id",
+          "jobRoleName",
+          "description",
+          "companyId",
+        ];
+
+        // Use raw RPC call since generated function doesn't support custom arguments
+        const payload = {
+          action: "find_matching_jobs",
+          fields: fields,
+          arguments: { 
+            ideal_job_description: idealJobDescription,
+            limit: pageSize 
+          }
+        };
+
+        const response = await fetch("/rpc/run", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...headers
+          },
+          body: JSON.stringify(payload)
         });
-        console.log("Job listings result:", jobListingsResult);
 
-        if (!jobListingsResult || !jobListingsResult.success) {
-          console.error("Job listings error:", jobListingsResult?.errors);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const matchingJobs = await response.json();
+
+        if (!matchingJobs.success) {
           throw new Error(
-            jobListingsResult?.errors?.map((e) => e.message).join(", ") ||
-              "Failed to fetch job listings",
+            matchingJobs.errors?.map((e: any) => e.message).join(", ") ||
+              "Failed to find matching jobs",
           );
         }
 
-        // Extract data with proper typing
-        const jobListingsData = jobListingsResult.data || [];
+        const data = matchingJobs.data?.results || [];
+        console.log('Raw backend response:', JSON.stringify(matchingJobs.data, null, 2));
+        console.log('First job raw data:', JSON.stringify(data[0], null, 2));
+        
+        const results: JobCardData[] = data.map((job: any) => ({
+          id: job.id,
+          jobRoleName: job.jobRoleName,
+          jobDescription: job.description,
+          description: job.description,
+          companyId: job.companyId,
+          matchScore: job.matchScore || job.match_score || 0,
+        }));
+        
+        console.log('First processed job:', results[0]);
 
-        console.log("Job listings data:", jobListingsData);
-
-        // Transform and merge the data
-        if (Array.isArray(jobListingsData) && jobListingsData.length > 0) {
-          const transformedResults: Array<JobCardData> = jobListingsData.map((job) => {
-            const jobRequirements = Array.isArray((job as any).jobRequirements)
-              ? (job as any).jobRequirements
-              : [];
-
-            return transformJobListingToCard(job as any, jobRequirements as any, undefined);
-          });
-
-          return {
-            results: transformedResults,
-            hasMore: false, // For now, since we're not implementing pagination
-            count: transformedResults.length,
-          };
-        }
-
-        return {
-          results: [],
-          hasMore: false,
-          count: 0,
-        };
-      } catch (error) {
-        console.error("Job listings fetch error:", error);
-        throw error;
+        return { results, hasMore: false, count: results.length };
+      } else {
+        // When no ideal description is provided, return no jobs
+        return { results: [], hasMore: false, count: 0 };
       }
     },
     retry: 1,
     staleTime: 30000, // 30 seconds
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
   });
 }
 
@@ -167,8 +169,44 @@ function JobListings() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 25;
 
-  const { data, isLoading, error } = useJobListings(currentPage, pageSize);
+  const idealDescRef = useRef("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // const updateIdealJobDescription = useMutation({
+  //   mutationFn: async (desc: string) => {
+  //     const headers = buildCSRFHeaders({ "Content-Type": "application/json" });
+  //     const payload = {
+  //       action: "update_ideal_job_description",
+  //       arguments: { ideal_job_description: desc },
+  //     } as const;
+  //     const res = await fetch("/rpc/run", {
+  //       method: "POST",
+  //       headers,
+  //       body: JSON.stringify(payload),
+  //     });
+  //     if (!res.ok) {
+  //       throw new Error(res.statusText);
+  //     }
+  //     const json = await res.json();
+  //     if (json?.success === false) {
+  //       throw new Error(
+  //         json.errors?.map((e: any) => e.message).join(", ") || "Failed",
+  //       );
+  //     }
+  //     return json;
+  //   },
+  // });
+
+  const [queryKey, setQueryKey] = useState("");
+
+  const { data, isLoading, error, refetch } = useJobListings(
+    currentPage,
+    pageSize,
+    queryKey,
+  );
   console.log("JobListings component - data:", data);
+
+  const totalPages = data?.count ? Math.ceil(data.count / pageSize) : null;
 
   if (isLoading) {
     return (
@@ -221,7 +259,7 @@ function JobListings() {
           <Card className="border-destructive/30 bg-destructive/10">
             <CardHeader>
               <CardTitle className="text-destructive">
-                Error Loading Job Listings
+                Erro carregando vagas disponíveis
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -233,9 +271,6 @@ function JobListings() {
     );
   }
 
-  console.log("JobListings component - data:", data);
-  const totalPages = data?.count ? Math.ceil(data.count / pageSize) : null;
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-accent/5 to-background">
       <JobHeader />
@@ -245,37 +280,114 @@ function JobListings() {
             <JobFilters />
           </aside>
           <main className="lg:col-span-3 space-y-6">
-            <AIRecommendations />
+            <Card>
+              <CardHeader>
+                <CardTitle>Seu objetivo profissional</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <textarea
+                  ref={textareaRef}
+                  rows={4}
+                  placeholder="Descreva a vaga ideal para você (ex.: área, senioridade, tecnologias, tipo de trabalho)"
+                  className="w-full rounded-md border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+                />
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    onClick={() => {
+                      const desc = textareaRef.current?.value || "";
+                      idealDescRef.current = desc;
+                      setQueryKey(desc);
+                    }}
+                    disabled={isLoading}
+                  >
+                    <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                    Buscar vagas compatíveis
+                  </Button>
+
+                  {/*
+                  {updateIdealJobDescription.isPending && (
+                    <span className="text-sm text-muted-foreground">
+                      Salvando...
+                    </span>
+                  )}
+                  {updateIdealJobDescription.isSuccess && (
+                    <span className="text-sm text-green-600">Salvo!</span>
+                  )}
+                  {updateIdealJobDescription.isError && (
+                    <span className="text-sm text-destructive">
+                      {(updateIdealJobDescription.error as Error)?.message}
+                    </span>
+                  )}
+
+                  {isLoading && idealDesc.trim().length > 0 && (
+                    <span className="text-sm text-muted-foreground">
+                      🔍 Buscando vagas compatíveis...
+                    </span>
+                  )}
+                  */}
+                </div>
+              </CardContent>
+            </Card>
+            <AIRecommendations description="placeholder" />
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-semibold text-foreground">
-                  {"Matching Jobs"}
+                  {queryKey.trim().length > 0 ? (
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-6 w-6 text-primary" />
+                      Vagas Recomendadas por IA
+                    </div>
+                  ) : (
+                    "Vagas"
+                  )}
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  {data?.count ?? data?.results?.length ?? 0}{" "}
-                  {" positions found"}
+                  {queryKey.trim().length > 0
+                    ? `${data?.results?.length ?? 0} vagas recomendadas`
+                    : `0 vagas`}
                 </p>
               </div>
               <div className="space-y-4">
-                {data &&
-                data.results &&
-                Array.isArray(data.results) &&
-                data.results.length > 0 ? (
-                  data.results.map((job) => <JobCard key={job.id} job={job} />)
+                {queryKey.trim().length > 0 ? (
+                  data &&
+                  data.results &&
+                  Array.isArray(data.results) &&
+                  data.results.length > 0 ? (
+                    data.results.map((job) => (
+                      <JobCard
+                        key={job.id}
+                        job={job}
+                        matchScore={job.matchScore || 0}
+                      />
+                    ))
+                  ) : (
+                    <Card className="text-center py-16">
+                      <CardHeader>
+                        <CardTitle className="text-2xl text-muted-foreground">
+                          <Sparkles className="h-8 w-8 mx-auto mb-2 text-primary" />
+                          Nenhuma vaga compatível encontrada
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-muted-foreground mb-4">
+                          Digite sua descrição ideal e clique em "Encontrar
+                          vagas compatíveis".
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )
                 ) : (
                   <Card className="text-center py-16">
                     <CardHeader>
                       <CardTitle className="text-2xl text-muted-foreground">
-                        No Job Listings Found
+                        Nenhuma vaga
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <p className="text-muted-foreground mb-4">
-                        There are currently no job listings available.
+                        Digite sua descrição ideal para ver vagas recomendadas
+                        por IA.
                       </p>
-                      <Button onClick={() => window.location.reload()}>
-                        Refresh Page
-                      </Button>
                     </CardContent>
                   </Card>
                 )}

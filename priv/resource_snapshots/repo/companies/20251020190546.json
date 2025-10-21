@@ -21,19 +21,7 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "email",
-      "type": "citext"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "hashed_password",
+      "source": "name",
       "type": "text"
     },
     {
@@ -45,7 +33,31 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "confirmed_at",
+      "source": "description",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "inserted_at",
+      "type": "utc_datetime_usec"
+    },
+    {
+      "allow_nil?": false,
+      "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "updated_at",
       "type": "utc_datetime_usec"
     }
   ],
@@ -54,19 +66,19 @@
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "3BE1CDB42509855AC4F144A94D05EC67A902CE5E77C017CD3DA068F56E6FAC04",
+  "hash": "770C4F3CB9A9D3AF233D8EE6C4C1F64E4AE8B50A0F7F06083202DC6298B8238F",
   "identities": [
     {
       "all_tenants?": false,
       "base_filter": null,
-      "index_name": "users_unique_email_index",
+      "index_name": "companies_unique_name_index",
       "keys": [
         {
           "type": "atom",
-          "value": "email"
+          "value": "name"
         }
       ],
-      "name": "unique_email",
+      "name": "unique_name",
       "nils_distinct?": true,
       "where": null
     }
@@ -78,5 +90,5 @@
   },
   "repo": "Elixir.Curriclick.Repo",
   "schema": null,
-  "table": "users"
+  "table": "companies"
 }

@@ -1,18 +1,38 @@
 import React from "react";
-import { MapPin, Briefcase, DollarSign, Clock, Sparkles, ChevronDown, AlertCircle, Plus } from "lucide-react";
+import {
+  // MapPin,
+  // Briefcase,
+  // DollarSign,
+  // Clock,
+  Sparkles,
+  ChevronDown,
+  // AlertCircle,
+  // Plus,
+} from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
+// import {
+//   Tooltip,
+//   TooltipContent,
+//   TooltipProvider,
+//   TooltipTrigger,
+// } from "./ui/tooltip";
+// import {
+//   Accordion,
+//   AccordionContent,
+//   AccordionItem,
+//   AccordionTrigger,
+// } from "./ui/accordion";
 import { useState } from "react";
 import type { JobCardData } from "../types";
 
 type JobCardProps = {
   job: JobCardData;
+  matchScore: number;
 };
 
-export function JobCard({ job }: JobCardProps) {
+export function JobCard({ job, matchScore }: JobCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const getMatchColor = (score: number) => {
@@ -21,11 +41,10 @@ export function JobCard({ job }: JobCardProps) {
     return "bg-secondary text-secondary-foreground";
   };
 
-  const requiredSkills = job.skills.filter((skill) => skill.required);
-  const niceToHaveSkills = job.skills.filter((skill) => !skill.required);
+  // const requiredSkills = job.skills.filter((skill) => skill.required);
+  // const niceToHaveSkills = job.skills.filter((skill) => !skill.required);
 
   // Mock values for now - these would come from additional data or calculations
-  const mockMatchScore = 85;
   const companyName = job.company?.name || "Company";
 
   return (
@@ -47,7 +66,9 @@ export function JobCard({ job }: JobCardProps) {
                 }`}
               />
             </div>
-            <p className="text-sm font-medium text-foreground/90 mb-1">{companyName}</p>
+            <p className="text-sm font-medium text-foreground/90 mb-1">
+              {companyName}
+            </p>
             {/* Optional metadata row if available in the future */}
             {/* <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
               <div className="flex items-center gap-1">
@@ -72,17 +93,22 @@ export function JobCard({ job }: JobCardProps) {
       </CardHeader>
 
       <CardContent className="space-y-3 px-4 pb-3">
-        <Badge className={`${getMatchColor(mockMatchScore)} flex items-center gap-1 w-fit text-xs`}>
+        <Badge
+          className={`${getMatchColor(matchScore)} flex items-center gap-1 w-fit text-xs`}
+        >
           <Sparkles className="h-3 w-3" />
-          {mockMatchScore}% Compatível com IA
+          {matchScore}% Compatível
         </Badge>
 
         <div
           className={`transition-all duration-150 ${
-            isExpanded ? "max-h-0 opacity-0 overflow-hidden" : "max-h-96 opacity-100"
+            isExpanded
+              ? "max-h-0 opacity-0 overflow-hidden"
+              : "max-h-96 opacity-100"
           }`}
         >
           <div className="flex flex-wrap gap-1.5">
+            {/*
             <TooltipProvider>
               {job.skills.slice(0, 6).map((skill, index) => (
                 <Tooltip key={`${skill.name}-${index}`} delayDuration={200}>
@@ -104,26 +130,37 @@ export function JobCard({ job }: JobCardProps) {
                 </Tooltip>
               ))}
             </TooltipProvider>
+            */}
           </div>
         </div>
 
         <div
           className={`transition-all duration-150 ${
-            isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0 overflow-hidden"
+            isExpanded
+              ? "max-h-[2000px] opacity-100"
+              : "max-h-0 opacity-0 overflow-hidden"
           }`}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="space-y-3 pt-3 border-t border-border">
-            {requiredSkills.length > 0 && (
+            {/*requiredSkills.length > 0 && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 text-destructive" />
-                  <h3 className="text-sm font-semibold text-foreground">Habilidades Obrigatórias</h3>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Habilidades Obrigatórias
+                  </h3>
                   <Badge variant="destructive" className="ml-auto text-xs">
                     {requiredSkills.length}
                   </Badge>
                 </div>
-                <Accordion type="multiple" className="w-full" defaultValue={requiredSkills.map((_, index) => `required-${index}`)}>
+                <Accordion
+                  type="multiple"
+                  className="w-full"
+                  defaultValue={requiredSkills.map(
+                    (_, index) => `required-${index}`,
+                  )}
+                >
                   {requiredSkills.map((skill, index) => (
                     <AccordionItem
                       key={`required-${index}`}
@@ -132,31 +169,49 @@ export function JobCard({ job }: JobCardProps) {
                     >
                       <AccordionTrigger className="hover:no-underline py-2">
                         <div className="flex items-center gap-2">
-                          <Badge variant="destructive" className="font-semibold text-xs">
+                          <Badge
+                            variant="destructive"
+                            className="font-semibold text-xs"
+                          >
                             {skill.fullName}
                           </Badge>
-                          <span className="text-xs text-destructive font-medium uppercase tracking-wide">Obrigatório</span>
+                          <span className="text-xs text-destructive font-medium uppercase tracking-wide">
+                            Obrigatório
+                          </span>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="pb-2 pt-1">
-                        <p className="text-xs text-muted-foreground leading-relaxed">{skill.description}</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          {skill.description}
+                        </p>
                       </AccordionContent>
                     </AccordionItem>
                   ))}
                 </Accordion>
               </div>
-            )}
+            )*/}
 
-            {niceToHaveSkills.length > 0 && (
+            {/*niceToHaveSkills.length > 0 && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Plus className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-semibold text-foreground">Habilidades Desejáveis</h3>
-                  <Badge variant="secondary" className="ml-auto bg-primary/10 text-primary text-xs">
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Habilidades Desejáveis
+                  </h3>
+                  <Badge
+                    variant="secondary"
+                    className="ml-auto bg-primary/10 text-primary text-xs"
+                  >
                     {niceToHaveSkills.length}
                   </Badge>
                 </div>
-                <Accordion type="multiple" className="w-full" defaultValue={niceToHaveSkills.map((_, index) => `nice-${index}`)}>
+                <Accordion
+                  type="multiple"
+                  className="w-full"
+                  defaultValue={niceToHaveSkills.map(
+                    (_, index) => `nice-${index}`,
+                  )}
+                >
                   {niceToHaveSkills.map((skill, index) => (
                     <AccordionItem
                       key={`nice-${index}`}
@@ -165,30 +220,48 @@ export function JobCard({ job }: JobCardProps) {
                     >
                       <AccordionTrigger className="hover:no-underline py-2">
                         <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="font-semibold bg-primary/10 text-primary text-xs">
+                          <Badge
+                            variant="secondary"
+                            className="font-semibold bg-primary/10 text-primary text-xs"
+                          >
                             {skill.fullName}
                           </Badge>
-                          <span className="text-xs text-primary font-medium uppercase tracking-wide">Desejável</span>
+                          <span className="text-xs text-primary font-medium uppercase tracking-wide">
+                            Desejável
+                          </span>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="pb-2 pt-1">
-                        <p className="text-xs text-muted-foreground leading-relaxed">{skill.description}</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          {skill.description}
+                        </p>
                       </AccordionContent>
                     </AccordionItem>
                   ))}
                 </Accordion>
               </div>
-            )}
+            )*/}
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {job.description}
+            </p>
           </div>
         </div>
       </CardContent>
 
       <CardFooter className="flex gap-2 px-4 pb-4 pt-2">
-        <Button className="flex-1" variant="default" onClick={(e) => e.stopPropagation()}>
+        <Button
+          className="flex-1"
+          variant="default"
+          onClick={(e) => e.stopPropagation()}
+        >
           <Sparkles className="h-3.5 w-3.5 mr-1.5" />
           {"Candidatar-se Automaticamente"}
         </Button>
-        <Button className="flex-1 bg-transparent" variant="outline" onClick={(e) => e.stopPropagation()}>
+        <Button
+          className="flex-1 bg-transparent"
+          variant="outline"
+          onClick={(e) => e.stopPropagation()}
+        >
           {"Candidatar-se Manualmente"}
         </Button>
       </CardFooter>
