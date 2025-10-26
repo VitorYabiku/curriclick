@@ -24,6 +24,7 @@ try do
     ideal_job_description: test_description,
     limit: 10
   })
+  |> Ash.Query.ensure_selected([:match_score])
   |> Ash.read()
   
   case result do
@@ -34,6 +35,8 @@ try do
       if length(job_listings) > 0 do
         first_job = List.first(job_listings)
         IO.puts("🔍 Debug: First job structure: #{inspect(Map.keys(first_job))}")
+        IO.puts("🔍 Debug: match_score field: #{inspect(first_job.match_score)}")
+        IO.puts("🔍 Debug: match_score type: #{inspect(first_job.match_score |> is_number())}")
         IO.puts("🔍 Debug: Company field: #{inspect(first_job.company)}")
       end
       

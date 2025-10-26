@@ -6,8 +6,11 @@ import {
   useQuery,
   useMutation,
 } from "@tanstack/react-query";
+import { useForm } from "@tanstack/react-form";
 import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
 import { Button } from "./components/ui/button";
+import { Textarea } from "./components/ui/textarea";
+import { Field, FieldError } from "./components/ui/field";
 import { JobHeader } from "./components/job-header";
 import { JobFilters } from "./components/job-filters";
 import { AIRecommendations } from "./components/ai-recommendations";
@@ -52,32 +55,20 @@ function useJobListings(
           "jobRoleName",
           "description",
           "companyId",
+          "matchScore",
         ];
 
-        // Use raw RPC call since generated function doesn't support custom arguments
-        const payload = {
-          action: "find_matching_jobs",
-          fields: fields,
-          arguments: { 
+        // Use generated findMatchingJobs with input parameter (TypeScript may complain but it works)
+        const matchingJobs = await findMatchingJobs({
+          fields,
+          headers,
+          page: { limit: pageSize },
+          // @ts-ignore - input parameter not yet in generated types but supported by backend
+          input: {
             ideal_job_description: idealJobDescription,
-            limit: pageSize 
-          }
-        };
-
-        const response = await fetch("/rpc/run", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...headers
+            limit: pageSize,
           },
-          body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const matchingJobs = await response.json();
+        } as any);
 
         if (!matchingJobs.success) {
           throw new Error(
@@ -87,19 +78,17 @@ function useJobListings(
         }
 
         const data = matchingJobs.data?.results || [];
-        console.log('Raw backend response:', JSON.stringify(matchingJobs.data, null, 2));
-        console.log('First job raw data:', JSON.stringify(data[0], null, 2));
-        
+
         const results: JobCardData[] = data.map((job: any) => ({
           id: job.id,
           jobRoleName: job.jobRoleName,
           jobDescription: job.description,
           description: job.description,
           companyId: job.companyId,
-          matchScore: job.matchScore || job.match_score || 0,
+          matchScore: job.matchScore || 0,
         }));
-        
-        console.log('First processed job:', results[0]);
+
+        console.log("First processed job:", results[0]);
 
         return { results, hasMore: false, count: results.length };
       } else {
@@ -169,9 +158,6 @@ function JobListings() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 25;
 
-  const idealDescRef = useRef("");
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
   // const updateIdealJobDescription = useMutation({
   //   mutationFn: async (desc: string) => {
   //     const headers = buildCSRFHeaders({ "Content-Type": "application/json" });
@@ -199,7 +185,18 @@ function JobListings() {
 
   const [queryKey, setQueryKey] = useState("");
 
-  const { data, isLoading, error, refetch } = useJobListings(
+  // TanStack Form setup
+  const form = useForm({
+    defaultValues: {
+      idealJobDescription: "",
+    },
+    onSubmit: async ({ value }) => {
+      setQueryKey(value.idealJobDescription);
+      setCurrentPage(1); // Reset to first page on new search
+    },
+  });
+
+  const { data, isLoading, error } = useJobListings(
     currentPage,
     pageSize,
     queryKey,
@@ -285,47 +282,50 @@ function JobListings() {
                 <CardTitle>Seu objetivo profissional</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <textarea
-                  ref={textareaRef}
-                  rows={4}
-                  placeholder="Descreva a vaga ideal para você (ex.: área, senioridade, tecnologias, tipo de trabalho)"
-                  className="w-full rounded-md border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-primary/50"
-                />
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Button
-                    onClick={() => {
-                      const desc = textareaRef.current?.value || "";
-                      idealDescRef.current = desc;
-                      setQueryKey(desc);
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    form.handleSubmit();
+                  }}
+                  className="space-y-3"
+                >
+                  <form.Field
+                    name="idealJobDescription"
+                    validators={{
+                      onChange: ({ value }) => {
+                        if (!value || value.trim().length === 0) {
+                          return "Por favor, descreva sua vaga ideal";
+                        }
+                        if (value.trim().length > 1000) {
+                          return "A descrição deve ter pelo menos 10 caracteres";
+                        }
+                        return undefined;
+                      },
                     }}
-                    disabled={isLoading}
                   >
-                    <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                    Buscar vagas compatíveis
-                  </Button>
-
-                  {/*
-                  {updateIdealJobDescription.isPending && (
-                    <span className="text-sm text-muted-foreground">
-                      Salvando...
-                    </span>
-                  )}
-                  {updateIdealJobDescription.isSuccess && (
-                    <span className="text-sm text-green-600">Salvo!</span>
-                  )}
-                  {updateIdealJobDescription.isError && (
-                    <span className="text-sm text-destructive">
-                      {(updateIdealJobDescription.error as Error)?.message}
-                    </span>
-                  )}
-
-                  {isLoading && idealDesc.trim().length > 0 && (
-                    <span className="text-sm text-muted-foreground">
-                      🔍 Buscando vagas compatíveis...
-                    </span>
-                  )}
-                  */}
-                </div>
+                    {(field) => (
+                      <Field data-invalid={!!field.state.meta.errors.length}>
+                        <Textarea
+                          placeholder="Descreva a vaga ideal para você (ex.: área, senioridade, tecnologias, tipo de trabalho)"
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          rows={4}
+                        />
+                        {field.state.meta.errors.length > 0 && (
+                          <FieldError>{field.state.meta.errors[0]}</FieldError>
+                        )}
+                      </Field>
+                    )}
+                  </form.Field>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Button type="submit" disabled={isLoading}>
+                      <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                      Buscar vagas compatíveis
+                    </Button>
+                  </div>
+                </form>
               </CardContent>
             </Card>
             <AIRecommendations description="placeholder" />

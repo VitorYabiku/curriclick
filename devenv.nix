@@ -3,7 +3,7 @@ let beam_pkgs = pkgs.beamMinimalPackages;
 
 in {
   # https://devenv.sh/basics/
-  # env.GREET = "devenv";
+  # env.PORT = "4000"; # Phoenix uses port 4000 by default
 
   # https://devenv.sh/packages/
   packages =

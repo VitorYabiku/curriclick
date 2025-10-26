@@ -10,11 +10,13 @@ export type UUID = string;
 // JobListing Schema
 export type JobListingResourceSchema = {
   __type: "Resource";
-  __primitiveFields: "id" | "jobRoleName" | "description" | "companyId";
+  __primitiveFields: "id" | "jobRoleName" | "description" | "companyId" | "matchScore" | "idealJobDescription";
   id: UUID;
   jobRoleName: string;
   description: string;
   companyId: UUID;
+  matchScore: number | null;
+  idealJobDescription: string | null;
   company: { __type: "Relationship"; __resource: CompanyResourceSchema | null; };
 };
 
@@ -64,6 +66,22 @@ export type JobListingFilterInput = {
     eq?: UUID;
     notEq?: UUID;
     in?: Array<UUID>;
+  };
+
+  matchScore?: {
+    eq?: number;
+    notEq?: number;
+    greaterThan?: number;
+    greaterThanOrEqual?: number;
+    lessThan?: number;
+    lessThanOrEqual?: number;
+    in?: Array<number>;
+  };
+
+  idealJobDescription?: {
+    eq?: string;
+    notEq?: string;
+    in?: Array<string>;
   };
 
 
@@ -257,12 +275,18 @@ type InferFieldValue<
 
 type InferResult<
   T extends TypedSchema,
-  SelectedFields extends UnifiedFieldSelection<T>[],
-> = UnionToIntersection<
-  {
-    [K in keyof SelectedFields]: InferFieldValue<T, SelectedFields[K]>;
-  }[number]
->;
+  SelectedFields extends UnifiedFieldSelection<T>[] | undefined,
+> = SelectedFields extends undefined
+  ? {}
+  : SelectedFields extends []
+  ? {}
+  : SelectedFields extends UnifiedFieldSelection<T>[]
+  ? UnionToIntersection<
+      {
+        [K in keyof SelectedFields]: InferFieldValue<T, SelectedFields[K]>;
+      }[number]
+    >
+  : {};
 
 // Pagination conditional types
 // Checks if a page configuration object has any pagination parameters
@@ -411,7 +435,7 @@ export async function listJobListings<Fields extends ListJobListingsFields>(
 
   const payload = {
     action: "list_job_listings",
-    fields: config.fields,
+    ...(config.fields !== undefined && { fields: config.fields }),
     ...(config.filter && { filter: config.filter }),
     ...(config.sort && { sort: config.sort }),
     ...(config.page && { page: config.page })
@@ -553,7 +577,7 @@ export async function getJobListing<Fields extends GetJobListingFields>(
 
   const payload = {
     action: "get_job_listing",
-    fields: config.fields,
+    ...(config.fields !== undefined && { fields: config.fields }),
     ...(config.filter && { filter: config.filter }),
     ...(config.sort && { sort: config.sort }),
     ...(config.page && { page: config.page })
@@ -695,7 +719,7 @@ export async function findMatchingJobs<Fields extends FindMatchingJobsFields>(
 
   const payload = {
     action: "find_matching_jobs",
-    fields: config.fields,
+    ...(config.fields !== undefined && { fields: config.fields }),
     ...(config.filter && { filter: config.filter }),
     ...(config.sort && { sort: config.sort }),
     ...(config.page && { page: config.page })
@@ -796,7 +820,7 @@ export type ListCompaniesFields = UnifiedFieldSelection<CompanyResourceSchema>[]
 
 
 type InferListCompaniesResult<
-  Fields extends ListCompaniesFields,
+  Fields extends ListCompaniesFields | undefined,
   Page extends ListCompaniesConfig["page"] = undefined
 > = ConditionalPaginatedResultMixed<Page, Array<InferResult<CompanyResourceSchema, Fields>>, {
   results: Array<InferResult<CompanyResourceSchema, Fields>>;
@@ -849,14 +873,14 @@ export type ListCompaniesResult<Fields extends ListCompaniesFields, Page extends
   }
 ;
 
-export async function listCompanies<Fields extends ListCompaniesFields, Config extends ListCompaniesConfig>(
+export async function listCompanies<Fields extends ListCompaniesFields, Config extends ListCompaniesConfig = ListCompaniesConfig>(
   config: Config & { fields: Fields }
 ): Promise<ListCompaniesResult<Fields, Config["page"]>> {
   let processedConfig = config;
 
   const payload = {
     action: "list_companies",
-    fields: config.fields,
+    ...(config.fields !== undefined && { fields: config.fields }),
     ...(config.filter && { filter: config.filter }),
     ...(config.sort && { sort: config.sort }),
     ...(config.page && { page: config.page })
