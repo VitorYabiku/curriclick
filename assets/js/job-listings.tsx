@@ -15,8 +15,7 @@ import { JobHeader } from "./components/job-header";
 import { JobFilters } from "./components/job-filters";
 import { AIRecommendations } from "./components/ai-recommendations";
 import { JobCard } from "./components/job-card";
-import { findMatchingJobs, buildCSRFHeaders } from "./ash_rpc";
-import type { FindMatchingJobsFields } from "./ash_rpc";
+import { findMatchingJobs, buildCSRFHeaders, testEcho } from "./ash_rpc";
 import type { JobCardData, PaginatedResult } from "./types";
 import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 
@@ -49,26 +48,24 @@ function useJobListings(
       const headers = buildCSRFHeaders();
 
       if (idealJobDescription && idealJobDescription.trim().length > 0) {
-        // Use AI matching when ideal job description is provided
-        const fields: FindMatchingJobsFields = [
-          "id",
-          "jobRoleName",
-          "description",
-          "companyId",
-          "matchScore",
-        ];
+        const trimmedDescription = idealJobDescription.trim();
 
-        // Use generated findMatchingJobs with input parameter (TypeScript may complain but it works)
         const matchingJobs = await findMatchingJobs({
-          fields,
           headers,
-          page: { limit: pageSize },
-          // @ts-ignore - input parameter not yet in generated types but supported by backend
+          fields: [
+            "id",
+            "jobRoleName",
+            "description",
+            "companyId",
+            // { matchScore: { args: { searchText: trimmedDescription } } },
+            "cosine_similarity",
+          ],
           input: {
-            ideal_job_description: idealJobDescription,
-            limit: pageSize,
+            idealJobDescription: trimmedDescription,
+            limit: 1,
           },
-        } as any);
+        });
+        console.log("findMatchingJobs response:", matchingJobs);
 
         if (!matchingJobs.success) {
           throw new Error(
@@ -77,20 +74,33 @@ function useJobListings(
           );
         }
 
-        const data = matchingJobs.data?.results || [];
+        const payload = matchingJobs.data ?? {};
+        const data = Array.isArray(payload.results) ? payload.results : [];
 
-        const results: JobCardData[] = data.map((job: any) => ({
-          id: job.id,
-          jobRoleName: job.jobRoleName,
-          jobDescription: job.description,
-          description: job.description,
-          companyId: job.companyId,
-          matchScore: job.matchScore || 0,
-        }));
+        const results: JobCardData[] = data.map((job: any) => {
+          const rawScore =
+            typeof job.matchScore === "number" ? job.matchScore : null;
+          const percentageScore =
+            rawScore !== null ? Math.round(rawScore * 1000) / 10 : null;
 
-        console.log("First processed job:", results[0]);
+          return {
+            id: job.id,
+            jobRoleName: job.jobRoleName,
+            jobDescription: job.description,
+            description: job.description,
+            companyId: job.companyId,
+            matchScore: percentageScore ?? 0,
+          };
+        });
 
-        return { results, hasMore: false, count: results.length };
+        const hasMore =
+          payload.hasMore === true ||
+          payload.hasMore === "true" ||
+          payload.has_more === true;
+        const count =
+          typeof payload.count === "number" ? payload.count : results.length;
+
+        return { results, hasMore, count };
       } else {
         // When no ideal description is provided, return no jobs
         return { results: [], hasMore: false, count: 0 };
@@ -204,6 +214,7 @@ function JobListings() {
   console.log("JobListings component - data:", data);
 
   const totalPages = data?.count ? Math.ceil(data.count / pageSize) : null;
+  const maxCharacters = 2000;
 
   if (isLoading) {
     return (
@@ -256,7 +267,7 @@ function JobListings() {
           <Card className="border-destructive/30 bg-destructive/10">
             <CardHeader>
               <CardTitle className="text-destructive">
-                Erro carregando vagas disponíveis
+                Erro ao carregar vagas disponíveis
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -297,8 +308,8 @@ function JobListings() {
                         if (!value || value.trim().length === 0) {
                           return "Por favor, descreva sua vaga ideal";
                         }
-                        if (value.trim().length > 1000) {
-                          return "A descrição deve ter pelo menos 10 caracteres";
+                        if (value.trim().length > maxCharacters) {
+                          return `A descrição não pode ter mais de ${maxCharacters} caracteres`;
                         }
                         return undefined;
                       },
@@ -324,6 +335,32 @@ function JobListings() {
                       <Sparkles className="h-3.5 w-3.5 mr-1.5" />
                       Buscar vagas compatíveis
                     </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          const headers = buildCSRFHeaders();
+                          console.log(
+                            "[testEcho] calling with message: Hello from React!",
+                          );
+                          const res = await testEcho({
+                            headers,
+                            input: {
+                              testMessage: "Hello from React 2025!",
+                            },
+                          });
+                          console.log("[testEcho] result:", res);
+                        } catch (err) {
+                          console.error("[testEcho] error:", err);
+                        }
+                      }}
+                    >
+                      Test Echo
+                    </Button>
+                    <span className="text-xs text-muted-foreground">
+                      Máximo de {maxCharacters} caracteres
+                    </span>
                   </div>
                 </form>
               </CardContent>

@@ -3,6 +3,8 @@ defmodule CurriclickWeb.PageControllerTest do
 
   test "GET /", %{conn: conn} do
     conn = get(conn, ~p"/")
-    assert html_response(conn, 200) =~ "Peace of mind from prototype to production"
+    response = html_response(conn, 200)
+    assert response =~ ~s(<div id="app"></div>)
+    assert response =~ ~s(src="/assets/js/job-listings.js")
   end
 end

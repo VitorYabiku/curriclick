@@ -1,3 +1,32 @@
+# defmodule Curriclick.Companies.JobListing.Calculations.MatchScore do
+#   use Ash.Resource.Calculation
+#
+#   @impl true
+#   def load(_query, _opts, _context) do
+#     :description_vector
+#   end
+#
+#   @impl true
+#   def calculate(_records, _opts, %{arguments: %{search_text: search_text}}) do
+#     dbg(search_text)
+#     dbg(expr(description_vector))
+#
+#     case Curriclick.Ai.OpenAiEmbeddingModel.generate(
+#            [search_text],
+#            []
+#          ) do
+#       {:ok, [search_vector]} ->
+#         Ash.Expr.expr(vector_cosine_distance(
+#           description_vector,
+#           ^search_vector
+#         ))
+#
+#       {:error, error} ->
+#         {:error, error}
+#     end
+#   end
+# end
+
 defmodule Curriclick.Companies.JobListing do
   use Ash.Resource,
     otp_app: :curriclick,
@@ -6,42 +35,8 @@ defmodule Curriclick.Companies.JobListing do
     authorizers: [Ash.Policy.Authorizer],
     extensions: [AshTypescript.Resource, AshAi]
 
-  # Helper function to calculate cosine similarity between two vectors
-  # Returns a value between -1 and 1
-  defp calculate_similarity(vec1, vec2) do
-    # Convert both vectors to lists if they aren't already
-    list1 = case vec1 do
-      %Ash.Vector{} = vec -> Ash.Vector.to_list(vec)
-      data when is_list(data) -> data
-      _ -> []
-    end
-
-    list2 = case vec2 do
-      %Ash.Vector{} = vec -> Ash.Vector.to_list(vec)
-      data when is_list(data) -> data
-      _ -> []
-    end
-
-    # Calculate cosine similarity
-    if length(list1) > 0 and length(list2) > 0 and length(list1) == length(list2) do
-      # Calculate dot product
-      dot_product = Enum.zip(list1, list2)
-      |> Enum.reduce(0.0, fn {a, b}, acc -> acc + a * b end)
-
-      # Calculate magnitudes
-      magnitude1 = :math.sqrt(Enum.reduce(list1, 0.0, fn x, acc -> acc + x * x end))
-      magnitude2 = :math.sqrt(Enum.reduce(list2, 0.0, fn x, acc -> acc + x * x end))
-
-      # Return cosine similarity
-      if magnitude1 > 0 and magnitude2 > 0 do
-        dot_product / (magnitude1 * magnitude2)
-      else
-        0.0
-      end
-    else
-      0.0
-    end
-  end
+  @find_matching_limit 20
+  @minimum_similarity 0.55
 
   postgres do
     table "job_listings"
@@ -78,92 +73,125 @@ defmodule Curriclick.Companies.JobListing do
       end
     end
 
-  read :find_matching_jobs do
-    description "Find job listings that match the user's ideal job description using AI embeddings"
+    read :find_matching_jobs do
+      description "Find job listings that match the user's ideal job description using AI embeddings"
 
-    argument :ideal_job_description, :string do
-      description "The user's ideal job description to match against"
-      allow_nil? false
-      public? true
-      constraints max_length: 2000
-    end
-
-    argument :limit, :integer do
-      description "Maximum number of matching jobs to return"
-      allow_nil? true
-      public? true
-      default 25
-      constraints min: 1, max: 100
-    end
-
-    prepare fn query, _ctx ->
-      ideal = query.arguments.ideal_job_description
-
-      query
-      |> Ash.Query.limit(query.arguments.limit || 25)
-      |> Ash.Query.ensure_selected([:match_score])
-      |> Ash.Query.set_context(%{ideal_job_description: ideal})
-    end
-
-    prepare after_action(fn query, results, _context ->
-      # Get the argument value from context (set in prepare) or params
-      ideal = query.context[:ideal_job_description] ||
-              Map.get(query.params || %{}, :ideal_job_description)
-
-      if ideal do
-        # Update each result with the ideal_job_description
-        results = Enum.map(results, fn job ->
-          %{job | ideal_job_description: ideal}
-        end)
-
-        {:ok, results}
-      else
-        {:ok, results}
+      argument :ideal_job_description, :string do
+        description "The user's ideal job description to match against for matching with job listings"
+        allow_nil? false
+        public? true
+        constraints max_length: 2000
       end
-    end)
 
-    # prepare before_action(fn query, _context ->
-    #   # Generate embedding for the search query
-    #   case Curriclick.Ai.OpenAiEmbeddingModel.generate([query.arguments.ideal_job_description], []) do
-    #     {:ok, [search_vector]} ->
-    #       require Ash.Query
-    #       import Ash.Expr
-    #
-    #       # Store the search vector in the query context so we can use it in after_action
-    #       query
-    #       |> Ash.Query.filter(expr(vector_cosine_distance(description_vector, ^search_vector) < 0.5))
-    #       |> Ash.Query.limit(query.arguments.limit || 25)
-    #       |> Ash.Query.load(:company)
-    #       |> Ash.Query.ensure_selected([:description_vector])
-    #       |> Ash.Query.set_context(%{search_vector: search_vector})
-    #
-    #     {:error, error} ->
-    #       Ash.Query.add_error(query, error)
-    #   end
-    # end)
-    #
-    # prepare after_action(fn query, results, _context ->
-    #   # Get the search vector from query context
-    #   search_vector = query.context[:search_vector]
-    #
-    #   if search_vector do
-    #     # Manually calculate and add match_score to each result
-    #     # Use struct update to ensure the field is properly exposed
-    #     results_with_scores = Enum.map(results, fn job ->
-    #       score = calculate_similarity(job.description_vector, search_vector)
-    #       # Add match_score as both a calculation result and in aggregates/calculations map
-    #       job
-    #       |> Map.put(:match_score, score)
-    #       |> Map.update(:calculations, %{match_score: score}, fn calcs ->
-    #         Map.put(calcs, :match_score, score)
-    #       end)
-    #     end)
-    #     {:ok, Enum.sort_by(results_with_scores, & -&1.match_score)}
-    #   else
-    #     {:ok, results}
-    #   end
-    # end)
-  end
+      argument :limit, :integer do
+        description "Maximum number of matching job listings to return"
+        allow_nil? true
+        public? true
+        default @find_matching_limit
+        constraints min: 1, max: 100
+      end
+
+      prepare before_action(fn query, _context ->
+                limit = query.arguments.limit || 25
+                search_text = query.arguments.ideal_job_description
+                dbg(limit)
+                dbg(search_text)
+
+                case Curriclick.Ai.OpenAiEmbeddingModel.generate(
+                       [search_text],
+                       []
+                     ) do
+                  {:ok, [search_vector]} ->
+                    query =
+                      query
+                      |> Ash.Query.limit(limit)
+                      #   # |> Ash.load(cosine_similarity: %{search_vector: search_vector})
+                      |> Ash.Query.load(:cosine_similarity)
+
+                  {:error, error} ->
+                    {:error, error}
+                end
+
+                # results =
+                #   Curriclick.Companies.JobListing
+                #   |> Ash.Query.build(load: [:id, :job_role_name, match_score: [search_text: search_text]], limit: limit)
+                #   |> Ash.read!()
+                #   |> dbg()
+                #
+                # :ok
+              end)
+
+      # prepare before_action(fn
+      #           query, _context ->
+      #             require Ash.Query
+      #             dbg(query)
+      #
+      #             limit = query.arguments.limit || 25
+      #             search_text = query.arguments.ideal_job_description
+      #
+      #             query
+      #             |> Ash.Query.limit(limit)
+      #             |> Ash.Query.load(match_score: [search_text: search_text])
+      #             # |> Ash.Query.calculate(:match_score, :float, {} )
+      #             |> dbg()
+      #
+      #           {:error, error} ->
+      #             {:error, error}
+      #         end)
+      #
+      prepare after_action(fn query, results, _context ->
+                dbg(results)
+                #           dbg(query)
+                #
+                #           # results =
+                #           #   Enum.map(results, fn jobListing ->
+                #           #     Ash.Query.load(jobListing,
+                #           #       match_score: [search_text: query.arguments.ideal_job_description]
+                #           #     )
+                #           #   end)
+                #
+                #           {:ok, results}
+                #
+                #           #           #           # Get the search vector from query context
+                #           #           #           search_vector = query.context[:search_vector]
+                #           #           #
+                #           #           #           if search_vector do
+                #           #           #             # Manually calculate and add match_score to each result
+                #           #           #             # Use struct update to ensure the field is properly exposed
+                #           #           # results_with_scores =
+                #           #           #   Enum.map(results, fn job ->
+                #           #           #     score = Curriclick.COmpa
+                #           #           #
+                #           #           #     # Add match_score as both a calculation result and in aggregates/calculations map
+                #           #           #     job
+                #           #           #     |> Map.put(:match_score, score)
+                #           #           #   end)
+                #           #           #       |> dbg()
+                #           #           #
+                #           #           #             {:ok, Enum.sort_by(results_with_scores, &(-&1.match_score))}
+                #           #           #           else
+                #           #           #             {:ok, results}
+                #           #           #           end
+                {:ok, results}
+              end)
+    end
+
+    action :test_echo, :string do
+      description "Echoes back the provided test_message on each returned job listing (in :test_echo_message)."
+
+      argument :test_message, :string do
+        allow_nil? false
+        public? true
+      end
+
+      run fn input, _ctx ->
+        dbg(input)
+        echo_message = input.arguments.test_message
+        dbg(echo_message)
+
+        {:ok, "Echoing back from backend: #{echo_message}"}
+      end
+    end
 
     create :create do
       accept [:job_role_name, :description, :company_id]
@@ -205,29 +233,9 @@ defmodule Curriclick.Companies.JobListing do
       public? true
     end
 
-    # Transient attribute to hold match score calculated in after_action hooks
-    # This is not persisted to the database but can be loaded in queries
-    attribute :match_score, :float do
-      description "Calculated similarity score for search results"
-      allow_nil? true
-      public? true
-      writable? true
-      default 0.0
-    end
-
-    attribute :ideal_job_description, :string do
-      description "Echo of the search text used in find_matching_jobs"
-      allow_nil? true
-      public? true
-      writable? true
-    end
-
     create_timestamp :inserted_at
     update_timestamp :updated_at
   end
-
-  # Note: match_score is now a transient attribute set in after_action hooks
-  # rather than a calculation, so it can be easily accessed from the frontend
 
   relationships do
     belongs_to :company, Curriclick.Companies.Company do
@@ -240,5 +248,19 @@ defmodule Curriclick.Companies.JobListing do
     #   destination_attribute :job_listing_id
     #   public? true
     # end
+  end
+
+  calculations do
+    # Match scores are exposed through calculation loading in find_matching_jobs.
+    calculate :cosine_similarity,
+              :float,
+              # expr(vector_cosine_distance(description_vector, ^arg(:search_vector))) do
+              expr(1.0 + 2.0) do
+      # argument :search_vector, {:array, :float} do
+      #   allow_nil? false
+      # end
+
+      public? true
+    end
   end
 end

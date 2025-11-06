@@ -43,7 +43,6 @@ in {
   # '';
 
   # enterShell = ''
-  #   # devenv up --detach
   # '';
 
   # https://devenv.sh/tasks/

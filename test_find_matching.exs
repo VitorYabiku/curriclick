@@ -7,13 +7,14 @@ IO.puts("\n=== Testing find_matching_jobs action ===\n")
 test_description = "Looking for a backend developer role with Elixir and Phoenix"
 
 try do
-  results =
+  input =
     Curriclick.Companies.JobListing
-    |> Ash.Query.for_read(:find_matching_jobs, %{ideal_job_description: test_description})
-    |> Ash.read!()
+    |> Ash.ActionInput.for_action(:find_matching_jobs, %{
+      ideal_job_description: test_description
+    })
 
-  case results do
-    [] ->
+  case Ash.run_action(input, domain: Curriclick.Companies) do
+    {:ok, %{"results" => []}} ->
       IO.puts("⚠️  No jobs found in database")
       IO.puts("\nTo test with data, first create a job listing:")
       IO.puts("  Curriclick.Companies.create_job_listing!(%{")
@@ -22,17 +23,21 @@ try do
       IO.puts("    company_id: <your-company-id>")
       IO.puts("  })")
 
-    jobs ->
+    {:ok, %{"results" => jobs} = payload} when is_list(jobs) and jobs != [] ->
       IO.puts("✅ Success! Found #{length(jobs)} job(s)\n")
       job = List.first(jobs)
       IO.puts("=== First Job Result ===")
-      IO.puts("Job Role: #{job.job_role_name}")
-      IO.puts("Description: #{String.slice(job.description, 0..50)}...")
+      IO.puts("Job Role: #{job["jobRoleName"]}")
+      IO.puts("Description: #{String.slice(job["description"] || "", 0..50)}...")
       IO.puts("\n=== Testing Argument Echo ===")
       IO.puts("ideal_job_description (passed in): #{inspect(test_description)}")
-      IO.puts("ideal_job_description (returned):  #{inspect(job.ideal_job_description)}")
-      IO.puts("\n✅ Match: #{job.ideal_job_description == test_description}")
-      IO.puts("Match Score: #{job.match_score}")
+      IO.puts("ideal_job_description (trimmed):  #{inspect(String.trim(test_description))}")
+      IO.puts("Match Score: #{inspect(job["matchScore"])}")
+      IO.puts("Has More?: #{inspect(payload["hasMore"])}")
+      IO.puts("Count: #{inspect(payload["count"])}")
+
+    {:error, error} ->
+      IO.puts("❌ Error: #{inspect(error)}")
   end
 rescue
   e ->

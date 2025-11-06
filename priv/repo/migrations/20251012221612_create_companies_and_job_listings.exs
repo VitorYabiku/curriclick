@@ -39,8 +39,9 @@ defmodule Curriclick.Repo.Migrations.CreateCompaniesAndJobListings do
 
     alter table(:job_listings) do
       add :job_role_name, :text, null: false
-      add :job_description, :text, null: false
+      add :description, :text, null: false
       add :company_id, :uuid, null: false
+      add :test_echo_message, :text
 
       add :inserted_at, :utc_datetime_usec,
         null: false,
@@ -106,8 +107,9 @@ defmodule Curriclick.Repo.Migrations.CreateCompaniesAndJobListings do
     alter table(:job_listings) do
       remove :updated_at
       remove :inserted_at
+      remove :test_echo_message
       remove :company_id
-      remove :job_description
+      remove :description
       remove :job_role_name
     end
 

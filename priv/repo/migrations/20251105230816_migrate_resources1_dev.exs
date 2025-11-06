@@ -1,4 +1,4 @@
-defmodule Curriclick.Repo.Migrations.MigrateResources2 do
+defmodule Curriclick.Repo.Migrations.MigrateResources1 do
   @moduledoc """
   Updates resources based on their most recent snapshots.
 
@@ -9,13 +9,13 @@ defmodule Curriclick.Repo.Migrations.MigrateResources2 do
 
   def up do
     alter table(:job_listings) do
-      add :ideal_job_description, :text
+      remove :test_echo_message
     end
   end
 
   def down do
     alter table(:job_listings) do
-      remove :ideal_job_description
+      add :test_echo_message, :text
     end
   end
 end
