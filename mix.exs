@@ -112,7 +112,8 @@ defmodule Curriclick.MixProject do
         "esbuild curriclick --minify",
         "phx.digest"
       ],
-      precommit: ["compile --warning-as-errors", "deps.unlock --unused", "format", "test"]
+      precommit: ["compile --warning-as-errors", "deps.unlock --unused", "format", "test"],
+      run_app: ["ash.codegen --dev", "ecto.migrate", "phx.server"]
     ]
   end
 end

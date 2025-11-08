@@ -97,20 +97,27 @@ defmodule Curriclick.Companies.JobListing do
                 dbg(limit)
                 dbg(search_text)
 
-                case Curriclick.Ai.OpenAiEmbeddingModel.generate(
-                       [search_text],
-                       []
-                     ) do
-                  {:ok, [search_vector]} ->
-                    query =
-                      query
-                      |> Ash.Query.limit(limit)
-                      #   # |> Ash.load(cosine_similarity: %{search_vector: search_vector})
-                      |> Ash.Query.load(:cosine_similarity)
+                query
+                |> Ash.Query.limit(limit)
 
-                  {:error, error} ->
-                    {:error, error}
-                end
+                # case Curriclick.Ai.OpenAiEmbeddingModel.generate(
+                #        [search_text],
+                #        []
+                #      ) do
+                #   {:ok, [search_vector]} ->
+                #     dbg(search_vector)
+                #     dbg(expr(vector_cosine_distance(description_vector, ^search_vector)))
+                #
+                #     query =
+                #       query
+                #       |> Ash.Query.limit(limit)
+                #       #   # |> Ash.load(cosine_similarity: %{search_vector: search_vector})
+                #       |> Ash.Query.load(:cosine_similarity)
+                #       |> dbg()
+                #
+                #   {:error, error} ->
+                #     {:error, error}
+                # end
 
                 # results =
                 #   Curriclick.Companies.JobListing
@@ -138,7 +145,7 @@ defmodule Curriclick.Companies.JobListing do
       #           {:error, error} ->
       #             {:error, error}
       #         end)
-      #
+
       prepare after_action(fn query, results, _context ->
                 dbg(results)
                 #           dbg(query)
@@ -255,7 +262,7 @@ defmodule Curriclick.Companies.JobListing do
     calculate :cosine_similarity,
               :float,
               # expr(vector_cosine_distance(description_vector, ^arg(:search_vector))) do
-              expr(1.0 + 2.0) do
+              expr(5.69) do
       # argument :search_vector, {:array, :float} do
       #   allow_nil? false
       # end
