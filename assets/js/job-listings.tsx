@@ -57,7 +57,11 @@ function useJobListings(
             "jobRoleName",
             "description",
             "companyId",
-            "cosineSimilarity",
+            {
+              matchScore: {
+                args: { idealJobDescription: trimmedDescription },
+              },
+            },
             // { matchScore: { args: { searchText: trimmedDescription } } },
           ],
           input: {

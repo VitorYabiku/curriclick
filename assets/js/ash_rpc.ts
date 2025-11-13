@@ -10,13 +10,15 @@ export type UUID = string;
 // JobListing Schema
 export type JobListingResourceSchema = {
   __type: "Resource";
-  __primitiveFields: "id" | "jobRoleName" | "description" | "companyId" | "cosineSimilarity";
+  __primitiveFields: "id" | "jobRoleName" | "description" | "companyId";
   id: UUID;
   jobRoleName: string;
   description: string;
   companyId: UUID;
-  cosineSimilarity: number | null;
   company: { __type: "Relationship"; __resource: CompanyResourceSchema | null; };
+  matchScore: { __type: "ComplexCalculation"; __returnType: number | null; __args: { searchVector?: Array<number> }; };
+  dummyTest: { __type: "ComplexCalculation"; __returnType: number | null; __args: { testArgument?: number }; };
+  testCalculation: { __type: "ComplexCalculation"; __returnType: number | null; __args: { testArgument?: number }; };
 };
 
 
@@ -67,7 +69,27 @@ export type JobListingFilterInput = {
     in?: Array<UUID>;
   };
 
-  cosineSimilarity?: {
+  matchScore?: {
+    eq?: number;
+    notEq?: number;
+    greaterThan?: number;
+    greaterThanOrEqual?: number;
+    lessThan?: number;
+    lessThanOrEqual?: number;
+    in?: Array<number>;
+  };
+
+  dummyTest?: {
+    eq?: number;
+    notEq?: number;
+    greaterThan?: number;
+    greaterThanOrEqual?: number;
+    lessThan?: number;
+    lessThanOrEqual?: number;
+    in?: Array<number>;
+  };
+
+  testCalculation?: {
     eq?: number;
     notEq?: number;
     greaterThan?: number;
@@ -545,27 +567,21 @@ async function executeValidationRpcRequest<T>(
 
 
 export type ListJobListingsFields = UnifiedFieldSelection<JobListingResourceSchema>[];
-
-
 type InferListJobListingsResult<
   Fields extends ListJobListingsFields,
-> = {
-  results: Array<InferResult<JobListingResourceSchema, Fields>>;
-  hasMore: boolean;
-  limit: number;
-  offset: number;
-};
+> = Array<InferResult<JobListingResourceSchema, Fields>>;
 
 export type ListJobListingsResult<Fields extends ListJobListingsFields> = | { success: true; data: InferListJobListingsResult<Fields>; }
 | {
-    success: false;
-    errors: Array<{
-      type: string;
-      message: string;
-      fieldPath?: string;
-      details: Record<string, string>;
-    }>;
-  }
+        success: false;
+        errors: Array<{
+          type: string;
+          message: string;
+          fieldPath?: string;
+          details: Record<string, string>;
+        }>;
+      }
+
 ;
 
 export async function listJobListings<Fields extends ListJobListingsFields>(
@@ -573,13 +589,6 @@ export async function listJobListings<Fields extends ListJobListingsFields>(
   fields: Fields;
   filter?: JobListingFilterInput;
   sort?: string;
-  page: {
-    limit?: number;
-    offset?: number;
-    after?: never;
-    before?: never;
-    count?: boolean;
-  };
   headers?: Record<string, string>;
   fetchOptions?: RequestInit;
   customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
@@ -589,8 +598,7 @@ export async function listJobListings<Fields extends ListJobListingsFields>(
     action: "list_job_listings",
     ...(config.fields !== undefined && { fields: config.fields }),
     ...(config.filter && { filter: config.filter }),
-    ...(config.sort && { sort: config.sort }),
-    ...(config.page && { page: config.page })
+    ...(config.sort && { sort: config.sort })
   };
 
   return executeActionRpcRequest<ListJobListingsResult<Fields>>(
@@ -633,27 +641,21 @@ export async function validateListJobListings(
 
 
 export type GetJobListingFields = UnifiedFieldSelection<JobListingResourceSchema>[];
-
-
 type InferGetJobListingResult<
   Fields extends GetJobListingFields,
-> = {
-  results: Array<InferResult<JobListingResourceSchema, Fields>>;
-  hasMore: boolean;
-  limit: number;
-  offset: number;
-};
+> = Array<InferResult<JobListingResourceSchema, Fields>>;
 
 export type GetJobListingResult<Fields extends GetJobListingFields> = | { success: true; data: InferGetJobListingResult<Fields>; }
 | {
-    success: false;
-    errors: Array<{
-      type: string;
-      message: string;
-      fieldPath?: string;
-      details: Record<string, string>;
-    }>;
-  }
+        success: false;
+        errors: Array<{
+          type: string;
+          message: string;
+          fieldPath?: string;
+          details: Record<string, string>;
+        }>;
+      }
+
 ;
 
 export async function getJobListing<Fields extends GetJobListingFields>(
@@ -661,13 +663,6 @@ export async function getJobListing<Fields extends GetJobListingFields>(
   fields: Fields;
   filter?: JobListingFilterInput;
   sort?: string;
-  page: {
-    limit?: number;
-    offset?: number;
-    after?: never;
-    before?: never;
-    count?: boolean;
-  };
   headers?: Record<string, string>;
   fetchOptions?: RequestInit;
   customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
@@ -677,8 +672,7 @@ export async function getJobListing<Fields extends GetJobListingFields>(
     action: "get_job_listing",
     ...(config.fields !== undefined && { fields: config.fields }),
     ...(config.filter && { filter: config.filter }),
-    ...(config.sort && { sort: config.sort }),
-    ...(config.page && { page: config.page })
+    ...(config.sort && { sort: config.sort })
   };
 
   return executeActionRpcRequest<GetJobListingResult<Fields>>(
@@ -737,14 +731,15 @@ type InferFindMatchingJobsResult<
 
 export type FindMatchingJobsResult<Fields extends FindMatchingJobsFields> = | { success: true; data: InferFindMatchingJobsResult<Fields>; }
 | {
-    success: false;
-    errors: Array<{
-      type: string;
-      message: string;
-      fieldPath?: string;
-      details: Record<string, string>;
-    }>;
-  }
+        success: false;
+        errors: Array<{
+          type: string;
+          message: string;
+          fieldPath?: string;
+          details: Record<string, string>;
+        }>;
+      }
+
 ;
 
 export async function findMatchingJobs<Fields extends FindMatchingJobsFields>(
@@ -819,14 +814,15 @@ type InferTestEchoResult = string;
 
 export type TestEchoResult = | { success: true; data: InferTestEchoResult; }
 | {
-    success: false;
-    errors: Array<{
-      type: string;
-      message: string;
-      fieldPath?: string;
-      details: Record<string, string>;
-    }>;
-  }
+        success: false;
+        errors: Array<{
+          type: string;
+          message: string;
+          fieldPath?: string;
+          details: Record<string, string>;
+        }>;
+      }
+
 ;
 
 export async function testEcho(
@@ -930,14 +926,15 @@ export type ListCompaniesConfig = {
 
 export type ListCompaniesResult<Fields extends ListCompaniesFields, Page extends ListCompaniesConfig["page"] = undefined> = | { success: true; data: InferListCompaniesResult<Fields, Page>; }
 | {
-    success: false;
-    errors: Array<{
-      type: string;
-      message: string;
-      fieldPath?: string;
-      details: Record<string, string>;
-    }>;
-  }
+        success: false;
+        errors: Array<{
+          type: string;
+          message: string;
+          fieldPath?: string;
+          details: Record<string, string>;
+        }>;
+      }
+
 ;
 
 export async function listCompanies<Fields extends ListCompaniesFields, Config extends ListCompaniesConfig = ListCompaniesConfig>(
