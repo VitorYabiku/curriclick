@@ -17,8 +17,7 @@ export type JobListingResourceSchema = {
   companyId: UUID;
   company: { __type: "Relationship"; __resource: CompanyResourceSchema | null; };
   matchScore: { __type: "ComplexCalculation"; __returnType: number | null; __args: { searchVector?: Array<number> }; };
-  dummyTest: { __type: "ComplexCalculation"; __returnType: number | null; __args: { testArgument?: number }; };
-  testCalculation: { __type: "ComplexCalculation"; __returnType: number | null; __args: { testArgument?: number }; };
+  cosineDistance: { __type: "ComplexCalculation"; __returnType: number | null; __args: { vector1?: Array<number>; vector2?: Array<number> }; };
 };
 
 
@@ -79,17 +78,7 @@ export type JobListingFilterInput = {
     in?: Array<number>;
   };
 
-  dummyTest?: {
-    eq?: number;
-    notEq?: number;
-    greaterThan?: number;
-    greaterThanOrEqual?: number;
-    lessThan?: number;
-    lessThanOrEqual?: number;
-    in?: Array<number>;
-  };
-
-  testCalculation?: {
+  cosineDistance?: {
     eq?: number;
     notEq?: number;
     greaterThan?: number;
@@ -796,83 +785,6 @@ export async function validateFindMatchingJobs(
   };
 
   return executeValidationRpcRequest<ValidateFindMatchingJobsResult>(
-    payload,
-    config
-  );
-}
-
-
-export type TestEchoInput = {
-  testMessage: string;
-};
-
-export type TestEchoValidationErrors = {
-  testMessage?: string[];
-};
-
-type InferTestEchoResult = string;
-
-export type TestEchoResult = | { success: true; data: InferTestEchoResult; }
-| {
-        success: false;
-        errors: Array<{
-          type: string;
-          message: string;
-          fieldPath?: string;
-          details: Record<string, string>;
-        }>;
-      }
-
-;
-
-export async function testEcho(
-  config: {
-  input: TestEchoInput;
-  headers?: Record<string, string>;
-  fetchOptions?: RequestInit;
-  customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
-}
-): Promise<TestEchoResult> {
-  const payload = {
-    action: "test_echo",
-    input: config.input
-  };
-
-  return executeActionRpcRequest<TestEchoResult>(
-    payload,
-    config
-  );
-}
-
-
-export type ValidateTestEchoResult =
-  | { success: true }
-  | {
-      success: false;
-      errors: Array<{
-        type: string;
-        message: string;
-        field?: string;
-        fieldPath?: string;
-        details?: Record<string, any>;
-      }>;
-    };
-
-
-export async function validateTestEcho(
-  config: {
-  input: TestEchoInput;
-  headers?: Record<string, string>;
-  fetchOptions?: RequestInit;
-  customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
-}
-): Promise<ValidateTestEchoResult> {
-  const payload = {
-    action: "test_echo",
-    input: config.input
-  };
-
-  return executeValidationRpcRequest<ValidateTestEchoResult>(
     payload,
     config
   );

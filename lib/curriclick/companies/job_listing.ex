@@ -1,60 +1,25 @@
-# defmodule Curriclick.Companies.JobListing.Calculations.MatchScore do
+# defmodule Curriclick.Companies.JobListing.Calculations.TestCalculation do
 #   use Ash.Resource.Calculation
 #
-#   @impl true
-#   def load(_query, _opts, _context) do
-#     :description_vector
-#   end
+#   # @impl true
+#   # def load(_query, _opts, _context) do
+#   #   :description_vector
+#   # end
 #
 #   @impl true
-#   def calculate(records, _opts, %{arguments: %{ideal_job_description: search_text}}) do
-#     dbg(search_text)
+#   def calculate(records, _opts, %{arguments: %{test_argument: test_argument}}) do
+#     dbg(test_argument)
 #
-#     case Curriclick.Ai.OpenAiEmbeddingModel.generate(
-#            [search_text],
-#            []
-#          ) do
-#       {:ok, [search_vector]} ->
-#         Enum.map(records, fn record ->
-#           match_score =
-#             record
-#             |> Ash.calculate!(
-#               :cosine_similarity,
-#               args: %{vector1: record.description_vector, vector2: search_vector}
-#             )
-#             |> dbg()
+#     records
+#     |> Enum.map(fn _record ->
+#       # %{record | test_calculation: test_argument}
 #
-#           match_score
-#         end)
+#       test_argument
+#     end)
 #
-#       {:error, error} ->
-#         {:error, error}
-#     end
+#     # |> dbg()
 #   end
 # end
-
-defmodule Curriclick.Companies.JobListing.Calculations.TestCalculation do
-  use Ash.Resource.Calculation
-
-  # @impl true
-  # def load(_query, _opts, _context) do
-  #   :description_vector
-  # end
-
-  @impl true
-  def calculate(records, _opts, %{arguments: %{test_argument: test_argument}}) do
-    dbg(test_argument)
-
-    records
-    |> Enum.map(fn _record ->
-      # %{record | test_calculation: test_argument}
-
-      test_argument
-    end)
-
-    # |> dbg()
-  end
-end
 
 defmodule Curriclick.Companies.JobListing do
   use Ash.Resource,
@@ -64,8 +29,7 @@ defmodule Curriclick.Companies.JobListing do
     authorizers: [Ash.Policy.Authorizer],
     extensions: [AshTypescript.Resource, AshAi]
 
-  @find_matching_limit 20
-  @minimum_similarity 0.55
+  require Ash.Query
 
   postgres do
     table "job_listings"
@@ -94,7 +58,6 @@ defmodule Curriclick.Companies.JobListing do
       description "Read job listings"
       primary? true
 
-      # # Add default limit to avoid overwhelming the frontend with all jobs
       # pagination do
       #   keyset? true
       #   default_limit 20
@@ -103,6 +66,8 @@ defmodule Curriclick.Companies.JobListing do
     end
 
     read :find_matching_jobs do
+      @result_count_limit 50
+
       description "Find job listings that match the user's ideal job description using AI embeddings"
 
       argument :ideal_job_description, :string do
@@ -116,62 +81,24 @@ defmodule Curriclick.Companies.JobListing do
         description "Maximum number of matching job listings to return"
         allow_nil? true
         public? true
-        default @find_matching_limit
+        default @result_count_limit
         constraints min: 1, max: 100
       end
 
-      prepare before_action(fn query, _context ->
-                limit = query.arguments.limit || 20
-                search_text = query.arguments.ideal_job_description
-                dbg(limit)
-                dbg(search_text)
+      prepare fn query, _context ->
+        limit = query.arguments.limit || @result_count_limit
+        search_text = query.arguments.ideal_job_description
 
-                case Curriclick.Ai.OpenAiEmbeddingModel.generate(
-                       [search_text],
-                       []
-                     ) do
-                  {:ok, [search_vector]} ->
-                    query
-                    # |> Ash.Query.load(
-                    #   :description_vector,
-                    #   match_score: %{search_vector: search_vector},
-                    #   dummy_test: %{test_argument: 6669},
-                    #   test_calculation: %{test_argument: 69.420}
-                    # )
-                    |> Ash.Query.load([
-                      # :description_vector,
-                      dummy_test: %{test_argument: 6669.0},
-                      test_calculation: %{test_argument: 69.420}
-                    ])
-                    |> Ash.Query.limit(limit)
-                    |> dbg()
+        case Curriclick.Ai.OpenAiEmbeddingModel.generate([search_text], []) do
+          {:ok, [search_vector]} ->
+            query
+            |> Ash.Query.sort(match_score: {%{search_vector: search_vector}, :desc_nils_last})
+            |> Ash.Query.load(match_score: %{search_vector: search_vector})
+            |> Ash.Query.limit(limit)
 
-                  {:error, error} ->
-                    {:error, error}
-                end
-              end)
-
-      prepare after_action(fn query, results, _context ->
-                dbg(results)
-
-                {:ok, results}
-              end)
-    end
-
-    action :test_echo, :string do
-      description "Echoes back the provided test_message on each returned job listing (in :test_echo_message)."
-
-      argument :test_message, :string do
-        allow_nil? false
-        public? true
-      end
-
-      run fn input, _ctx ->
-        dbg(input)
-        echo_message = input.arguments.test_message
-        dbg(echo_message)
-
-        {:ok, "Echoing back from backend: #{echo_message}"}
+          {:error, error} ->
+            Ash.Query.add_error(query, error)
+        end
       end
     end
 
@@ -233,10 +160,9 @@ defmodule Curriclick.Companies.JobListing do
   end
 
   calculations do
-    # Match scores are exposed through calculation loading in find_matching_jobs.
     calculate :match_score,
               :float,
-              expr(vector_cosine_distance(description_vector, ^arg(:search_vector))) do
+              expr(1 - vector_cosine_distance(description_vector, ^arg(:search_vector))) do
       argument :search_vector, {:array, :float} do
         allow_nil? false
       end
@@ -244,21 +170,14 @@ defmodule Curriclick.Companies.JobListing do
       public? true
     end
 
-    calculate :dummy_test,
+    calculate :cosine_distance,
               :float,
-              expr(1.0 + ^arg(:test_argument)) do
-      # expr(69.420 + test_argument) do
-      argument :test_argument, :float do
+              expr(vector_cosine_distance(^arg(:vector1), ^arg(:vector2))) do
+      argument :vector1, {:array, :float} do
         allow_nil? false
       end
 
-      public? true
-    end
-
-    calculate :test_calculation,
-              :float,
-              {Curriclick.Companies.JobListing.Calculations.TestCalculation, []} do
-      argument :test_argument, :float do
+      argument :vector2, {:array, :float} do
         allow_nil? false
       end
 

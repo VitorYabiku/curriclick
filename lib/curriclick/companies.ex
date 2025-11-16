@@ -10,8 +10,6 @@ defmodule Curriclick.Companies do
       rpc_action :list_job_listings, :read
       rpc_action :get_job_listing, :read
       rpc_action :find_matching_jobs, :find_matching_jobs
-      # Expose the generic action by referring to its action name
-      rpc_action :test_echo, :test_echo
     end
 
     resource Curriclick.Companies.Company do

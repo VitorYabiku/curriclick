@@ -46,7 +46,7 @@ defmodule CurriclickWeb.Router do
 
     post "/rpc/run", AshTypescriptRpcController, :run
     post "/rpc/validate", AshTypescriptRpcController, :validate
-    get "/", PageController, :jobs
+    live "/", JobsLive
     # get "/jobs", PageController, :jobs
   end
 

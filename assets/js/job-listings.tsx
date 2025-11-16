@@ -15,7 +15,7 @@ import { JobHeader } from "./components/job-header";
 import { JobFilters } from "./components/job-filters";
 import { AIRecommendations } from "./components/ai-recommendations";
 import { JobCard } from "./components/job-card";
-import { findMatchingJobs, buildCSRFHeaders, testEcho } from "./ash_rpc";
+import { findMatchingJobs, buildCSRFHeaders } from "./ash_rpc";
 import type { JobCardData, PaginatedResult } from "./types";
 import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 
@@ -338,29 +338,6 @@ function JobListings() {
                     <Button type="submit" disabled={isLoading}>
                       <Sparkles className="h-3.5 w-3.5 mr-1.5" />
                       Buscar vagas compatíveis
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={async () => {
-                        try {
-                          const headers = buildCSRFHeaders();
-                          console.log(
-                            "[testEcho] calling with message: Hello from React!",
-                          );
-                          const res = await testEcho({
-                            headers,
-                            input: {
-                              testMessage: "Hello from React 2025!",
-                            },
-                          });
-                          console.log("[testEcho] result:", res);
-                        } catch (err) {
-                          console.error("[testEcho] error:", err);
-                        }
-                      }}
-                    >
-                      Test Echo
                     </Button>
                     <span className="text-xs text-muted-foreground">
                       Máximo de {maxCharacters} caracteres

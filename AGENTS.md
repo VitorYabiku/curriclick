@@ -1,3 +1,27 @@
+## Curriclick – AI Agent Guide
+
+This repository is an Elixir application built with the Phoenix Framework (including LiveView) and the Ash Framework.
+It already includes rich, package-specific usage rules that you should follow whenever you work in this codebase.
+
+### Start here (required for agents)
+
+- First, read `AGENTS_USAGE_RULES.md`. It contains links and guidance specifically curated for AI agents for many of the dependencies in this project.
+- When you are about to use or modify behaviour involving a dependency (for example Ash, Phoenix, LiveView, AshPostgres, etc.), consult the corresponding section in `AGENTS_USAGE_RULES.md` before making changes.
+
+### Project structure (high level)
+
+- Core domain logic and Ash resources live under `lib/curriclick`.
+- The web layer (Phoenix controllers, LiveView, components, router) lives under `lib/curriclick_web`.
+- Application entrypoints and shared web helpers are defined in `lib/curriclick.ex` and `lib/curriclick_web.ex`.
+
+### How to use documentation effectively
+
+- Use the usage rules and mix tasks below (`mix usage_rules.docs`, `mix usage_rules.search_docs`) to find official library documentation.
+- Prefer using existing Ash resources, Phoenix modules, and helpers instead of reimplementing logic.
+- Before introducing new patterns or APIs from a dependency, check both `AGENTS_USAGE_RULES.md` and the relevant usage rules document referenced below.
+
+---
+
 <!-- usage-rules-start -->
 <!-- usage-rules-header -->
 # Usage Rules

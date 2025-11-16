@@ -4,29 +4,28 @@
 
 IO.puts("\n=== Testing find_matching_jobs action ===\n")
 
-test_description = "Junior data scientist"
+test_description = "Junior data scientist. Do NOT like working with Kafka"
 
-input =
-  Curriclick.Companies.JobListing
-  # |> Ash.calculate!(:test_calculation, args: %{test_argument: 69.4169})
+Curriclick.Companies.JobListing
+# |> Ash.calculate!(:test_calculation, args: %{test_argument: 69.4169})
 
-  # |> Ash.Query.limit(2)
-  # # |> Ash.Query.load([match_score: %{ideal_job_description: test_description}])
-  # |> Ash.Query.load([
-  #   :description_vector,
-  #   dummy_test: %{test_argument: 6669},
-  #   test_calculation: %{test_argument: 69.420}
-  # ])
-  # |> Ash.read!()
-  # |> dbg()
+# |> Ash.Query.limit(2)
+# # |> Ash.Query.load([match_score: %{ideal_job_description: test_description}])
+# |> Ash.Query.load([
+#   :description_vector,
+#   dummy_test: %{test_argument: 6669},
+#   test_calculation: %{test_argument: 69.420}
+# ])
+# |> Ash.read!()
+# |> dbg()
 
-  |> Ash.Query.for_read(:find_matching_jobs, %{ideal_job_description: test_description, limit: 1})
-  # |> Ash.Query.load([
-  #   dummy_test: %{test_argument: 6669},
-  #   test_calculation: %{test_argument: 69.420}
-  # ])
-  |> Ash.read!()
-  |> dbg()
+|> Ash.Query.for_read(:find_matching_jobs, %{ideal_job_description: test_description, limit: 5})
+# |> Ash.Query.load([
+#   dummy_test: %{test_argument: 6669},
+#   test_calculation: %{test_argument: 69.420}
+# ])
+|> Ash.read!()
+|> dbg()
 
 # {:ok, %{"results" => []}} ->
 #   IO.puts("⚠️  No jobs found in database")
