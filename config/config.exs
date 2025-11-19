@@ -8,8 +8,7 @@
 
 import Config
 
-config :curriclick, Curriclick.Repo,
-  types: Curriclick.PostgrexTypes
+config :curriclick, Curriclick.Repo, types: Curriclick.PostgrexTypes
 
 config :ash_typescript,
   output_file: "assets/js/ash_rpc.ts",
@@ -30,13 +29,14 @@ config :ash_oban, pro?: false
 # Configure AshAi with OpenAI for embeddings
 config :ash_ai,
   embedding_models: [
-    {AshAi.OpenAI.Embedding, name: :openai_text_embedding_3_small, model: "text-embedding-3-small"}
+    {AshAi.OpenAI.Embedding,
+     name: :openai_text_embedding_3_small, model: "text-embedding-3-small"}
   ]
 
 config :curriclick, Oban,
   engine: Oban.Engines.Basic,
   notifier: Oban.Notifiers.Postgres,
-  queues: [default: 10],
+  queues: [default: 10, chat_responses: [limit: 10], conversations: [limit: 10]],
   repo: Curriclick.Repo,
   plugins: [{Oban.Plugins.Cron, []}]
 
@@ -84,7 +84,7 @@ config :spark,
 config :curriclick,
   ecto_repos: [Curriclick.Repo],
   generators: [timestamp_type: :utc_datetime],
-  ash_domains: [Curriclick.Accounts, Curriclick.Companies]
+  ash_domains: [Curriclick.Chat, Curriclick.Accounts, Curriclick.Companies]
 
 # Configures the endpoint
 config :curriclick, CurriclickWeb.Endpoint,
@@ -123,6 +123,7 @@ config :tailwind,
     args: ~w(
       --input=assets/css/app.css
       --output=priv/static/assets/css/app.css
+      --minify
     ),
     cd: Path.expand("..", __DIR__)
   ]
