@@ -70,4 +70,3 @@ defmodule Curriclick.Ai.OpenAiEmbeddingModel do
     end
   end
 end
-

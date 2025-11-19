@@ -138,4 +138,10 @@ mix usage_rules.search_docs "Enum.zip" --query-by title
 ## usage_rules:otp usage
 [usage_rules:otp usage rules](deps//usage_rules_otp.md)
 <!-- usage_rules:otp-end -->
+<!-- mdex-start -->
+## mdex usage
+_Fast and extensible Markdown for Elixir_
+
+[mdex usage rules](deps//mdex.md)
+<!-- mdex-end -->
 <!-- usage-rules-end -->

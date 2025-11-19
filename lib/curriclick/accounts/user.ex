@@ -64,7 +64,7 @@ defmodule Curriclick.Accounts.User do
     repo Curriclick.Repo
   end
 
-actions do
+  actions do
     defaults [:read]
 
     read :get_by_subject do
