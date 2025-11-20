@@ -65,7 +65,7 @@ _Integrated LLM features for your Ash application._
 <!-- ash_ai-end -->
 <!-- ash_typescript-start -->
 ## ash_typescript usage
-_The extension for tracking changes to your resources via a centralized event log, with replay functionality._
+_Generate type-safe TypeScript clients directly from your Ash resources and actions, ensuring end-to-end type safety between your backend and frontend._
 
 [ash_typescript usage rules](deps//ash_typescript.md)
 <!-- ash_typescript-end -->
