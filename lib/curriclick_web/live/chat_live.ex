@@ -4,128 +4,154 @@ defmodule CurriclickWeb.ChatLive do
 
   def render(assigns) do
     ~H"""
-    <div class="drawer md:drawer-open bg-base-200 min-h-dvh max-h-dvh">
+    <div class="drawer md:drawer-open h-[calc(100vh-10rem)] rounded-xl overflow-hidden border border-base-300 bg-base-100 shadow-sm">
       <input id="ash-ai-drawer" type="checkbox" class="drawer-toggle" />
-      <div class="drawer-content flex flex-col">
-        <div class="navbar bg-base-300 w-full">
-          <div class="flex-none md:hidden">
-            <label for="ash-ai-drawer" aria-label="open sidebar" class="btn btn-square btn-ghost">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                class="inline-block h-6 w-6 stroke-current"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M4 6h16M4 12h16M4 18h16"
-                >
-                </path>
-              </svg>
+      
+      <!-- Main Content -->
+      <div class="drawer-content flex flex-col relative">
+        <!-- Mobile Header -->
+        <div class="navbar bg-base-100 w-full md:hidden border-b border-base-200 min-h-12">
+          <div class="flex-none">
+            <label for="ash-ai-drawer" aria-label="open sidebar" class="btn btn-square btn-ghost btn-sm">
+              <.icon name="hero-bars-3" class="w-5 h-5" />
             </label>
           </div>
-          <img
-            src="/images/logo.svg"
-            alt="Logo"
-            class="h-12"
-            height="48"
-          />
-          <div class="mx-2 flex-1 px-2">
-            <p :if={@conversation}>{build_conversation_title_string(@conversation.title)}</p>
-            <p class="text-xs">AshAi</p>
-          </div>
+          <div class="flex-1 px-2 mx-2 text-sm font-semibold">Curriclick AI</div>
         </div>
-        <div class="flex-1 flex flex-col overflow-y-scroll bg-base-200 max-h-[calc(100dvh-8rem)]">
-          <div
-            id="message-container"
-            phx-update="stream"
-            class="flex-1 overflow-y-auto px-4 py-2 flex flex-col-reverse"
-          >
-            <%= for {id, message} <- @streams.messages do %>
-              <div
-                id={id}
-                class={[
-                  "chat",
-                  message.source == :user && "chat-end",
-                  message.source == :agent && "chat-start"
-                ]}
-              >
-                <div :if={message.source == :agent} class="chat-image avatar">
-                  <div class="w-10 rounded-full bg-base-300 p-1">
-                    <img
-                      src="/images/logo.svg"
-                      alt="Logo"
-                    />
-                  </div>
-                </div>
-                <div :if={message.source == :user} class="chat-image avatar avatar-placeholder">
-                  <div class="w-10 rounded-full bg-base-300">
-                    <.icon name="hero-user-solid" class="block" />
-                  </div>
-                </div>
-                <div class="chat-bubble">
-                  {to_markdown(message.text)}
+
+        <!-- Messages Area -->
+        <div class="flex-1 overflow-y-auto p-4 scroll-smooth flex flex-col-reverse" id="message-container" phx-update="stream">
+          <%= for {id, message} <- @streams.messages do %>
+            <div
+              id={id}
+              class={[
+                "chat group mb-2",
+                message.source == :user && "chat-end",
+                message.source == :agent && "chat-start"
+              ]}
+            >
+              <div :if={message.source == :agent} class="chat-image avatar">
+                <div class="w-8 h-8 rounded-full bg-base-200 p-1 border border-base-300 flex items-center justify-center">
+                  <img src={~p"/images/logo.svg"} alt="AI" class="w-full h-full object-contain" />
                 </div>
               </div>
-            <% end %>
-          </div>
+              <div :if={message.source == :user} class="chat-image avatar placeholder">
+                <div class="bg-neutral text-neutral-content rounded-full w-8 h-8">
+                  <span class="text-xs">YOU</span>
+                </div>
+              </div>
+              
+              <div :if={message.source == :agent} class="chat-header opacity-50 text-xs mb-1 ml-1">
+                Curriclick AI
+              </div>
+              
+              <div class={[
+                "chat-bubble shadow-sm text-sm",
+                message.source == :user && "chat-bubble-primary text-primary-content",
+                message.source == :agent && "bg-base-200 text-base-content"
+              ]}>
+                {to_markdown(message.text)}
+              </div>
+            </div>
+          <% end %>
+
+          <%= if !@conversation do %>
+            <div class="hero h-full min-h-[40vh] flex items-center justify-center pb-10">
+              <div class="hero-content text-center">
+                <div class="max-w-md">
+                  <div class="mb-6 inline-block p-4 bg-primary/10 rounded-full text-primary">
+                    <.icon name="hero-chat-bubble-left-right" class="w-10 h-10" />
+                  </div>
+                  <h1 class="text-2xl font-bold">How can I help you today?</h1>
+                  <p class="py-4 text-sm text-base-content/70">
+                    Ask me anything about your curriculum, job search, or career advice.
+                  </p>
+                </div>
+              </div>
+            </div>
+          <% end %>
         </div>
-        <div class="p-4 border-t h-16">
+
+        <!-- Input Area -->
+        <div class="p-4 bg-base-100/80 backdrop-blur-md sticky bottom-0 z-10 w-full">
           <.form
             :let={form}
             for={@message_form}
             phx-change="validate_message"
-            phx-debounce="blur"
             phx-submit="send_message"
-            class="flex items-center gap-4"
+            class="relative max-w-3xl mx-auto"
           >
-            <div class="flex-1">
+            <div class="join w-full shadow-lg rounded-2xl border border-base-300 bg-base-100 p-1.5 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
               <input
                 name={form[:text].name}
                 value={form[:text].value}
                 type="text"
                 phx-mounted={JS.focus()}
-                placeholder="Type your message..."
-                class="input input-primary w-full mb-0"
+                placeholder="Message Curriclick AI..."
+                class="input input-ghost join-item w-full focus:outline-none focus:bg-transparent h-auto py-3 text-base border-none bg-transparent pl-4"
                 autocomplete="off"
               />
+              
+              <button type="submit" class="btn btn-primary btn-circle btn-sm h-8 w-8 self-center mr-1 shadow-sm" disabled={!form[:text].value || form[:text].value == ""}>
+                <.icon name="hero-arrow-up" class="w-4 h-4" />
+              </button>
             </div>
-            <button type="submit" class="btn btn-primary rounded-full">
-              <.icon name="hero-paper-airplane" /> Send
-            </button>
+            <div class="text-center mt-2">
+              <span class="text-[10px] text-base-content/40">AI can make mistakes. Check important info.</span>
+            </div>
           </.form>
         </div>
       </div>
 
-      <div class="drawer-side border-r bg-base-300 min-w-72">
-        <div class="py-4 px-6">
-          <div class="text-lg mb-4">
-            Conversations
+      <!-- Sidebar -->
+      <div class="drawer-side h-full absolute md:relative z-20">
+        <label for="ash-ai-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
+        <div class="menu p-4 w-72 h-full bg-base-50 border-r border-base-200 text-base-content flex flex-col">
+          <!-- Sidebar Header -->
+          <div class="flex items-center gap-2 mb-6 px-2">
+            <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold">
+              <img src={~p"/images/logo.svg"} alt="Logo" class="w-5 h-5" />
+            </div>
+            <span class="font-bold text-sm tracking-tight">Curriclick</span>
           </div>
+
+          <!-- New Chat Button -->
           <div class="mb-4">
-            <.link navigate={~p"/chat"} class="btn btn-primary btn-lg mb-2">
-              <div class="rounded-full bg-primary-content text-primary w-6 h-6 flex items-center justify-center">
-                <.icon name="hero-plus" />
-              </div>
-              <span>New Chat</span>
+            <.link navigate={~p"/chat"} class="btn btn-primary btn-sm btn-block justify-start gap-2 normal-case font-medium shadow-sm">
+              <.icon name="hero-plus" class="w-4 h-4" />
+              New chat
             </.link>
           </div>
-          <ul class="flex flex-col-reverse" phx-update="stream" id="conversations-list">
-            <%= for {id, conversation} <- @streams.conversations do %>
-              <li id={id}>
-                <.link
-                  navigate={~p"/chat/#{conversation.id}"}
-                  phx-click="select_conversation"
-                  phx-value-id={conversation.id}
-                  class={"block py-2 px-3 transition border-l-4 pl-2 mb-2 #{if @conversation && @conversation.id == conversation.id, do: "border-primary font-medium", else: "border-transparent"}"}
-                >
-                  {build_conversation_title_string(conversation.title)}
-                </.link>
-              </li>
-            <% end %>
-          </ul>
+
+          <div class="flex-1 overflow-y-auto -mx-2 px-2">
+            <div class="text-[10px] font-bold text-base-content/40 uppercase tracking-wider mb-2 px-2">
+              Recent
+            </div>
+            <ul class="space-y-0.5" phx-update="stream" id="conversations-list">
+              <%= for {id, conversation} <- @streams.conversations do %>
+                <li id={id}>
+                  <.link
+                    navigate={~p"/chat/#{conversation.id}"}
+                    phx-click="select_conversation"
+                    phx-value-id={conversation.id}
+                    class={[
+                      "group flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-all hover:bg-base-200",
+                      if(@conversation && @conversation.id == conversation.id, do: "bg-base-200 font-medium text-base-content", else: "text-base-content/70")
+                    ]}
+                  >
+                    <span class="truncate flex-1">
+                      {build_conversation_title_string(conversation.title)}
+                    </span>
+                  </.link>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+
+          <!-- Footer -->
+          <div class="mt-auto pt-4 border-t border-base-200">
+             <!-- User info or settings could go here -->
+          </div>
         </div>
       </div>
     </div>
