@@ -27,7 +27,7 @@ defmodule CurriclickWeb.ChatLive do
             </label>
           </div>
           <img
-            src="https://github.com/ash-project/ash_ai/blob/main/logos/ash_ai.png?raw=true"
+            src="/images/logo.svg"
             alt="Logo"
             class="h-12"
             height="48"
@@ -55,7 +55,7 @@ defmodule CurriclickWeb.ChatLive do
                 <div :if={message.source == :agent} class="chat-image avatar">
                   <div class="w-10 rounded-full bg-base-300 p-1">
                     <img
-                      src="https://github.com/ash-project/ash_ai/blob/main/logos/ash_ai.png?raw=true"
+                      src="/images/logo.svg"
                       alt="Logo"
                     />
                   </div>
