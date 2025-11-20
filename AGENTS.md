@@ -7,6 +7,21 @@ It already includes rich, package-specific usage rules that you should follow wh
 
 - First, read `AGENTS_USAGE_RULES.md`. It contains links and guidance specifically curated for AI agents for many of the dependencies in this project.
 - When you are about to use or modify behaviour involving a dependency (for example Ash, Phoenix, LiveView, AshPostgres, etc.), consult the corresponding section in `AGENTS_USAGE_RULES.md` before making changes.
+- **Ash Framework & Extensions**: The Ash ecosystem evolves rapidly and often introduces breaking changes. Whenever you work with Ash or its extensions, you **MUST** use the `mix usage_rules.docs` and `mix usage_rules.search_docs` tools to verify the latest APIs and patterns. Do not rely solely on your training data.
+
+### Agent Workflow & Commands
+
+- **Running the app**: Use `mix run_app`. This command handles Ash codegen, database migrations, and starts the Phoenix server.
+- **Ash Framework changes**: If you modify Ash resources:
+    1. Run `mix ash.codegen --dev` to generate necessary code and migrations.
+    2. Run `mix ecto.migrate` to apply the migrations.
+    3. (Optional) Run `mix run_app` to verify everything works together.
+
+### Frontend & Styling
+
+- **DaisyUI Preference**: Always prioritize using [DaisyUI](https://daisyui.com/) components and utility classes for styling.
+- **Tailwind Fallback**: Use standard [Tailwind CSS](https://tailwindcss.com/) classes ONLY if a suitable DaisyUI alternative does not exist.
+- **Conventions**: Follow the existing patterns in `lib/curriclick_web` components.
 
 ### Project structure (high level)
 

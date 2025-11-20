@@ -7,20 +7,28 @@ defmodule CurriclickWeb.ChatLive do
     <div class="drawer md:drawer-open h-[calc(100vh-10rem)] rounded-xl overflow-hidden border border-base-300 bg-base-100 shadow-sm">
       <input id="ash-ai-drawer" type="checkbox" class="drawer-toggle" />
       
-      <!-- Main Content -->
+    <!-- Main Content -->
       <div class="drawer-content flex flex-col relative">
         <!-- Mobile Header -->
         <div class="navbar bg-base-100 w-full md:hidden border-b border-base-200 min-h-12">
           <div class="flex-none">
-            <label for="ash-ai-drawer" aria-label="open sidebar" class="btn btn-square btn-ghost btn-sm">
+            <label
+              for="ash-ai-drawer"
+              aria-label="open sidebar"
+              class="btn btn-square btn-ghost btn-sm"
+            >
               <.icon name="hero-bars-3" class="w-5 h-5" />
             </label>
           </div>
           <div class="flex-1 px-2 mx-2 text-sm font-semibold">Curriclick AI</div>
         </div>
-
-        <!-- Messages Area -->
-        <div class="flex-1 overflow-y-auto p-4 scroll-smooth flex flex-col-reverse" id="message-container" phx-update="stream">
+        
+    <!-- Messages Area -->
+        <div
+          class="flex-1 overflow-y-auto p-4 scroll-smooth flex flex-col-reverse"
+          id="message-container"
+          phx-update="stream"
+        >
           <%= for {id, message} <- @streams.messages do %>
             <div
               id={id}
@@ -40,11 +48,11 @@ defmodule CurriclickWeb.ChatLive do
                   <span class="text-xs">YOU</span>
                 </div>
               </div>
-              
+
               <div :if={message.source == :agent} class="chat-header opacity-50 text-xs mb-1 ml-1">
                 Curriclick AI
               </div>
-              
+
               <div class={[
                 "chat-bubble shadow-sm text-sm",
                 message.source == :user && "chat-bubble-primary text-primary-content",
@@ -71,8 +79,8 @@ defmodule CurriclickWeb.ChatLive do
             </div>
           <% end %>
         </div>
-
-        <!-- Input Area -->
+        
+    <!-- Input Area -->
         <div class="p-4 bg-base-100/80 backdrop-blur-md sticky bottom-0 z-10 w-full">
           <.form
             :let={form}
@@ -91,19 +99,25 @@ defmodule CurriclickWeb.ChatLive do
                 class="input input-ghost join-item w-full focus:outline-none focus:bg-transparent h-auto py-3 text-base border-none bg-transparent pl-4"
                 autocomplete="off"
               />
-              
-              <button type="submit" class="btn btn-primary btn-circle btn-sm h-8 w-8 self-center mr-1 shadow-sm" disabled={!form[:text].value || form[:text].value == ""}>
+
+              <button
+                type="submit"
+                class="btn btn-primary btn-circle btn-sm h-8 w-8 self-center mr-1 shadow-sm"
+                disabled={!form[:text].value || form[:text].value == ""}
+              >
                 <.icon name="hero-arrow-up" class="w-4 h-4" />
               </button>
             </div>
             <div class="text-center mt-2">
-              <span class="text-[10px] text-base-content/40">AI can make mistakes. Check important info.</span>
+              <span class="text-[10px] text-base-content/40">
+                AI can make mistakes. Check important info.
+              </span>
             </div>
           </.form>
         </div>
       </div>
-
-      <!-- Sidebar -->
+      
+    <!-- Sidebar -->
       <div class="drawer-side h-full absolute md:relative z-20">
         <label for="ash-ai-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
         <div class="menu p-4 w-72 h-full bg-base-50 border-r border-base-200 text-base-content flex flex-col">
@@ -114,12 +128,14 @@ defmodule CurriclickWeb.ChatLive do
             </div>
             <span class="font-bold text-sm tracking-tight">Curriclick</span>
           </div>
-
-          <!-- New Chat Button -->
+          
+    <!-- New Chat Button -->
           <div class="mb-4">
-            <.link navigate={~p"/chat"} class="btn btn-primary btn-sm btn-block justify-start gap-2 normal-case font-medium shadow-sm">
-              <.icon name="hero-plus" class="w-4 h-4" />
-              New chat
+            <.link
+              navigate={~p"/chat"}
+              class="btn btn-primary btn-sm btn-block justify-start gap-2 normal-case font-medium shadow-sm"
+            >
+              <.icon name="hero-plus" class="w-4 h-4" /> New chat
             </.link>
           </div>
 
@@ -136,7 +152,10 @@ defmodule CurriclickWeb.ChatLive do
                     phx-value-id={conversation.id}
                     class={[
                       "group flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-all hover:bg-base-200",
-                      if(@conversation && @conversation.id == conversation.id, do: "bg-base-200 font-medium text-base-content", else: "text-base-content/70")
+                      if(@conversation && @conversation.id == conversation.id,
+                        do: "bg-base-200 font-medium text-base-content",
+                        else: "text-base-content/70"
+                      )
                     ]}
                   >
                     <span class="truncate flex-1">
@@ -147,10 +166,10 @@ defmodule CurriclickWeb.ChatLive do
               <% end %>
             </ul>
           </div>
-
-          <!-- Footer -->
+          
+    <!-- Footer -->
           <div class="mt-auto pt-4 border-t border-base-200">
-             <!-- User info or settings could go here -->
+            <!-- User info or settings could go here -->
           </div>
         </div>
       </div>

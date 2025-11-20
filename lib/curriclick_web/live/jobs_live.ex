@@ -123,8 +123,8 @@ defmodule CurriclickWeb.JobsLive do
               {@ideal_job_description}
             </div>
           </div>
-
-          <!-- AI Response -->
+          
+    <!-- AI Response -->
           <div class="chat chat-start">
             <div class="chat-image avatar">
               <div class="w-10 rounded-full bg-base-200 p-1 border border-base-300">
@@ -134,7 +134,7 @@ defmodule CurriclickWeb.JobsLive do
             <div class="chat-header opacity-50 mb-1">
               Curriclick AI
             </div>
-            
+
             <%= if @results == [] do %>
               <div class="chat-bubble bg-base-200 text-base-content">
                 I couldn't find any jobs matching that description. Try searching for different keywords or technologies.
@@ -144,14 +144,16 @@ defmodule CurriclickWeb.JobsLive do
                 <div class="chat-bubble bg-base-200 text-base-content">
                   I found {length(@results)} jobs that match your criteria:
                 </div>
-                
+
                 <div class="grid grid-cols-1 gap-4 mt-2">
                   <%= for job <- page_slice(@results, @current_page, @page_size) do %>
                     <div class="card bg-base-100 shadow-md border border-base-200 hover:border-primary/50 transition-colors group">
                       <div class="card-body p-5">
                         <div class="flex justify-between items-start gap-4">
                           <div>
-                            <h3 class="font-bold text-lg group-hover:text-primary transition-colors">{job.title}</h3>
+                            <h3 class="font-bold text-lg group-hover:text-primary transition-colors">
+                              {job.title}
+                            </h3>
                             <p class="text-sm font-medium opacity-70 flex items-center gap-1">
                               <.icon name="hero-building-office-2" class="w-4 h-4" />
                               {job.company}
@@ -159,11 +161,15 @@ defmodule CurriclickWeb.JobsLive do
                           </div>
                           <div class="badge badge-primary badge-lg font-bold">{job.match}%</div>
                         </div>
-                        
-                        <p class="text-sm mt-3 text-base-content/80 line-clamp-2">{job.description}</p>
-                        
+
+                        <p class="text-sm mt-3 text-base-content/80 line-clamp-2">
+                          {job.description}
+                        </p>
+
                         <div class="card-actions justify-end mt-4 items-center border-t border-base-200 pt-3">
-                           <button class="btn btn-sm btn-ghost text-primary hover:bg-primary/10">View Details</button>
+                          <button class="btn btn-sm btn-ghost text-primary hover:bg-primary/10">
+                            View Details
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -171,11 +177,21 @@ defmodule CurriclickWeb.JobsLive do
                 </div>
 
                 <div class="flex justify-between items-center bg-base-200/50 p-2 rounded-lg">
-                  <button class="btn btn-xs btn-ghost" phx-click="prev_page" disabled={@current_page == 1}>
+                  <button
+                    class="btn btn-xs btn-ghost"
+                    phx-click="prev_page"
+                    disabled={@current_page == 1}
+                  >
                     <.icon name="hero-chevron-left" class="w-4 h-4" /> Previous
                   </button>
-                  <span class="text-xs opacity-50">Page {@current_page} of {total_pages(@results, @page_size)}</span>
-                  <button class="btn btn-xs btn-ghost" phx-click="next_page" disabled={@current_page >= total_pages(@results, @page_size)}>
+                  <span class="text-xs opacity-50">
+                    Page {@current_page} of {total_pages(@results, @page_size)}
+                  </span>
+                  <button
+                    class="btn btn-xs btn-ghost"
+                    phx-click="next_page"
+                    disabled={@current_page >= total_pages(@results, @page_size)}
+                  >
                     Next <.icon name="hero-chevron-right" class="w-4 h-4" />
                   </button>
                 </div>
@@ -184,8 +200,8 @@ defmodule CurriclickWeb.JobsLive do
           </div>
         <% end %>
       </div>
-
-      <!-- Input Area -->
+      
+    <!-- Input Area -->
       <div class="p-4 bg-base-100/80 backdrop-blur-md sticky bottom-0 z-10">
         <form phx-submit="submit_form" class="max-w-3xl mx-auto relative">
           <div class="join w-full shadow-lg rounded-2xl border border-base-300 bg-base-100 p-1.5">
@@ -194,7 +210,10 @@ defmodule CurriclickWeb.JobsLive do
               <div tabindex="0" role="button" class="btn btn-ghost btn-circle btn-sm h-full w-10">
                 <.icon name="hero-adjustments-horizontal" class="w-5 h-5 opacity-70" />
               </div>
-              <div tabindex="0" class="dropdown-content z-[10] card card-compact w-64 p-2 shadow-xl bg-base-100 border border-base-200 mb-2 ml-2">
+              <div
+                tabindex="0"
+                class="dropdown-content z-[10] card card-compact w-64 p-2 shadow-xl bg-base-100 border border-base-200 mb-2 ml-2"
+              >
                 <div class="card-body">
                   <h3 class="font-bold text-sm text-base-content/70 mb-1">Preferences</h3>
                   <div class="form-control">
@@ -219,7 +238,7 @@ defmodule CurriclickWeb.JobsLive do
                 </div>
               </div>
             </div>
-            
+
             <input
               type="text"
               name="ideal_job_description"
@@ -228,13 +247,15 @@ defmodule CurriclickWeb.JobsLive do
               autocomplete="off"
               value={@ideal_job_description}
             />
-            
+
             <button type="submit" class="btn btn-primary btn-circle btn-sm h-9 w-9 self-center mr-1">
               <.icon name="hero-arrow-up" class="w-4 h-4" />
             </button>
           </div>
           <div class="text-center mt-2">
-            <span class="text-[10px] opacity-50">AI-powered job search can make mistakes. Check important info.</span>
+            <span class="text-[10px] opacity-50">
+              AI-powered job search can make mistakes. Check important info.
+            </span>
           </div>
         </form>
       </div>

@@ -49,7 +49,7 @@ defmodule CurriclickWeb.Router do
 
     post "/rpc/run", AshTypescriptRpcController, :run
     post "/rpc/validate", AshTypescriptRpcController, :validate
-    
+
     live_session :public, layout: {CurriclickWeb.Layouts, :app} do
       live "/", JobsLive
       # get "/jobs", PageController, :jobs

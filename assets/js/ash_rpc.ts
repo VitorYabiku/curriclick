@@ -683,7 +683,7 @@ async function executeValidationRpcRequest<T>(
 
 
 export type ListJobListingsFields = UnifiedFieldSelection<JobListingResourceSchema>[];
-type InferListJobListingsResult<
+export type InferListJobListingsResult<
   Fields extends ListJobListingsFields,
 > = Array<InferResult<JobListingResourceSchema, Fields>>;
 
@@ -735,7 +735,7 @@ export async function validateListJobListings(
 
 
 export type GetJobListingFields = UnifiedFieldSelection<JobListingResourceSchema>[];
-type InferGetJobListingResult<
+export type InferGetJobListingResult<
   Fields extends GetJobListingFields,
 > = Array<InferResult<JobListingResourceSchema, Fields>>;
 
@@ -792,7 +792,7 @@ export type FindMatchingJobsInput = {
 };
 
 export type FindMatchingJobsFields = UnifiedFieldSelection<JobListingResourceSchema>[];
-type InferFindMatchingJobsResult<
+export type InferFindMatchingJobsResult<
   Fields extends FindMatchingJobsFields,
 > = Array<InferResult<JobListingResourceSchema, Fields>>;
 
@@ -850,7 +850,7 @@ export async function validateFindMatchingJobs(
 export type ListCompaniesFields = UnifiedFieldSelection<CompanyResourceSchema>[];
 
 
-type InferListCompaniesResult<
+export type InferListCompaniesResult<
   Fields extends ListCompaniesFields | undefined,
   Page extends ListCompaniesConfig["page"] = undefined
 > = ConditionalPaginatedResultMixed<Page, Array<InferResult<CompanyResourceSchema, Fields>>, {
