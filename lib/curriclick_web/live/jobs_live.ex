@@ -94,6 +94,7 @@ defmodule CurriclickWeb.JobsLive do
 
   def render(assigns) do
     ~H"""
+    <Layouts.theme_toggle />
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
       <aside class="lg:col-span-1 space-y-4">
         <div class="card bg-base-100 border border-base-300">

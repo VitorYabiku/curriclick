@@ -15,9 +15,9 @@ export type JobListingResourceSchema = {
   jobRoleName: string;
   description: string;
   companyId: UUID;
-  company: { __type: "Relationship"; __resource: CompanyResourceSchema | null; };
   matchScore: { __type: "ComplexCalculation"; __returnType: number | null; __args: { searchVector?: Array<number> }; };
   cosineDistance: { __type: "ComplexCalculation"; __returnType: number | null; __args: { vector1?: Array<number>; vector2?: Array<number> }; };
+  company: { __type: "Relationship"; __resource: CompanyResourceSchema | null; };
 };
 
 
@@ -30,10 +30,6 @@ export type CompanyResourceSchema = {
   name: string;
   description: string | null;
 };
-
-
-
-
 
 
 
@@ -124,7 +120,7 @@ export type CompanyFilterInput = {
 
 // Resource schema constraint
 type TypedSchema = {
-  __type: "Resource" | "TypedStruct" | "TypedMap" | "Union";
+  __type: "Resource" | "TypedMap" | "Union";
   __primitiveFields: string;
 };
 
@@ -148,11 +144,35 @@ type InferUnionFieldValue<
       : FieldSelection[FieldIndex] extends Record<string, any>
         ? {
             [UnionKey in keyof FieldSelection[FieldIndex]]: UnionKey extends keyof UnionSchema
-              ? UnionSchema[UnionKey] extends { __type: "TypedMap"; __primitiveFields: any }
-                ? UnionSchema[UnionKey]
-                : UnionSchema[UnionKey] extends TypedSchema
-                  ? InferResult<UnionSchema[UnionKey], FieldSelection[FieldIndex][UnionKey]>
+              ? UnionSchema[UnionKey] extends { __array: true; __type: "TypedMap"; __primitiveFields: infer TypedMapFields }
+                ? FieldSelection[FieldIndex][UnionKey] extends any[]
+                  ? Array<
+                      UnionToIntersection<
+                        {
+                          [FieldIdx in keyof FieldSelection[FieldIndex][UnionKey]]: FieldSelection[FieldIndex][UnionKey][FieldIdx] extends TypedMapFields
+                            ? FieldSelection[FieldIndex][UnionKey][FieldIdx] extends keyof UnionSchema[UnionKey]
+                              ? { [P in FieldSelection[FieldIndex][UnionKey][FieldIdx]]: UnionSchema[UnionKey][P] }
+                              : never
+                            : never;
+                        }[number]
+                      >
+                    > | null
                   : never
+                : UnionSchema[UnionKey] extends { __type: "TypedMap"; __primitiveFields: infer TypedMapFields }
+                  ? FieldSelection[FieldIndex][UnionKey] extends any[]
+                    ? UnionToIntersection<
+                        {
+                          [FieldIdx in keyof FieldSelection[FieldIndex][UnionKey]]: FieldSelection[FieldIndex][UnionKey][FieldIdx] extends TypedMapFields
+                            ? FieldSelection[FieldIndex][UnionKey][FieldIdx] extends keyof UnionSchema[UnionKey]
+                              ? { [P in FieldSelection[FieldIndex][UnionKey][FieldIdx]]: UnionSchema[UnionKey][P] }
+                              : never
+                            : never;
+                        }[number]
+                      > | null
+                    : never
+                  : UnionSchema[UnionKey] extends TypedSchema
+                    ? InferResult<UnionSchema[UnionKey], FieldSelection[FieldIndex][UnionKey]>
+                    : never
               : never;
           }
         : never;
@@ -195,25 +215,27 @@ type ComplexFieldSelection<T extends TypedSchema> = {
         : NonNullable<ReturnType> extends TypedSchema
           ? { fields: UnifiedFieldSelection<NonNullable<ReturnType>>[] }
           : never
-      : T[K] extends { __type: "Union"; __primitiveFields: infer PrimitiveFields }
-        ? T[K] extends { __array: true }
-          ? (PrimitiveFields | {
-              [UnionKey in keyof Omit<T[K], "__type" | "__primitiveFields" | "__array">]?: T[K][UnionKey] extends { __type: "TypedMap"; __primitiveFields: any }
-                ? T[K][UnionKey]["__primitiveFields"][]
-                : T[K][UnionKey] extends TypedSchema
-                  ? UnifiedFieldSelection<T[K][UnionKey]>[]
-                  : never;
-            })[]
-          : (PrimitiveFields | {
-              [UnionKey in keyof Omit<T[K], "__type" | "__primitiveFields">]?: T[K][UnionKey] extends { __type: "TypedMap"; __primitiveFields: any }
-                ? T[K][UnionKey]["__primitiveFields"][]
-                : T[K][UnionKey] extends TypedSchema
-                  ? UnifiedFieldSelection<T[K][UnionKey]>[]
-                  : never;
-            })[]
-          : NonNullable<T[K]> extends TypedSchema
-            ? UnifiedFieldSelection<NonNullable<T[K]>>[]
-            : never;
+      : T[K] extends { __type: "TypedMap"; __primitiveFields: infer PrimitiveFields }
+        ? PrimitiveFields[]
+        : T[K] extends { __type: "Union"; __primitiveFields: infer PrimitiveFields }
+          ? T[K] extends { __array: true }
+            ? (PrimitiveFields | {
+                [UnionKey in keyof Omit<T[K], "__type" | "__primitiveFields" | "__array">]?: T[K][UnionKey] extends { __type: "TypedMap"; __primitiveFields: any }
+                  ? T[K][UnionKey]["__primitiveFields"][]
+                  : T[K][UnionKey] extends TypedSchema
+                    ? UnifiedFieldSelection<T[K][UnionKey]>[]
+                    : never;
+              })[]
+            : (PrimitiveFields | {
+                [UnionKey in keyof Omit<T[K], "__type" | "__primitiveFields">]?: T[K][UnionKey] extends TypedSchema
+                  ? T[K][UnionKey]["__primitiveFields"][]
+                  : T[K][UnionKey] extends TypedSchema
+                    ? UnifiedFieldSelection<T[K][UnionKey]>[]
+                    : never;
+              })[]
+            : NonNullable<T[K]> extends TypedSchema
+              ? UnifiedFieldSelection<NonNullable<T[K]>>[]
+              : never;
 };
 
 // Main type: Use explicit base case detection to prevent infinite recursion
@@ -252,27 +274,75 @@ type InferFieldValue<
                 ? InferResult<NonNullable<ReturnType>, Field[K]["fields"]> | null
                 : InferResult<NonNullable<ReturnType>, Field[K]["fields"]>
               : ReturnType
-            : T[K] extends { __type: "Union"; __primitiveFields: any }
-              ? T[K] extends { __array: true }
-                ? {
-                    [CurrentK in K]: T[CurrentK] extends { __type: "Union"; __primitiveFields: any }
-                      ? Field[CurrentK] extends any[]
-                        ? Array<InferUnionFieldValue<T[CurrentK], Field[CurrentK]>> | null
-                        : never
-                      : never
-                  }
-                : {
-                    [CurrentK in K]: T[CurrentK] extends { __type: "Union"; __primitiveFields: any }
-                      ? Field[CurrentK] extends any[]
-                        ? InferUnionFieldValue<T[CurrentK], Field[CurrentK]> | null
-                        : never
-                      : never
-                  }
-                : NonNullable<T[K]> extends TypedSchema
+            : NonNullable<T[K]> extends { __type: "TypedMap"; __primitiveFields: infer TypedMapFields }
+              ? NonNullable<T[K]> extends { __array: true }
+                ? Field[K] extends any[]
                   ? null extends T[K]
-                    ? InferResult<NonNullable<T[K]>, Field[K]> | null
-                    : InferResult<NonNullable<T[K]>, Field[K]>
+                    ? Array<
+                        UnionToIntersection<
+                          {
+                            [FieldIndex in keyof Field[K]]: Field[K][FieldIndex] extends TypedMapFields
+                              ? Field[K][FieldIndex] extends keyof NonNullable<T[K]>
+                                ? { [P in Field[K][FieldIndex]]: NonNullable<T[K]>[P] }
+                                : never
+                              : never;
+                          }[number]
+                        >
+                      > | null
+                    : Array<
+                        UnionToIntersection<
+                          {
+                            [FieldIndex in keyof Field[K]]: Field[K][FieldIndex] extends TypedMapFields
+                              ? Field[K][FieldIndex] extends keyof NonNullable<T[K]>
+                                ? { [P in Field[K][FieldIndex]]: NonNullable<T[K]>[P] }
+                                : never
+                              : never;
+                          }[number]
+                        >
+                      >
                   : never
+                : Field[K] extends any[]
+                  ? null extends T[K]
+                    ? UnionToIntersection<
+                        {
+                          [FieldIndex in keyof Field[K]]: Field[K][FieldIndex] extends TypedMapFields
+                            ? Field[K][FieldIndex] extends keyof NonNullable<T[K]>
+                              ? { [P in Field[K][FieldIndex]]: NonNullable<T[K]>[P] }
+                              : never
+                            : never;
+                        }[number]
+                      > | null
+                    : UnionToIntersection<
+                        {
+                          [FieldIndex in keyof Field[K]]: Field[K][FieldIndex] extends TypedMapFields
+                            ? Field[K][FieldIndex] extends keyof T[K]
+                              ? { [P in Field[K][FieldIndex]]: T[K][P] }
+                              : never
+                            : never;
+                        }[number]
+                      >
+                  : never
+              : T[K] extends { __type: "Union"; __primitiveFields: any }
+                ? T[K] extends { __array: true }
+                  ? {
+                      [CurrentK in K]: T[CurrentK] extends { __type: "Union"; __primitiveFields: any }
+                        ? Field[CurrentK] extends any[]
+                          ? Array<InferUnionFieldValue<T[CurrentK], Field[CurrentK]>> | null
+                          : never
+                        : never
+                    }
+                  : {
+                      [CurrentK in K]: T[CurrentK] extends { __type: "Union"; __primitiveFields: any }
+                        ? Field[CurrentK] extends any[]
+                          ? InferUnionFieldValue<T[CurrentK], Field[CurrentK]> | null
+                          : never
+                        : never
+                    }
+                  : NonNullable<T[K]> extends TypedSchema
+                    ? null extends T[K]
+                      ? InferResult<NonNullable<T[K]>, Field[K]> | null
+                      : InferResult<NonNullable<T[K]>, Field[K]>
+                    : never
           : never;
       }
     : never;
@@ -349,17 +419,66 @@ export type ErrorData<T extends (...args: any[]) => Promise<any>> = Extract<
 >["errors"];
 
 /**
- * Represents an error from an unsuccessful RPC call
+ * Represents an error from an unsuccessful RPC call.
+ *
+ * This type matches the error structure defined in the AshTypescript.Rpc.Error protocol.
+ *
  * @example
- * const error: AshRpcError = { type: "validation_error", message: "Something went wrong" }
+ * const error: AshRpcError = {
+ *   type: "invalid_changes",
+ *   message: "Invalid value for field %{field}",
+ *   shortMessage: "Invalid changes",
+ *   vars: { field: "email" },
+ *   fields: ["email"],
+ *   path: ["user", "email"],
+ *   details: { suggestion: "Provide a valid email address" }
+ * }
  */
 export type AshRpcError = {
+  /** Machine-readable error type (e.g., "invalid_changes", "not_found") */
   type: string;
+  /** Full error message (may contain template variables like %{key}) */
   message: string;
-  field?: string;
-  fieldPath?: string;
+  /** Concise version of the message */
+  shortMessage: string;
+  /** Variables to interpolate into the message template */
+  vars: Record<string, any>;
+  /** List of affected field names (for field-level errors) */
+  fields: string[];
+  /** Path to the error location in the data structure */
+  path: string[];
+  /** Optional map with extra details (e.g., suggestions, hints) */
   details?: Record<string, any>;
 }
+
+/**
+ * Represents the result of a validation RPC call.
+ *
+ * All validation actions return this same structure, indicating either
+ * successful validation or a list of validation errors.
+ *
+ * @example
+ * // Successful validation
+ * const result: ValidationResult = { success: true };
+ *
+ * // Failed validation
+ * const result: ValidationResult = {
+ *   success: false,
+ *   errors: [
+ *     {
+ *       type: "required",
+ *       message: "is required",
+ *       shortMessage: "Required field",
+ *       vars: { field: "email" },
+ *       fields: ["email"],
+ *       path: []
+ *     }
+ *   ]
+ * };
+ */
+export type ValidationResult =
+  | { success: true }
+  | { success: false; errors: AshRpcError[]; };
 
 
 
@@ -392,7 +511,7 @@ export interface ActionConfig {
       };
 
   // Metadata
-  metadataFields?: Record<string, any>; // Metadata field selection
+  metadataFields?: ReadonlyArray<string>;
 
   // HTTP customization
   headers?: Record<string, string>; // Custom headers
@@ -489,9 +608,13 @@ async function executeActionRpcRequest<T>(
       success: false,
       errors: [
         {
-          type: "network",
-          message: response.statusText,
-          details: {}
+          type: "network_error",
+          message: `Network request failed: ${response.statusText}`,
+          shortMessage: "Network error",
+          vars: { statusCode: response.status, statusText: response.statusText },
+          fields: [],
+          path: [],
+          details: { statusCode: response.status }
         }
       ],
     } as T;
@@ -536,9 +659,13 @@ async function executeValidationRpcRequest<T>(
       success: false,
       errors: [
         {
-          type: "network",
-          message: response.statusText,
-          details: {}
+          type: "network_error",
+          message: `Network request failed: ${response.statusText}`,
+          shortMessage: "Network error",
+          vars: { statusCode: response.status, statusText: response.statusText },
+          fields: [],
+          path: [],
+          details: { statusCode: response.status }
         }
       ],
     } as T;
@@ -561,15 +688,7 @@ type InferListJobListingsResult<
 > = Array<InferResult<JobListingResourceSchema, Fields>>;
 
 export type ListJobListingsResult<Fields extends ListJobListingsFields> = | { success: true; data: InferListJobListingsResult<Fields>; }
-| {
-        success: false;
-        errors: Array<{
-          type: string;
-          message: string;
-          fieldPath?: string;
-          details: Record<string, string>;
-        }>;
-      }
+| { success: false; errors: AshRpcError[]; }
 
 ;
 
@@ -597,32 +716,18 @@ export async function listJobListings<Fields extends ListJobListingsFields>(
 }
 
 
-export type ValidateListJobListingsResult =
-  | { success: true }
-  | {
-      success: false;
-      errors: Array<{
-        type: string;
-        message: string;
-        field?: string;
-        fieldPath?: string;
-        details?: Record<string, any>;
-      }>;
-    };
-
-
 export async function validateListJobListings(
   config: {
   headers?: Record<string, string>;
   fetchOptions?: RequestInit;
   customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
-): Promise<ValidateListJobListingsResult> {
+): Promise<ValidationResult> {
   const payload = {
     action: "list_job_listings"
   };
 
-  return executeValidationRpcRequest<ValidateListJobListingsResult>(
+  return executeValidationRpcRequest<ValidationResult>(
     payload,
     config
   );
@@ -635,15 +740,7 @@ type InferGetJobListingResult<
 > = Array<InferResult<JobListingResourceSchema, Fields>>;
 
 export type GetJobListingResult<Fields extends GetJobListingFields> = | { success: true; data: InferGetJobListingResult<Fields>; }
-| {
-        success: false;
-        errors: Array<{
-          type: string;
-          message: string;
-          fieldPath?: string;
-          details: Record<string, string>;
-        }>;
-      }
+| { success: false; errors: AshRpcError[]; }
 
 ;
 
@@ -671,32 +768,18 @@ export async function getJobListing<Fields extends GetJobListingFields>(
 }
 
 
-export type ValidateGetJobListingResult =
-  | { success: true }
-  | {
-      success: false;
-      errors: Array<{
-        type: string;
-        message: string;
-        field?: string;
-        fieldPath?: string;
-        details?: Record<string, any>;
-      }>;
-    };
-
-
 export async function validateGetJobListing(
   config: {
   headers?: Record<string, string>;
   fetchOptions?: RequestInit;
   customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
-): Promise<ValidateGetJobListingResult> {
+): Promise<ValidationResult> {
   const payload = {
     action: "get_job_listing"
   };
 
-  return executeValidationRpcRequest<ValidateGetJobListingResult>(
+  return executeValidationRpcRequest<ValidationResult>(
     payload,
     config
   );
@@ -708,26 +791,13 @@ export type FindMatchingJobsInput = {
   limit?: number;
 };
 
-export type FindMatchingJobsValidationErrors = {
-  idealJobDescription?: string[];
-  limit?: string[];
-};
-
 export type FindMatchingJobsFields = UnifiedFieldSelection<JobListingResourceSchema>[];
 type InferFindMatchingJobsResult<
   Fields extends FindMatchingJobsFields,
 > = Array<InferResult<JobListingResourceSchema, Fields>>;
 
 export type FindMatchingJobsResult<Fields extends FindMatchingJobsFields> = | { success: true; data: InferFindMatchingJobsResult<Fields>; }
-| {
-        success: false;
-        errors: Array<{
-          type: string;
-          message: string;
-          fieldPath?: string;
-          details: Record<string, string>;
-        }>;
-      }
+| { success: false; errors: AshRpcError[]; }
 
 ;
 
@@ -757,20 +827,6 @@ export async function findMatchingJobs<Fields extends FindMatchingJobsFields>(
 }
 
 
-export type ValidateFindMatchingJobsResult =
-  | { success: true }
-  | {
-      success: false;
-      errors: Array<{
-        type: string;
-        message: string;
-        field?: string;
-        fieldPath?: string;
-        details?: Record<string, any>;
-      }>;
-    };
-
-
 export async function validateFindMatchingJobs(
   config: {
   input: FindMatchingJobsInput;
@@ -778,13 +834,13 @@ export async function validateFindMatchingJobs(
   fetchOptions?: RequestInit;
   customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
-): Promise<ValidateFindMatchingJobsResult> {
+): Promise<ValidationResult> {
   const payload = {
     action: "find_matching_jobs",
     input: config.input
   };
 
-  return executeValidationRpcRequest<ValidateFindMatchingJobsResult>(
+  return executeValidationRpcRequest<ValidationResult>(
     payload,
     config
   );
@@ -837,15 +893,7 @@ export type ListCompaniesConfig = {
 };
 
 export type ListCompaniesResult<Fields extends ListCompaniesFields, Page extends ListCompaniesConfig["page"] = undefined> = | { success: true; data: InferListCompaniesResult<Fields, Page>; }
-| {
-        success: false;
-        errors: Array<{
-          type: string;
-          message: string;
-          fieldPath?: string;
-          details: Record<string, string>;
-        }>;
-      }
+| { success: false; errors: AshRpcError[]; }
 
 ;
 
@@ -867,32 +915,18 @@ export async function listCompanies<Fields extends ListCompaniesFields, Config e
 }
 
 
-export type ValidateListCompaniesResult =
-  | { success: true }
-  | {
-      success: false;
-      errors: Array<{
-        type: string;
-        message: string;
-        field?: string;
-        fieldPath?: string;
-        details?: Record<string, any>;
-      }>;
-    };
-
-
 export async function validateListCompanies(
   config: {
   headers?: Record<string, string>;
   fetchOptions?: RequestInit;
   customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
-): Promise<ValidateListCompaniesResult> {
+): Promise<ValidationResult> {
   const payload = {
     action: "list_companies"
   };
 
-  return executeValidationRpcRequest<ValidateListCompaniesResult>(
+  return executeValidationRpcRequest<ValidationResult>(
     payload,
     config
   );
