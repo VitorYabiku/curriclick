@@ -4,6 +4,7 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
 
   alias LangChain.Chains.LLMChain
   alias LangChain.ChatModels.ChatOpenAI
+  require Logger
 
   @impl true
   def change(changeset, _opts, context) do
@@ -41,10 +42,12 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
       |> AshAi.setup_ash_ai(otp_app: :curriclick, tools: [], actor: context.actor)
       |> LLMChain.add_callback(%{
         on_llm_new_delta: fn _chain, deltas ->
+          Logger.debug("Received deltas: #{inspect(deltas)}")
           deltas
           |> List.wrap()
           |> Enum.each(fn delta ->
-            content = LangChain.MessageDelta.content_to_string(delta)
+            content = delta.content
+            Logger.debug("Delta content: #{inspect(content)}")
 
             if not is_nil(content) and content != "" do
               Curriclick.Chat.Message

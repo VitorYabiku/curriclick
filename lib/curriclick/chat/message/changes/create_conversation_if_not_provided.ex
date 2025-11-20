@@ -11,7 +11,11 @@ defmodule Curriclick.Chat.Message.Changes.CreateConversationIfNotProvided do
       )
     else
       Ash.Changeset.before_action(changeset, fn changeset ->
-        conversation = Curriclick.Chat.create_conversation!(Ash.Context.to_opts(context))
+        opts =
+          Ash.Context.to_opts(context)
+          |> Keyword.put(:actor, context.actor)
+
+        conversation = Curriclick.Chat.create_conversation!(opts)
 
         Ash.Changeset.force_change_attribute(changeset, :conversation_id, conversation.id)
       end)
