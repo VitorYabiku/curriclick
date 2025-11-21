@@ -58,11 +58,11 @@ defmodule Curriclick.Chat.Conversation do
     prefix "chat"
 
     publish_all :create, ["conversations", :user_id] do
-      transform & &1.data
+      transform fn notification -> {:create, notification.data} end
     end
 
     publish_all :update, ["conversations", :user_id] do
-      transform & &1.data
+      transform fn notification -> {:update, notification.data} end
     end
   end
 

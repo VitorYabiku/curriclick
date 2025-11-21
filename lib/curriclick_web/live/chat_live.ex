@@ -2,6 +2,8 @@ defmodule CurriclickWeb.ChatLive do
   use Elixir.CurriclickWeb, :live_view
   on_mount {CurriclickWeb.LiveUserAuth, :live_user_required}
 
+  @max_conversation_title_length 25
+
   def render(assigns) do
     ~H"""
     <div class="drawer md:drawer-open h-full bg-base-100">
@@ -123,21 +125,11 @@ defmodule CurriclickWeb.ChatLive do
       <div class="drawer-side h-full absolute md:relative z-20">
         <label for="ash-ai-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
         <div class="menu p-4 w-72 h-full bg-base-50 border-r border-base-200 text-base-content flex flex-col">
-          <%!-- <!-- Sidebar Header --> --%>
-          <%!-- <div class="flex items-center gap-2 mb-6 px-2"> --%>
-          <%!--   <.link navigate={~p"/"} class="flex items-center gap-2 hover:opacity-80 transition-opacity"> --%>
-          <%!--     <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold"> --%>
-          <%!--       <img src={~p"/images/logo.svg"} alt="Logo" class="w-5 h-5" /> --%>
-          <%!--     </div> --%>
-          <%!--     <span class="font-bold text-sm tracking-tight">Curriclick</span> --%>
-          <%!--   </.link> --%>
-          <%!-- </div> --%>
-          
-    <!-- New Chat Button -->
+          <!-- New Chat Button -->
           <div class="mb-4">
             <.link
               navigate={~p"/chat"}
-              class="btn btn-primary btn-sm btn-block justify-start gap-2 normal-case font-medium shadow-sm"
+              class="btn btn-primary btn-lg btn-block justify-start gap-2 normal-case font-medium shadow-sm"
             >
               <.icon name="hero-plus" class="w-4 h-4" /> New chat
             </.link>
@@ -162,7 +154,10 @@ defmodule CurriclickWeb.ChatLive do
                       )
                     ]}
                   >
-                    <span class="truncate flex-1">
+                    <span
+                      class="truncate flex-1"
+                      title={conversation_title_tooltip(conversation.title)}
+                    >
                       {build_conversation_title_string(conversation.title)}
                     </span>
                   </.link>
@@ -181,11 +176,19 @@ defmodule CurriclickWeb.ChatLive do
     """
   end
 
+  def conversation_title_tooltip(title) do
+    if title && String.length(title) > @max_conversation_title_length do
+      title
+    else
+      nil
+    end
+  end
+
   def build_conversation_title_string(title) do
     cond do
       title == nil -> "Untitled conversation"
-      is_binary(title) && String.length(title) > 25 -> String.slice(title, 0, 25) <> "..."
-      is_binary(title) && String.length(title) <= 25 -> title
+      is_binary(title) && String.length(title) > @max_conversation_title_length -> String.slice(title, 0, @max_conversation_title_length) <> "..."
+      is_binary(title) && String.length(title) <= @max_conversation_title_length -> title
     end
   end
 
@@ -225,7 +228,10 @@ defmodule CurriclickWeb.ChatLive do
 
     socket
     |> assign(:conversation, conversation)
-    |> stream(:messages, Curriclick.Chat.message_history!(conversation.id, query: [sort: [inserted_at: :asc]]))
+    |> stream(
+      :messages,
+      Curriclick.Chat.message_history!(conversation.id, query: [sort: [inserted_at: :asc]])
+    )
     |> assign_message_form()
     |> then(&{:noreply, &1})
   end
@@ -292,7 +298,7 @@ defmodule CurriclickWeb.ChatLive do
   def handle_info(
         %Phoenix.Socket.Broadcast{
           topic: "chat:conversations:" <> _,
-          payload: conversation
+          payload: {event_type, conversation}
         },
         socket
       ) do
@@ -303,7 +309,8 @@ defmodule CurriclickWeb.ChatLive do
         socket
       end
 
-    {:noreply, stream_insert(socket, :conversations, conversation)}
+    opts = if event_type == :create, do: [at: 0], else: []
+    {:noreply, stream_insert(socket, :conversations, conversation, opts)}
   end
 
   defp assign_message_form(socket) do

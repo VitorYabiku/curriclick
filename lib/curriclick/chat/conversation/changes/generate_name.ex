@@ -25,23 +25,22 @@ defmodule Curriclick.Chat.Conversation.Changes.GenerateName do
         RESPOND WITH ONLY THE NEW CONVERSATION NAME.
         """)
 
-      message_chain =
-        Enum.map(messages, fn message ->
-          if message.source == :agent do
-            LangChain.Message.new_assistant!(message.text)
-          else
-            LangChain.Message.new_user!(message.text)
-          end
+      transcript =
+        Enum.map_join(messages, "\n\n", fn message ->
+          role = if message.source == :agent, do: "Assistant", else: "User"
+          "#{role}: #{message.text}"
         end)
 
+      user_message = LangChain.Message.new_user!("Here is the conversation:\n\n#{transcript}")
+
       %{
-        llm: ChatOpenAI.new!(%{model: "gpt-4o"}),
+        llm: ChatOpenAI.new!(%{model: "gpt-5-mini"}),
         custom_context: Map.new(Ash.Context.to_opts(context)),
         verbose?: true
       }
       |> LLMChain.new!()
       |> LLMChain.add_message(system_prompt)
-      |> LLMChain.add_messages(message_chain)
+      |> LLMChain.add_message(user_message)
       |> LLMChain.run(mode: :while_needs_response)
       |> case do
         {:ok,
