@@ -46,8 +46,51 @@ defmodule CurriclickWeb.ChatLive do
                   </div>
                 <% else %>
                   <div class="flex gap-4 w-full pr-4">
-                    <div class="flex-1 min-w-0 markdown-content py-1">
-                      {to_markdown(message.text)}
+                    <div class="flex-1 min-w-0 py-1">
+                      <%= if message.tool_calls && message.tool_calls != [] do %>
+                        <div class="flex flex-col gap-2 mb-4">
+                          <%= for tool_call <- message.tool_calls do %>
+                            <details class="collapse collapse-arrow bg-base-200 border border-base-300 rounded-lg">
+                              <summary class="collapse-title text-sm font-medium min-h-0 py-2 px-4">
+                                <div class="flex items-center gap-2">
+                                  <.icon name="hero-wrench-screwdriver" class="w-4 h-4" /> Using tool:
+                                  <span class="font-mono text-xs bg-base-300 px-1 rounded">
+                                    {tool_call["name"]}
+                                  </span>
+                                </div>
+                              </summary>
+                              <div class="collapse-content text-xs">
+                                <div class="mt-2">
+                                  <div class="font-bold opacity-70 mb-1">Arguments:</div>
+                                  <pre class="whitespace-pre-wrap overflow-x-auto bg-base-300 p-2 rounded border border-base-content/10"><%= if is_binary(tool_call["arguments"]), do: tool_call["arguments"], else: inspect(tool_call["arguments"]) %></pre>
+                                </div>
+
+                                <% result =
+                                  if message.tool_results,
+                                    do:
+                                      Enum.find(message.tool_results, fn r ->
+                                        r["tool_call_id"] == tool_call["call_id"]
+                                      end) %>
+                                <%= if result do %>
+                                  <div class="mt-2">
+                                    <div class="font-bold opacity-70 mb-1">Result:</div>
+                                    <pre class="whitespace-pre-wrap overflow-x-auto bg-base-300 p-2 rounded border border-base-content/10"><%= result["content"] %></pre>
+                                  </div>
+                                <% else %>
+                                  <div class="mt-2 flex items-center gap-2 text-info">
+                                    <span class="loading loading-spinner loading-xs"></span>
+                                    <span>Running...</span>
+                                  </div>
+                                <% end %>
+                              </div>
+                            </details>
+                          <% end %>
+                        </div>
+                      <% end %>
+
+                      <div class="markdown-content">
+                        {to_markdown(message.text)}
+                      </div>
                     </div>
                   </div>
                 <% end %>
@@ -60,7 +103,7 @@ defmodule CurriclickWeb.ChatLive do
               <div class="flex gap-4 w-full pr-4">
                 <div class="flex-1 min-w-0 py-1">
                   <div class="flex items-center gap-2 text-base-content/50">
-                    <span class="loading loading-dots loading-md"></span>
+                    <span class="loading loading-dots loading-xl"></span>
                   </div>
                 </div>
               </div>
@@ -186,9 +229,14 @@ defmodule CurriclickWeb.ChatLive do
 
   def build_conversation_title_string(title) do
     cond do
-      title == nil -> "Untitled conversation"
-      is_binary(title) && String.length(title) > @max_conversation_title_length -> String.slice(title, 0, @max_conversation_title_length) <> "..."
-      is_binary(title) && String.length(title) <= @max_conversation_title_length -> title
+      title == nil ->
+        "Untitled conversation"
+
+      is_binary(title) && String.length(title) > @max_conversation_title_length ->
+        String.slice(title, 0, @max_conversation_title_length) <> "..."
+
+      is_binary(title) && String.length(title) <= @max_conversation_title_length ->
+        title
     end
   end
 
@@ -284,7 +332,8 @@ defmodule CurriclickWeb.ChatLive do
     if socket.assigns.conversation && socket.assigns.conversation.id == conversation_id do
       socket =
         if message.source != :user do
-          assign(socket, :loading_response, false)
+          has_text = message.text && message.text != ""
+          assign(socket, :loading_response, !message.complete && !has_text)
         else
           socket
         end

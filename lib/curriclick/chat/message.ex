@@ -145,13 +145,27 @@ defmodule Curriclick.Chat.Message do
 
     publish :create, ["messages", :conversation_id] do
       transform fn %{data: message} ->
-        %{text: message.text, id: message.id, source: message.source}
+        %{
+          text: message.text,
+          id: message.id,
+          source: message.source,
+          tool_calls: message.tool_calls,
+          tool_results: message.tool_results,
+          complete: message.complete
+        }
       end
     end
 
     publish :upsert_response, ["messages", :conversation_id] do
       transform fn %{data: message} ->
-        %{text: message.text, id: message.id, source: message.source}
+        %{
+          text: message.text,
+          id: message.id,
+          source: message.source,
+          tool_calls: message.tool_calls,
+          tool_results: message.tool_results,
+          complete: message.complete
+        }
       end
     end
   end
