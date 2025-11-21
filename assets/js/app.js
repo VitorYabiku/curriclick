@@ -26,10 +26,46 @@ import {hooks as colocatedHooks} from "phoenix-colocated/curriclick"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
+
+const hooks = {
+  ...colocatedHooks,
+  ChatScroll: {
+    mounted() {
+      this.shouldAutoScroll = true
+
+      this.el.addEventListener("scroll", () => {
+        const { scrollTop, scrollHeight, clientHeight } = this.el
+        // Use a small threshold to allow breaking free from the "stickiness" easily
+        this.shouldAutoScroll = scrollHeight - (scrollTop + clientHeight) < 20
+      })
+
+      this.scrollToBottom()
+
+      this.observer = new MutationObserver(() => {
+        if (this.shouldAutoScroll) {
+          this.scrollToBottom()
+        }
+      })
+      this.observer.observe(this.el, { childList: true, subtree: true })
+    },
+    updated() {
+      if (this.shouldAutoScroll) {
+        this.scrollToBottom()
+      }
+    },
+    destroyed() {
+      if (this.observer) this.observer.disconnect()
+    },
+    scrollToBottom() {
+      this.el.scrollTop = this.el.scrollHeight
+    }
+  }
+}
+
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks},
+  hooks: hooks,
 })
 
 // Show progress bar on live navigation and form submits

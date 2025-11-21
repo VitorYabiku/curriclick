@@ -4,11 +4,11 @@ defmodule CurriclickWeb.ChatLive do
 
   def render(assigns) do
     ~H"""
-    <div class="drawer md:drawer-open h-[calc(100vh-10rem)] rounded-xl overflow-hidden border border-base-300 bg-base-100 shadow-sm">
+    <div class="drawer md:drawer-open h-full bg-base-100">
       <input id="ash-ai-drawer" type="checkbox" class="drawer-toggle" />
       
     <!-- Main Content -->
-      <div class="drawer-content flex flex-col relative">
+      <div class="drawer-content flex flex-col h-full overflow-hidden relative">
         <!-- Mobile Header -->
         <div class="navbar bg-base-100 w-full md:hidden border-b border-base-200 min-h-12">
           <div class="flex-none">
@@ -25,41 +25,30 @@ defmodule CurriclickWeb.ChatLive do
         
     <!-- Messages Area -->
         <div
-          class="flex-1 overflow-y-auto p-4 scroll-smooth flex flex-col-reverse"
+          class="flex-1 overflow-y-auto p-4 flex flex-col items-center scroll-smooth"
           id="message-container"
           phx-update="stream"
+          phx-hook="ChatScroll"
         >
           <%= for {id, message} <- @streams.messages do %>
             <div
               id={id}
               class={[
-                "chat group mb-2",
-                message.source == :user && "chat-end",
-                message.source == :agent && "chat-start"
+                "w-full max-w-3xl mb-8",
+                message.source == :user && "flex justify-end"
               ]}
             >
-              <div :if={message.source == :agent} class="chat-image avatar">
-                <div class="w-8 h-8 rounded-full bg-base-200 p-1 border border-base-300 flex items-center justify-center">
-                  <img src={~p"/images/logo.svg"} alt="AI" class="w-full h-full object-contain" />
+              <%= if message.source == :user do %>
+                <div class="chat-bubble chat-bubble-primary text-primary-content shadow-sm text-[15px] py-2.5 px-4 max-w-[85%]">
+                  {to_markdown(message.text)}
                 </div>
-              </div>
-              <div :if={message.source == :user} class="chat-image avatar placeholder">
-                <div class="bg-neutral text-neutral-content rounded-full w-8 h-8">
-                  <span class="text-xs">YOU</span>
+              <% else %>
+                <div class="flex gap-4 w-full pr-4">
+                  <div class="flex-1 min-w-0 markdown-content py-1">
+                    {to_markdown(message.text)}
+                  </div>
                 </div>
-              </div>
-
-              <div :if={message.source == :agent} class="chat-header opacity-50 text-xs mb-1 ml-1">
-                Curriclick AI
-              </div>
-
-              <div class={[
-                "chat-bubble shadow-sm text-sm",
-                message.source == :user && "chat-bubble-primary text-primary-content",
-                message.source == :agent && "bg-base-200 text-base-content"
-              ]}>
-                {to_markdown(message.text)}
-              </div>
+              <% end %>
             </div>
           <% end %>
 
@@ -81,7 +70,7 @@ defmodule CurriclickWeb.ChatLive do
         </div>
         
     <!-- Input Area -->
-        <div class="p-4 bg-base-100/80 backdrop-blur-md sticky bottom-0 z-10 w-full">
+        <div class="p-4 bg-base-100/80 backdrop-blur-md z-10 w-full border-t border-base-200">
           <.form
             :let={form}
             for={@message_form}
@@ -121,13 +110,15 @@ defmodule CurriclickWeb.ChatLive do
       <div class="drawer-side h-full absolute md:relative z-20">
         <label for="ash-ai-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
         <div class="menu p-4 w-72 h-full bg-base-50 border-r border-base-200 text-base-content flex flex-col">
-          <!-- Sidebar Header -->
-          <div class="flex items-center gap-2 mb-6 px-2">
-            <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold">
-              <img src={~p"/images/logo.svg"} alt="Logo" class="w-5 h-5" />
-            </div>
-            <span class="font-bold text-sm tracking-tight">Curriclick</span>
-          </div>
+          <%!-- <!-- Sidebar Header --> --%>
+          <%!-- <div class="flex items-center gap-2 mb-6 px-2"> --%>
+          <%!--   <.link navigate={~p"/"} class="flex items-center gap-2 hover:opacity-80 transition-opacity"> --%>
+          <%!--     <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold"> --%>
+          <%!--       <img src={~p"/images/logo.svg"} alt="Logo" class="w-5 h-5" /> --%>
+          <%!--     </div> --%>
+          <%!--     <span class="font-bold text-sm tracking-tight">Curriclick</span> --%>
+          <%!--   </.link> --%>
+          <%!-- </div> --%>
           
     <!-- New Chat Button -->
           <div class="mb-4">
@@ -220,7 +211,7 @@ defmodule CurriclickWeb.ChatLive do
 
     socket
     |> assign(:conversation, conversation)
-    |> stream(:messages, Curriclick.Chat.message_history!(conversation.id, stream?: true))
+    |> stream(:messages, Curriclick.Chat.message_history!(conversation.id, query: [sort: [inserted_at: :asc]]))
     |> assign_message_form()
     |> then(&{:noreply, &1})
   end
@@ -248,7 +239,7 @@ defmodule CurriclickWeb.ChatLive do
         if socket.assigns.conversation do
           socket
           |> assign_message_form()
-          |> stream_insert(:messages, message, at: 0)
+          |> stream_insert(:messages, message, at: -1)
           |> then(&{:noreply, &1})
         else
           {:noreply,
@@ -269,7 +260,7 @@ defmodule CurriclickWeb.ChatLive do
         socket
       ) do
     if socket.assigns.conversation && socket.assigns.conversation.id == conversation_id do
-      {:noreply, stream_insert(socket, :messages, message, at: 0)}
+      {:noreply, stream_insert(socket, :messages, message, at: -1)}
     else
       {:noreply, socket}
     end

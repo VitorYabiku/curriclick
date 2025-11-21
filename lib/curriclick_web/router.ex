@@ -32,9 +32,12 @@ defmodule CurriclickWeb.Router do
   scope "/", CurriclickWeb do
     pipe_through :browser
 
-    ash_authentication_live_session :authenticated_routes, layout: {CurriclickWeb.Layouts, :app} do
+    ash_authentication_live_session :chat_routes, layout: {CurriclickWeb.Layouts, :chat} do
       live "/chat", ChatLive
       live "/chat/:conversation_id", ChatLive
+    end
+
+    ash_authentication_live_session :authenticated_routes, layout: {CurriclickWeb.Layouts, :app} do
       # in each liveview, add one of the following at the top of the module:
       #
       # If an authenticated user must be present:

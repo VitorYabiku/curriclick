@@ -105,6 +105,108 @@
 
 /* This file is for your main application CSS */
 
+/* Markdown Content Styling - mimics T3/ChatGPT style */
+.markdown-content {
+  @apply text-base leading-7 text-base-content break-words;
+}
+
+.markdown-content > *:first-child {
+  @apply mt-0;
+}
+
+.markdown-content > *:last-child {
+  @apply mb-0;
+}
+
+.markdown-content p {
+  @apply mb-4 leading-7;
+}
+
+/* T3/ChatGPT Style Headers */
+.markdown-content h1 {
+  @apply text-3xl font-bold mt-8 mb-4 text-base-content tracking-tight;
+}
+
+.markdown-content h2 {
+  @apply text-2xl font-semibold mt-8 mb-4 text-base-content tracking-tight;
+}
+
+.markdown-content h3 {
+  @apply text-xl font-semibold mt-6 mb-3 text-base-content tracking-tight;
+}
+
+.markdown-content h4 {
+  @apply text-lg font-semibold mt-4 mb-2 text-base-content;
+}
+
+/* Lists */
+.markdown-content ul {
+  @apply list-disc list-outside ml-5 mb-4 space-y-1 marker:text-accent;
+}
+
+.markdown-content ol {
+  @apply list-decimal list-outside ml-5 mb-4 space-y-1 marker:text-accent;
+}
+
+.markdown-content li {
+  @apply pl-1;
+}
+
+.markdown-content li > ul,
+.markdown-content li > ol {
+  @apply mt-1 mb-0;
+}
+
+.markdown-content li p {
+  @apply mb-1;
+}
+
+/* Code Blocks */
+.markdown-content pre {
+  @apply bg-[#f9f9f9] dark:bg-[#1e1e1e] p-4 rounded-lg mb-6 overflow-x-auto text-sm border border-base-300/50 font-mono shadow-sm;
+}
+
+.markdown-content code {
+  @apply bg-base-200/60 px-1.5 py-0.5 rounded-[4px] text-[0.875em] font-mono border border-base-200/50 text-base-content/90;
+}
+
+.markdown-content pre code {
+  @apply bg-transparent p-0 border-none text-inherit shadow-none;
+}
+
+.markdown-content a {
+  @apply text-primary font-medium hover:underline underline-offset-4 decoration-primary/30 hover:decoration-primary transition-all;
+}
+
+.markdown-content blockquote {
+  @apply border-l-[4px] border-primary/30 pl-4 py-1 my-6 italic text-base-content/80 bg-base-200/20 rounded-r;
+}
+
+.markdown-content hr {
+  @apply my-8 border-base-200;
+}
+
+.markdown-content table {
+  @apply w-full mb-6 border-collapse text-sm rounded-lg overflow-hidden border border-base-200;
+}
+
+.markdown-content th {
+  @apply bg-base-200/50 p-3 text-left font-semibold border-b border-base-200 text-base-content;
+}
+
+.markdown-content td {
+  @apply p-3 border-b border-base-200/40 align-top text-base-content/80;
+}
+
+.markdown-content tr:last-child td {
+  @apply border-b-0;
+}
+
+/* Strong tags should be clearly bold */
+.markdown-content strong {
+  @apply font-semibold text-base-content;
+}
+
 /* Previous styling backup */
 
 /* /* This file is for your main application CSS */ */

@@ -24,6 +24,7 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
         LangChain.Message.new_system!("""
         You are a helpful chat bot.
         Your job is to use the tools at your disposal to assist the user.
+        Format your response using Markdown. Use headers (##, ###, ####) to structure your response.
         """)
 
       message_chain = message_chain(messages)
