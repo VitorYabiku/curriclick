@@ -691,8 +691,6 @@ export async function findMatchingJobs<Fields extends FindMatchingJobsFields>(
   customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
 ): Promise<FindMatchingJobsResult<Fields>> {
-  let processedConfig = config;
-
   const payload = {
     action: "find_matching_jobs",
     fields: config.fields,
@@ -729,6 +727,7 @@ export async function findMatchingJobs<Fields extends FindMatchingJobsFields>(
     };
   }
 
+  const result = await response.json();
   return result as FindMatchingJobsResult<Fields>;
 }
 
@@ -754,8 +753,6 @@ export async function validateFindMatchingJobs(
   customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
 ): Promise<ValidateFindMatchingJobsResult> {
-  let processedConfig = config;
-
   const payload = {
     action: "find_matching_jobs"
   };
@@ -788,6 +785,7 @@ export async function validateFindMatchingJobs(
     };
   }
 
+  const result = await response.json();
   return result as ValidateFindMatchingJobsResult;
 }
 
@@ -852,8 +850,6 @@ export type ListCompaniesResult<Fields extends ListCompaniesFields, Page extends
 export async function listCompanies<Fields extends ListCompaniesFields, Config extends ListCompaniesConfig>(
   config: Config & { fields: Fields }
 ): Promise<ListCompaniesResult<Fields, Config["page"]>> {
-  let processedConfig = config;
-
   const payload = {
     action: "list_companies",
     fields: config.fields,
@@ -890,6 +886,7 @@ export async function listCompanies<Fields extends ListCompaniesFields, Config e
     };
   }
 
+  const result = await response.json();
   return result as ListCompaniesResult<Fields, Config["page"]>;
 }
 
@@ -915,8 +912,6 @@ export async function validateListCompanies(
   customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
 ): Promise<ValidateListCompaniesResult> {
-  let processedConfig = config;
-
   const payload = {
     action: "list_companies"
   };
@@ -949,6 +944,7 @@ export async function validateListCompanies(
     };
   }
 
+  const result = await response.json();
   return result as ValidateListCompaniesResult;
 }
 

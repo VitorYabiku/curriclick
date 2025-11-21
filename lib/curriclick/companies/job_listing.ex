@@ -5,43 +5,6 @@ defmodule Curriclick.Companies.JobListing do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
     extensions: [AshTypescript.Resource, AshAi]
-  
-  # Helper function to calculate cosine similarity between two vectors
-  # Returns a value between -1 and 1
-  defp calculate_similarity(vec1, vec2) do
-    # Convert both vectors to lists if they aren't already
-    list1 = case vec1 do
-      %Ash.Vector{} = vec -> Ash.Vector.to_list(vec)
-      data when is_list(data) -> data
-      _ -> []
-    end
-    
-    list2 = case vec2 do
-      %Ash.Vector{} = vec -> Ash.Vector.to_list(vec)
-      data when is_list(data) -> data
-      _ -> []
-    end
-    
-    # Calculate cosine similarity
-    if length(list1) > 0 and length(list2) > 0 and length(list1) == length(list2) do
-      # Calculate dot product
-      dot_product = Enum.zip(list1, list2)
-      |> Enum.reduce(0.0, fn {a, b}, acc -> acc + a * b end)
-      
-      # Calculate magnitudes
-      magnitude1 = :math.sqrt(Enum.reduce(list1, 0.0, fn x, acc -> acc + x * x end))
-      magnitude2 = :math.sqrt(Enum.reduce(list2, 0.0, fn x, acc -> acc + x * x end))
-      
-      # Return cosine similarity
-      if magnitude1 > 0 and magnitude2 > 0 do
-        dot_product / (magnitude1 * magnitude2)
-      else
-        0.0
-      end
-    else
-      0.0
-    end
-  end
 
   postgres do
     table "job_listings"
@@ -78,20 +41,90 @@ defmodule Curriclick.Companies.JobListing do
       end
     end
 
-  read :find_matching_jobs do
-    description "Find job listings that match the user's ideal job description using AI embeddings"
-    
-    argument :ideal_job_description, :string do
-      description "The user's ideal job description to match against"
-      allow_nil? false
-      constraints max_length: 2000
-    end
-    
-    argument :limit, :integer do
-      description "Maximum number of matching jobs to return"
-      allow_nil? true
-      default 25
-      constraints min: 1, max: 100
+    read :find_matching_jobs do
+      description "Find job listings that match the user's ideal job description using AI embeddings"
+      
+      argument :ideal_job_description, :string do
+        description "The user's ideal job description to match against"
+        allow_nil? false
+        constraints max_length: 2000
+      end
+      
+      argument :limit, :integer do
+        description "Maximum number of matching jobs to return"
+        allow_nil? true
+        default 25
+        constraints min: 1, max: 100
+      end
+
+      prepare before_action(fn query, _context ->
+        require Ash.Query
+        
+        # Generate embedding for the search query
+        case Curriclick.Ai.OpenAiEmbeddingModel.generate([query.arguments.ideal_job_description], []) do
+          {:ok, [search_vector]} ->
+            query
+            # Filter by cosine distance threshold (< 0.8 means > 20% similarity)
+            |> Ash.Query.filter(fragment("description_vector <=> ?::vector", ^search_vector) < 0.8)
+            |> Ash.Query.limit(query.arguments.limit || 25)
+            |> Ash.Query.load(:company)
+            # Store search vector for match score calculation
+            |> Ash.Query.set_context(%{search_vector: search_vector})
+            |> Ash.Query.after_action(fn _query, job_listings ->
+              search_vector = _query.context[:search_vector]
+              
+              if search_vector do
+                # Calculate match scores for all jobs in a single query
+                job_ids_str = job_listings |> Enum.map(&"'#{&1.id}'") |> Enum.join(",")
+                
+                batch_query = """
+                  SELECT 
+                    id::text as job_id,
+                    (1 - (description_vector <=> $1::vector)) * 100 as match_score
+                  FROM job_listings 
+                  WHERE id IN (#{job_ids_str}) AND description_vector IS NOT NULL
+                """
+                
+                case Curriclick.Repo.query(batch_query, [search_vector]) do
+                  {:ok, %{rows: rows}} ->
+                    # Create a map of job_id -> match_score
+                    scores_map = 
+                      rows
+                      |> Enum.into(%{}, fn [job_id, score] -> 
+                        {job_id, Float.round(score, 1)}
+                      end)
+                    
+                    # Add match scores to job listings
+                    job_listings_with_scores = 
+                      job_listings
+                      |> Enum.map(fn job_listing ->
+                        score = Map.get(scores_map, job_listing.id, 0.0)
+                        Map.put(job_listing, :match_score, score)
+                      end)
+                      # Sort by match score (highest first)
+                      |> Enum.sort_by(fn job_listing -> job_listing.match_score end, :desc)
+                      
+                    {:ok, job_listings_with_scores}
+                    
+                  {:error, error} ->
+                    IO.puts("Batch query error: #{inspect(error)}")
+                    # Fallback: add 0 scores and return unsorted
+                    job_listings_with_scores = 
+                      job_listings
+                      |> Enum.map(fn job_listing ->
+                        Map.put(job_listing, :match_score, 0.0)
+                      end)
+                    {:ok, job_listings_with_scores}
+                end
+              else
+                {:ok, job_listings}
+              end
+            end)
+
+          {:error, error} ->
+            {:error, error}
+        end
+      end)
     end
 
     prepare before_action(fn query, _context ->
