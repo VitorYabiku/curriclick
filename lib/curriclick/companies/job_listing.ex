@@ -127,6 +127,43 @@ defmodule Curriclick.Companies.JobListing do
       end)
     end
 
+    prepare before_action(fn query, _context ->
+      # Generate embedding for the search query
+      case Curriclick.Ai.OpenAiEmbeddingModel.generate([query.arguments.ideal_job_description], []) do
+        {:ok, [search_vector]} ->
+          require Ash.Query
+          import Ash.Expr
+          
+          # Store the search vector in the query context so we can use it in after_action
+          query
+          |> Ash.Query.filter(expr(vector_cosine_distance(description_vector, ^search_vector) < 0.5))
+          |> Ash.Query.limit(query.arguments.limit || 25)
+          |> Ash.Query.load(:company)
+          |> Ash.Query.ensure_selected([:description_vector])
+          |> Ash.Query.set_context(%{search_vector: search_vector})
+
+        {:error, error} ->
+          Ash.Query.add_error(query, error)
+      end
+    end)
+    
+    prepare after_action(fn query, results, _context ->
+      # Get the search vector from query context
+      search_vector = query.context[:search_vector]
+      
+      if search_vector do
+        # Manually calculate and add match_score to each result
+        results_with_scores = Enum.map(results, fn job ->
+          score = calculate_similarity(job.description_vector, search_vector)
+          Map.put(job, :match_score, score)
+        end)
+        {:ok, Enum.sort_by(results_with_scores, & -&1.match_score)}
+      else
+        {:ok, results}
+      end
+    end)
+  end
+
     create :create do
       accept [:job_role_name, :description, :company_id]
     end
@@ -169,6 +206,31 @@ defmodule Curriclick.Companies.JobListing do
 
     create_timestamp :inserted_at
     update_timestamp :updated_at
+  end
+
+  calculations do
+    calculate :match_score, :float do
+      description """
+      Similarity score between -1 and 1 representing match quality:
+      - 1.0: Perfect match (identical embeddings)
+      - 0.0: No correlation (orthogonal vectors)
+      - -1.0: Opposite match (completely dissimilar)
+      
+      This is the cosine similarity of the job description embedding
+      with the search query embedding.
+      """
+      
+      argument :search_vector, {:array, :float} do
+        allow_nil? false
+      end
+      
+      calculation expr(
+        # Convert cosine distance to cosine similarity
+        # Cosine similarity = 1 - cosine distance
+        # This gives us values from -1 (opposite) to 1 (identical)
+        1 - vector_cosine_distance(description_vector, ^arg(:search_vector))
+      )
+    end
   end
 
   relationships do

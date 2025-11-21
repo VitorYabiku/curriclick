@@ -3,6 +3,8 @@
 
 
 
+
+
 export type UUID = string;
 
 // JobListing Schema
@@ -278,6 +280,8 @@ type InferPaginationType<Page> =
 
 // Returns either non-paginated (array) or paginated result based on page params
 // For single pagination type support (offset-only or keyset-only)
+// @ts-ignore
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 type ConditionalPaginatedResult<
   Page,
   RecordType,
@@ -403,6 +407,8 @@ export async function listJobListings<Fields extends ListJobListingsFields>(
   customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
 ): Promise<ListJobListingsResult<Fields>> {
+  let processedConfig = config;
+
   const payload = {
     action: "list_job_listings",
     fields: config.fields,
@@ -413,11 +419,13 @@ export async function listJobListings<Fields extends ListJobListingsFields>(
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    ...processedConfig.headers,
     ...config.headers,
   };
 
-  const fetchFunction = config.customFetch || fetch;
+  const fetchFunction = config.customFetch || processedConfig.customFetch || fetch;
   const fetchOptions: RequestInit = {
+    ...processedConfig.fetchOptions,
     ...config.fetchOptions,
     method: "POST",
     headers,
@@ -426,6 +434,10 @@ export async function listJobListings<Fields extends ListJobListingsFields>(
 
   const response = await fetchFunction("/rpc/run", fetchOptions);
 
+  const result = response.ok ? await response.json() : null;
+
+  
+
   if (!response.ok) {
     return {
       success: false,
@@ -433,7 +445,6 @@ export async function listJobListings<Fields extends ListJobListingsFields>(
     };
   }
 
-  const result = await response.json();
   return result as ListJobListingsResult<Fields>;
 }
 
@@ -459,17 +470,21 @@ export async function validateListJobListings(
   customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
 ): Promise<ValidateListJobListingsResult> {
+  let processedConfig = config;
+
   const payload = {
     action: "list_job_listings"
   };
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    ...processedConfig.headers,
     ...config.headers,
   };
 
-  const fetchFunction = config.customFetch || fetch;
+  const fetchFunction = config.customFetch || processedConfig.customFetch || fetch;
   const fetchOptions: RequestInit = {
+    ...processedConfig.fetchOptions,
     ...config.fetchOptions,
     method: "POST",
     headers,
@@ -478,14 +493,17 @@ export async function validateListJobListings(
 
   const response = await fetchFunction("/rpc/validate", fetchOptions);
 
+  const result = response.ok ? await response.json() : null;
+
+  
+
   if (!response.ok) {
     return {
       success: false,
-      errors: [{ type: "network", message: response.statusText }],
+      errors: [{ type: "network", message: response.statusText, details: {} }],
     };
   }
 
-  const result = await response.json();
   return result as ValidateListJobListingsResult;
 }
 
@@ -531,6 +549,8 @@ export async function getJobListing<Fields extends GetJobListingFields>(
   customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
 ): Promise<GetJobListingResult<Fields>> {
+  let processedConfig = config;
+
   const payload = {
     action: "get_job_listing",
     fields: config.fields,
@@ -541,11 +561,13 @@ export async function getJobListing<Fields extends GetJobListingFields>(
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    ...processedConfig.headers,
     ...config.headers,
   };
 
-  const fetchFunction = config.customFetch || fetch;
+  const fetchFunction = config.customFetch || processedConfig.customFetch || fetch;
   const fetchOptions: RequestInit = {
+    ...processedConfig.fetchOptions,
     ...config.fetchOptions,
     method: "POST",
     headers,
@@ -554,6 +576,10 @@ export async function getJobListing<Fields extends GetJobListingFields>(
 
   const response = await fetchFunction("/rpc/run", fetchOptions);
 
+  const result = response.ok ? await response.json() : null;
+
+  
+
   if (!response.ok) {
     return {
       success: false,
@@ -561,7 +587,6 @@ export async function getJobListing<Fields extends GetJobListingFields>(
     };
   }
 
-  const result = await response.json();
   return result as GetJobListingResult<Fields>;
 }
 
@@ -587,17 +612,21 @@ export async function validateGetJobListing(
   customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
 ): Promise<ValidateGetJobListingResult> {
+  let processedConfig = config;
+
   const payload = {
     action: "get_job_listing"
   };
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    ...processedConfig.headers,
     ...config.headers,
   };
 
-  const fetchFunction = config.customFetch || fetch;
+  const fetchFunction = config.customFetch || processedConfig.customFetch || fetch;
   const fetchOptions: RequestInit = {
+    ...processedConfig.fetchOptions,
     ...config.fetchOptions,
     method: "POST",
     headers,
@@ -606,14 +635,17 @@ export async function validateGetJobListing(
 
   const response = await fetchFunction("/rpc/validate", fetchOptions);
 
+  const result = response.ok ? await response.json() : null;
+
+  
+
   if (!response.ok) {
     return {
       success: false,
-      errors: [{ type: "network", message: response.statusText }],
+      errors: [{ type: "network", message: response.statusText, details: {} }],
     };
   }
 
-  const result = await response.json();
   return result as ValidateGetJobListingResult;
 }
 
@@ -669,11 +701,13 @@ export async function findMatchingJobs<Fields extends FindMatchingJobsFields>(
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    ...processedConfig.headers,
     ...config.headers,
   };
 
-  const fetchFunction = config.customFetch || fetch;
+  const fetchFunction = config.customFetch || processedConfig.customFetch || fetch;
   const fetchOptions: RequestInit = {
+    ...processedConfig.fetchOptions,
     ...config.fetchOptions,
     method: "POST",
     headers,
@@ -681,6 +715,10 @@ export async function findMatchingJobs<Fields extends FindMatchingJobsFields>(
   };
 
   const response = await fetchFunction("/rpc/run", fetchOptions);
+
+  const result = response.ok ? await response.json() : null;
+
+  
 
   if (!response.ok) {
     return {
@@ -721,11 +759,13 @@ export async function validateFindMatchingJobs(
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    ...processedConfig.headers,
     ...config.headers,
   };
 
-  const fetchFunction = config.customFetch || fetch;
+  const fetchFunction = config.customFetch || processedConfig.customFetch || fetch;
   const fetchOptions: RequestInit = {
+    ...processedConfig.fetchOptions,
     ...config.fetchOptions,
     method: "POST",
     headers,
@@ -734,10 +774,14 @@ export async function validateFindMatchingJobs(
 
   const response = await fetchFunction("/rpc/validate", fetchOptions);
 
+  const result = response.ok ? await response.json() : null;
+
+  
+
   if (!response.ok) {
     return {
       success: false,
-      errors: [{ type: "network", message: response.statusText }],
+      errors: [{ type: "network", message: response.statusText, details: {} }],
     };
   }
 
@@ -816,11 +860,13 @@ export async function listCompanies<Fields extends ListCompaniesFields, Config e
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    ...processedConfig.headers,
     ...config.headers,
   };
 
-  const fetchFunction = config.customFetch || fetch;
+  const fetchFunction = config.customFetch || processedConfig.customFetch || fetch;
   const fetchOptions: RequestInit = {
+    ...processedConfig.fetchOptions,
     ...config.fetchOptions,
     method: "POST",
     headers,
@@ -828,6 +874,10 @@ export async function listCompanies<Fields extends ListCompaniesFields, Config e
   };
 
   const response = await fetchFunction("/rpc/run", fetchOptions);
+
+  const result = response.ok ? await response.json() : null;
+
+  
 
   if (!response.ok) {
     return {
@@ -868,11 +918,13 @@ export async function validateListCompanies(
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    ...processedConfig.headers,
     ...config.headers,
   };
 
-  const fetchFunction = config.customFetch || fetch;
+  const fetchFunction = config.customFetch || processedConfig.customFetch || fetch;
   const fetchOptions: RequestInit = {
+    ...processedConfig.fetchOptions,
     ...config.fetchOptions,
     method: "POST",
     headers,
@@ -881,10 +933,14 @@ export async function validateListCompanies(
 
   const response = await fetchFunction("/rpc/validate", fetchOptions);
 
+  const result = response.ok ? await response.json() : null;
+
+  
+
   if (!response.ok) {
     return {
       success: false,
-      errors: [{ type: "network", message: response.statusText }],
+      errors: [{ type: "network", message: response.statusText, details: {} }],
     };
   }
 
