@@ -41,9 +41,16 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
       # add the names of tools you want available in your conversation here.
       # i.e tools: [:lookup_weather]
       |> AshAi.setup_ash_ai(otp_app: :curriclick, tools: [], actor: context.actor)
+      # Example of how to add tools defined in Curriclick.Chat
+      # |> AshAi.setup_ash_ai(
+      #   otp_app: :curriclick,
+      #   tools: [:my_conversations, :message_history_for_conversation, :meaning_of_the_universe],
+      #   actor: context.actor
+      # )
       |> LLMChain.add_callback(%{
         on_llm_new_delta: fn _chain, deltas ->
           Logger.debug("Received deltas: #{inspect(deltas)}")
+
           deltas
           |> List.wrap()
           |> Enum.each(fn delta ->
