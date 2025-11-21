@@ -103,10 +103,10 @@ defmodule CurriclickWeb.JobsLive do
                 <div class="mb-6 inline-block p-4 bg-primary/10 rounded-full text-primary">
                   <.icon name="hero-sparkles" class="w-12 h-12" />
                 </div>
-                <h1 class="text-3xl font-bold">Find your dream job</h1>
+                <h1 class="text-3xl font-bold">Encontre seu emprego dos sonhos</h1>
                 <p class="py-6 text-base-content/70">
-                  Describe your ideal role, tech stack, and preferences.
-                  <br />Our AI will match you with the best opportunities.
+                  Descreva sua função ideal, stack de tecnologia e preferências.
+                  <br />Nossa IA irá combinar você com as melhores oportunidades.
                 </p>
               </div>
             </div>
@@ -116,7 +116,7 @@ defmodule CurriclickWeb.JobsLive do
           <div class="chat chat-end">
             <div class="chat-image avatar placeholder">
               <div class="bg-neutral text-neutral-content rounded-full w-10">
-                <span class="text-xs">YOU</span>
+                <span class="text-xs">VOCÊ</span>
               </div>
             </div>
             <div class="chat-bubble chat-bubble-primary text-primary-content">
@@ -132,17 +132,17 @@ defmodule CurriclickWeb.JobsLive do
               </div>
             </div>
             <div class="chat-header opacity-50 mb-1">
-              Curriclick AI
+              Curriclick IA
             </div>
 
             <%= if @results == [] do %>
               <div class="chat-bubble bg-base-200 text-base-content">
-                I couldn't find any jobs matching that description. Try searching for different keywords or technologies.
+                Não encontrei nenhuma vaga correspondente a essa descrição. Tente buscar por palavras-chave ou tecnologias diferentes.
               </div>
             <% else %>
               <div class="flex flex-col gap-4 w-full max-w-3xl">
                 <div class="chat-bubble bg-base-200 text-base-content">
-                  I found {length(@results)} jobs that match your criteria:
+                  Encontrei {length(@results)} vagas que correspondem aos seus critérios:
                 </div>
 
                 <div class="grid grid-cols-1 gap-4 mt-2">
@@ -168,7 +168,7 @@ defmodule CurriclickWeb.JobsLive do
 
                         <div class="card-actions justify-end mt-4 items-center border-t border-base-200 pt-3">
                           <button class="btn btn-sm btn-ghost text-primary hover:bg-primary/10">
-                            View Details
+                            Ver Detalhes
                           </button>
                         </div>
                       </div>
@@ -182,17 +182,17 @@ defmodule CurriclickWeb.JobsLive do
                     phx-click="prev_page"
                     disabled={@current_page == 1}
                   >
-                    <.icon name="hero-chevron-left" class="w-4 h-4" /> Previous
+                    <.icon name="hero-chevron-left" class="w-4 h-4" /> Anterior
                   </button>
                   <span class="text-xs opacity-50">
-                    Page {@current_page} of {total_pages(@results, @page_size)}
+                    Página {@current_page} de {total_pages(@results, @page_size)}
                   </span>
                   <button
                     class="btn btn-xs btn-ghost"
                     phx-click="next_page"
                     disabled={@current_page >= total_pages(@results, @page_size)}
                   >
-                    Next <.icon name="hero-chevron-right" class="w-4 h-4" />
+                    Próximo <.icon name="hero-chevron-right" class="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -215,25 +215,25 @@ defmodule CurriclickWeb.JobsLive do
                 class="dropdown-content z-[10] card card-compact w-64 p-2 shadow-xl bg-base-100 border border-base-200 mb-2 ml-2"
               >
                 <div class="card-body">
-                  <h3 class="font-bold text-sm text-base-content/70 mb-1">Preferences</h3>
+                  <h3 class="font-bold text-sm text-base-content/70 mb-1">Preferências</h3>
                   <div class="form-control">
                     <label class="label cursor-pointer justify-start gap-3 py-1">
                       <input type="checkbox" class="checkbox checkbox-xs checkbox-primary" checked />
-                      <span class="label-text text-xs">Remote</span>
+                      <span class="label-text text-xs">Remoto</span>
                     </label>
                   </div>
                   <div class="form-control">
                     <label class="label cursor-pointer justify-start gap-3 py-1">
                       <input type="checkbox" class="checkbox checkbox-xs checkbox-primary" />
-                      <span class="label-text text-xs">Hybrid</span>
+                      <span class="label-text text-xs">Híbrido</span>
                     </label>
                   </div>
                   <div class="divider my-1"></div>
                   <select class="select select-bordered select-xs w-full">
-                    <option disabled selected>Seniority</option>
-                    <option>Junior</option>
-                    <option>Mid-level</option>
-                    <option>Senior</option>
+                    <option disabled selected>Senioridade</option>
+                    <option>Júnior</option>
+                    <option>Pleno</option>
+                    <option>Sênior</option>
                   </select>
                 </div>
               </div>
@@ -243,7 +243,7 @@ defmodule CurriclickWeb.JobsLive do
               type="text"
               name="ideal_job_description"
               class="input input-ghost join-item w-full focus:outline-none focus:bg-transparent h-auto py-3 text-base"
-              placeholder="Type your ideal job description..."
+              placeholder="Digite a descrição do seu trabalho ideal..."
               autocomplete="off"
               value={@ideal_job_description}
             />
@@ -254,7 +254,7 @@ defmodule CurriclickWeb.JobsLive do
           </div>
           <div class="text-center mt-2">
             <span class="text-[10px] opacity-50">
-              AI-powered job search can make mistakes. Check important info.
+              A busca de empregos por IA pode cometer erros. Verifique informações importantes.
             </span>
           </div>
         </form>

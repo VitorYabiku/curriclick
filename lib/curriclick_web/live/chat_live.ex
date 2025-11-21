@@ -22,7 +22,7 @@ defmodule CurriclickWeb.ChatLive do
               <.icon name="hero-bars-3" class="w-5 h-5" />
             </label>
           </div>
-          <div class="flex-1 px-2 mx-2 text-sm font-semibold">Curriclick AI</div>
+          <div class="flex-1 px-2 mx-2 text-sm font-semibold">Curriclick IA</div>
         </div>
         
     <!-- Messages Area -->
@@ -53,7 +53,7 @@ defmodule CurriclickWeb.ChatLive do
                             <details class="collapse collapse-arrow bg-base-200 border border-base-300 rounded-lg">
                               <summary class="collapse-title text-sm font-medium min-h-0 py-2 px-4">
                                 <div class="flex items-center gap-2">
-                                  <.icon name="hero-wrench-screwdriver" class="w-4 h-4" /> Using tool:
+                                  <.icon name="hero-wrench-screwdriver" class="w-4 h-4" /> Usando ferramenta:
                                   <span class="font-mono text-xs bg-base-300 px-1 rounded">
                                     {tool_call["name"]}
                                   </span>
@@ -61,7 +61,7 @@ defmodule CurriclickWeb.ChatLive do
                               </summary>
                               <div class="collapse-content text-xs">
                                 <div class="mt-2">
-                                  <div class="font-bold opacity-70 mb-1">Arguments:</div>
+                                  <div class="font-bold opacity-70 mb-1">Argumentos:</div>
                                   <pre class="whitespace-pre-wrap overflow-x-auto bg-base-300 p-2 rounded border border-base-content/10"><%= if is_binary(tool_call["arguments"]), do: tool_call["arguments"], else: inspect(tool_call["arguments"]) %></pre>
                                 </div>
 
@@ -73,13 +73,13 @@ defmodule CurriclickWeb.ChatLive do
                                       end) %>
                                 <%= if result do %>
                                   <div class="mt-2">
-                                    <div class="font-bold opacity-70 mb-1">Result:</div>
+                                    <div class="font-bold opacity-70 mb-1">Resultado:</div>
                                     <pre class="whitespace-pre-wrap overflow-x-auto bg-base-300 p-2 rounded border border-base-content/10"><%= result["content"] %></pre>
                                   </div>
                                 <% else %>
                                   <div class="mt-2 flex items-center gap-2 text-info">
                                     <span class="loading loading-spinner loading-xs"></span>
-                                    <span>Running...</span>
+                                    <span>Executando...</span>
                                   </div>
                                 <% end %>
                               </div>
@@ -117,9 +117,9 @@ defmodule CurriclickWeb.ChatLive do
                   <div class="mb-6 inline-block p-4 bg-primary/10 rounded-full text-primary">
                     <.icon name="hero-chat-bubble-left-right" class="w-10 h-10" />
                   </div>
-                  <h1 class="text-2xl font-bold">How can I help you today?</h1>
+                  <h1 class="text-2xl font-bold">Como posso ajudar você hoje?</h1>
                   <p class="py-4 text-sm text-base-content/70">
-                    Ask me anything about your curriculum, job search, or career advice.
+                    Pergunte-me qualquer coisa sobre seu currículo, busca de emprego ou conselhos de carreira.
                   </p>
                 </div>
               </div>
@@ -142,7 +142,7 @@ defmodule CurriclickWeb.ChatLive do
                 value={form[:text].value}
                 type="text"
                 phx-mounted={JS.focus()}
-                placeholder="Message Curriclick AI..."
+                placeholder="Mensagem para Curriclick IA..."
                 class="input input-ghost join-item w-full focus:outline-none focus:bg-transparent h-auto py-3 text-base border-none bg-transparent pl-4"
                 autocomplete="off"
               />
@@ -157,7 +157,7 @@ defmodule CurriclickWeb.ChatLive do
             </div>
             <div class="text-center mt-2">
               <span class="text-[10px] text-base-content/40">
-                AI can make mistakes. Check important info.
+                A IA pode cometer erros. Verifique informações importantes.
               </span>
             </div>
           </.form>
@@ -174,13 +174,13 @@ defmodule CurriclickWeb.ChatLive do
               navigate={~p"/chat"}
               class="btn btn-primary btn-lg btn-block justify-start gap-2 normal-case font-medium shadow-sm"
             >
-              <.icon name="hero-plus" class="w-4 h-4" /> New chat
+              <.icon name="hero-plus" class="w-4 h-4" /> Novo chat
             </.link>
           </div>
 
           <div class="flex-1 overflow-y-auto -mx-2 px-2">
             <div class="text-[10px] font-bold text-base-content/40 uppercase tracking-wider mb-2 px-2">
-              Recent
+              Recente
             </div>
             <ul class="space-y-0.5" phx-update="stream" id="conversations-list">
               <%= for {id, conversation} <- @streams.conversations do %>
@@ -230,7 +230,7 @@ defmodule CurriclickWeb.ChatLive do
   def build_conversation_title_string(title) do
     cond do
       title == nil ->
-        "Untitled conversation"
+        "Conversa sem título"
 
       is_binary(title) && String.length(title) > @max_conversation_title_length ->
         String.slice(title, 0, @max_conversation_title_length) <> "..."
