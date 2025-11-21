@@ -27,28 +27,41 @@ defmodule CurriclickWeb.ChatLive do
         <div
           class="flex-1 overflow-y-auto p-4 flex flex-col items-center scroll-smooth"
           id="message-container"
-          phx-update="stream"
           phx-hook="ChatScroll"
         >
-          <%= for {id, message} <- @streams.messages do %>
-            <div
-              id={id}
-              class={[
-                "w-full max-w-3xl mb-8",
-                message.source == :user && "flex justify-end"
-              ]}
-            >
-              <%= if message.source == :user do %>
-                <div class="chat-bubble chat-bubble-primary text-primary-content shadow-sm text-[15px] py-2.5 px-4 max-w-[85%]">
-                  {to_markdown(message.text)}
-                </div>
-              <% else %>
-                <div class="flex gap-4 w-full pr-4">
-                  <div class="flex-1 min-w-0 markdown-content py-1">
+          <div id="message-stream" phx-update="stream" class="w-full flex flex-col items-center">
+            <%= for {id, message} <- @streams.messages do %>
+              <div
+                id={id}
+                class={[
+                  "w-full max-w-3xl mb-8",
+                  message.source == :user && "flex justify-end"
+                ]}
+              >
+                <%= if message.source == :user do %>
+                  <div class="chat-bubble chat-bubble-primary text-primary-content shadow-sm text-[15px] py-2.5 px-4 max-w-[85%]">
                     {to_markdown(message.text)}
                   </div>
+                <% else %>
+                  <div class="flex gap-4 w-full pr-4">
+                    <div class="flex-1 min-w-0 markdown-content py-1">
+                      {to_markdown(message.text)}
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+
+          <%= if @loading_response do %>
+            <div class="w-full max-w-3xl mb-8">
+              <div class="flex gap-4 w-full pr-4">
+                <div class="flex-1 min-w-0 py-1">
+                  <div class="flex items-center gap-2 text-base-content/50">
+                    <span class="loading loading-dots loading-md"></span>
+                  </div>
                 </div>
-              <% end %>
+              </div>
             </div>
           <% end %>
 
@@ -189,6 +202,7 @@ defmodule CurriclickWeb.ChatLive do
         Curriclick.Chat.my_conversations!(actor: socket.assigns.current_user)
       )
       |> assign(:messages, [])
+      |> assign(:loading_response, false)
 
     {:ok, socket}
   end
@@ -240,11 +254,13 @@ defmodule CurriclickWeb.ChatLive do
           socket
           |> assign_message_form()
           |> stream_insert(:messages, message, at: -1)
+          |> assign(:loading_response, true)
           |> then(&{:noreply, &1})
         else
           {:noreply,
            socket
-           |> push_navigate(to: ~p"/chat/#{message.conversation_id}")}
+           |> assign(:loading_response, true)
+           |> push_patch(to: ~p"/chat/#{message.conversation_id}")}
         end
 
       {:error, form} ->
@@ -260,6 +276,13 @@ defmodule CurriclickWeb.ChatLive do
         socket
       ) do
     if socket.assigns.conversation && socket.assigns.conversation.id == conversation_id do
+      socket =
+        if message.source != :user do
+          assign(socket, :loading_response, false)
+        else
+          socket
+        end
+
       {:noreply, stream_insert(socket, :messages, message, at: -1)}
     else
       {:noreply, socket}
