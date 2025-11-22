@@ -79,7 +79,7 @@ typescript do
     repo Curriclick.Repo
   end
 
-actions do
+  actions do
     defaults [:read]
 
     read :get_by_subject do
@@ -344,6 +344,8 @@ actions do
     has_many :valid_api_keys, Curriclick.Accounts.ApiKey do
       filter expr(valid)
     end
+
+    has_many :applications, Curriclick.Companies.JobApplication
   end
 
   identities do

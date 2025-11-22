@@ -1,0 +1,160 @@
+{
+  "attributes": [
+    {
+      "allow_nil?": false,
+      "default": "fragment(\"gen_random_uuid()\")",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": true,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": false,
+        "match_type": null,
+        "match_with": null,
+        "multitenancy": {
+          "attribute": null,
+          "global": null,
+          "strategy": null
+        },
+        "name": "job_applications_user_id_fkey",
+        "on_delete": null,
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "users"
+      },
+      "scale": null,
+      "size": null,
+      "source": "user_id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": false,
+        "match_type": null,
+        "match_with": null,
+        "multitenancy": {
+          "attribute": null,
+          "global": null,
+          "strategy": null
+        },
+        "name": "job_applications_job_listing_id_fkey",
+        "on_delete": null,
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "job_listings"
+      },
+      "scale": null,
+      "size": null,
+      "source": "job_listing_id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "search_query",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "match_score",
+      "type": "float"
+    },
+    {
+      "allow_nil?": false,
+      "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "inserted_at",
+      "type": "utc_datetime_usec"
+    },
+    {
+      "allow_nil?": false,
+      "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "updated_at",
+      "type": "utc_datetime_usec"
+    }
+  ],
+  "base_filter": null,
+  "check_constraints": [],
+  "custom_indexes": [],
+  "custom_statements": [],
+  "has_create_action": true,
+  "hash": "47CCA545387568605BF64DB422C6B00EC49A8AF66D814B1E638CD3BAA0733572",
+  "identities": [
+    {
+      "all_tenants?": false,
+      "base_filter": null,
+      "index_name": "job_applications_unique_application_index",
+      "keys": [
+        {
+          "type": "atom",
+          "value": "user_id"
+        },
+        {
+          "type": "atom",
+          "value": "job_listing_id"
+        }
+      ],
+      "name": "unique_application",
+      "nils_distinct?": true,
+      "where": null
+    }
+  ],
+  "multitenancy": {
+    "attribute": null,
+    "global": null,
+    "strategy": null
+  },
+  "repo": "Elixir.Curriclick.Repo",
+  "schema": null,
+  "table": "job_applications"
+}

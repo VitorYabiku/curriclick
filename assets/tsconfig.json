@@ -25,9 +25,8 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "*": [
-        "../deps/*"
-      ]
+      "@/*": ["./assets/js/*"],
+      "*": ["../deps/*"]
     },
     "allowJs": true,
     "noEmit": true,

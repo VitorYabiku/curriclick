@@ -1,250 +1,337 @@
+/* See the Tailwind configuration guide for advanced usage
+   https://tailwindcss.com/docs/configuration */
 
-/* See the Tailwind configuration guide for advanced usage */
-/* https://tailwindcss.com/docs/configuration */
+@import "tailwindcss" source(none);
+@source "../css";
+@source "../js";
+@source "../../lib/curriclick_web";
+@source "../../deps";
 
+/* A Tailwind plugin that makes "hero-#{ICON}" classes available.
+   The heroicons installation itself is managed by your mix.exs */
+@plugin "../vendor/heroicons";
 
+/* daisyUI Tailwind Plugin. You can update this file by fetching the latest version with:
+   curl -sLO https://github.com/saadeghi/daisyui/releases/latest/download/daisyui.js
+   Make sure to look at the daisyUI changelog: https://daisyui.com/docs/changelog/ */
+@plugin "../vendor/daisyui" {
+  themes: false;
+}
 
-/* For Tailwind v4, use the following import syntax: */
-/* @import "tailwindcss" source(none); */
-/* @source "../../deps/ash_authentication_phoenix"; */
-/* @source "../css"; */
-/* @source "../js"; */
-/* @source "../../lib/curriclick_web"; */
+/* daisyUI theme plugin. You can update this file by fetching the latest version with:
+  curl -sLO https://github.com/saadeghi/daisyui/releases/latest/download/daisyui-theme.js
+  We ship with two themes, a light one inspired on Phoenix colors and a dark one inspired
+  on Elixir colors. Build your own at: https://daisyui.com/theme-generator/ */
+@plugin "../vendor/daisyui-theme" {
+  name: "dark";
+  default: false;
+  prefersdark: true;
+  color-scheme: "dark";
+  --color-base-100: oklch(30.33% 0.016 252.42);
+  --color-base-200: oklch(25.26% 0.014 253.1);
+  --color-base-300: oklch(20.15% 0.012 254.09);
+  --color-base-content: oklch(97.807% 0.029 256.847);
+  --color-primary: oklch(58% 0.233 277.117);
+  --color-primary-content: oklch(96% 0.018 272.314);
+  --color-secondary: oklch(58% 0.233 277.117);
+  --color-secondary-content: oklch(96% 0.018 272.314);
+  --color-accent: oklch(60% 0.25 292.717);
+  --color-accent-content: oklch(96% 0.016 293.756);
+  --color-neutral: oklch(37% 0.044 257.287);
+  --color-neutral-content: oklch(98% 0.003 247.858);
+  --color-info: oklch(58% 0.158 241.966);
+  --color-info-content: oklch(97% 0.013 236.62);
+  --color-success: oklch(60% 0.118 184.704);
+  --color-success-content: oklch(98% 0.014 180.72);
+  --color-warning: oklch(66% 0.179 58.318);
+  --color-warning-content: oklch(98% 0.022 95.277);
+  --color-error: oklch(58% 0.253 17.585);
+  --color-error-content: oklch(96% 0.015 12.422);
+  --radius-selector: 0.25rem;
+  --radius-field: 0.25rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.21875rem;
+  --size-field: 0.21875rem;
+  --border: 1.5px;
+  --depth: 1;
+  --noise: 0;
+}
 
+@plugin "../vendor/daisyui-theme" {
+  name: "light";
+  default: true;
+  prefersdark: false;
+  color-scheme: "light";
+  --color-base-100: oklch(98% 0 0);
+  --color-base-200: oklch(96% 0.001 286.375);
+  --color-base-300: oklch(92% 0.004 286.32);
+  --color-base-content: oklch(21% 0.006 285.885);
+  --color-primary: oklch(70% 0.213 47.604);
+  --color-primary-content: oklch(98% 0.016 73.684);
+  --color-secondary: oklch(55% 0.027 264.364);
+  --color-secondary-content: oklch(98% 0.002 247.839);
+  --color-accent: oklch(0% 0 0);
+  --color-accent-content: oklch(100% 0 0);
+  --color-neutral: oklch(44% 0.017 285.786);
+  --color-neutral-content: oklch(98% 0 0);
+  --color-info: oklch(62% 0.214 259.815);
+  --color-info-content: oklch(97% 0.014 254.604);
+  --color-success: oklch(70% 0.14 182.503);
+  --color-success-content: oklch(98% 0.014 180.72);
+  --color-warning: oklch(66% 0.179 58.318);
+  --color-warning-content: oklch(98% 0.022 95.277);
+  --color-error: oklch(58% 0.253 17.585);
+  --color-error-content: oklch(96% 0.015 12.422);
+  --radius-selector: 0.25rem;
+  --radius-field: 0.25rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.21875rem;
+  --size-field: 0.21875rem;
+  --border: 1.5px;
+  --depth: 1;
+  --noise: 0;
+}
 
-
-/* A Tailwind plugin that makes "hero-#{ICON}" classes available. */
-/* The heroicons installation itself is managed by your mix.exs */
-/* @plugin "../vendor/heroicons"; */
-
-
-
-/* daisyUI Tailwind Plugin. You can update this file by fetching the latest version with: */
-/* curl -sLO https://github.com/saadeghi/daisyui/releases/latest/download/daisyui.js */
-/* Make sure to look at the daisyUI changelog: https://daisyui.com/docs/changelog/ */
-/* @plugin "../vendor/daisyui" { */
-/*   themes: false; */
-/* } */
-
-
-
-/* daisyUI theme plugin. You can update this file by fetching the latest version with: */
-/* curl -sLO https://github.com/saadeghi/daisyui/releases/latest/download/daisyui-theme.js */
-/* We ship with two themes, a light one inspired on Phoenix colors and a dark one inspired */
-/* on Elixir colors. Build your own at: https://daisyui.com/theme-generator/ */
-/* @plugin "../vendor/daisyui-theme" { */
-/*   name: "dark"; */
-/*   default: false; */
-/*   prefersdark: true; */
-/*   color-scheme: "dark"; */
-/*   --color-base-100: oklch(30.33% 0.016 252.42); */
-/*   --color-base-200: oklch(25.26% 0.014 253.1); */
-/*   --color-base-300: oklch(20.15% 0.012 254.09); */
-/*   --color-base-content: oklch(97.807% 0.029 256.847); */
-/*   --color-primary: oklch(58% 0.233 277.117); */
-/*   --color-primary-content: oklch(96% 0.018 272.314); */
-/*   --color-secondary: oklch(58% 0.233 277.117); */
-/*   --color-secondary-content: oklch(96% 0.018 272.314); */
-/*   --color-accent: oklch(60% 0.25 292.717); */
-/*   --color-accent-content: oklch(96% 0.016 293.756); */
-/*   --color-neutral: oklch(37% 0.044 257.287); */
-/*   --color-neutral-content: oklch(98% 0.003 247.858); */
-/*   --color-info: oklch(58% 0.158 241.966); */
-/*   --color-info-content: oklch(97% 0.013 236.62); */
-/*   --color-success: oklch(60% 0.118 184.704); */
-/*   --color-success-content: oklch(98% 0.014 180.72); */
-/*   --color-warning: oklch(66% 0.179 58.318); */
-/*   --color-warning-content: oklch(98% 0.022 95.277); */
-/*   --color-error: oklch(58% 0.253 17.585); */
-/*   --color-error-content: oklch(96% 0.015 12.422); */
-/*   --radius-selector: 0.25rem; */
-/*   --radius-field: 0.25rem; */
-/*   --radius-box: 0.5rem; */
-/*   --size-selector: 0.21875rem; */
-/*   --size-field: 0.21875rem; */
-/*   --border: 1.5px; */
-/*   --depth: 1; */
-/*   --noise: 0; */
-/* } */
-/**/
-/**/
-/**/
-/* @plugin "../vendor/daisyui-theme" { */
-/*   name: "light"; */
-/*   default: true; */
-/*   prefersdark: false; */
-/*   color-scheme: "light"; */
-/*   --color-base-100: oklch(98% 0 0); */
-/*   --color-base-200: oklch(96% 0.001 286.375); */
-/*   --color-base-300: oklch(92% 0.004 286.32); */
-/*   --color-base-content: oklch(21% 0.006 285.885); */
-/*   --color-primary: oklch(70% 0.213 47.604); */
-/*   --color-primary-content: oklch(98% 0.016 73.684); */
-/*   --color-secondary: oklch(55% 0.027 264.364); */
-/*   --color-secondary-content: oklch(98% 0.002 247.839); */
-/*   --color-accent: oklch(0% 0 0); */
-/*   --color-accent-content: oklch(100% 0 0); */
-/*   --color-neutral: oklch(44% 0.017 285.786); */
-/*   --color-neutral-content: oklch(98% 0 0); */
-/*   --color-info: oklch(62% 0.214 259.815); */
-/*   --color-info-content: oklch(97% 0.014 254.604); */
-/*   --color-success: oklch(70% 0.14 182.503); */
-/*   --color-success-content: oklch(98% 0.014 180.72); */
-/*   --color-warning: oklch(66% 0.179 58.318); */
-/*   --color-warning-content: oklch(98% 0.022 95.277); */
-/*   --color-error: oklch(58% 0.253 17.585); */
-/*   --color-error-content: oklch(96% 0.015 12.422); */
-/*   --radius-selector: 0.25rem; */
-/*   --radius-field: 0.25rem; */
-/*   --radius-box: 0.5rem; */
-/*   --size-selector: 0.21875rem; */
-/*   --size-field: 0.21875rem; */
-/*   --border: 1.5px; */
-/*   --depth: 1; */
-/*   --noise: 0; */
-/* } */
-/**/
-/**/
-/**/
 /* Add variants based on LiveView classes */
-/* @custom-variant phx-click-loading (.phx-click-loading&, .phx-click-loading &); */
-/* @custom-variant phx-submit-loading (.phx-submit-loading&, .phx-submit-loading &); */
-/* @custom-variant phx-change-loading (.phx-change-loading&, .phx-change-loading &); */
-/**/
-/**/
-/**/
-/* Use the data attribute for dark mode */
-/* @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *)); */
-/**/
-/**/
-/**/
-/* Make LiveView wrapper divs transparent for layout */
-/* [data-phx-session], [data-phx-teleported-src] { display: contents } */
+@custom-variant phx-click-loading (.phx-click-loading&, .phx-click-loading &);
+@custom-variant phx-submit-loading (.phx-submit-loading&, .phx-submit-loading &);
+@custom-variant phx-change-loading (.phx-change-loading&, .phx-change-loading &);
 
+/* Use the data attribute for dark mode  */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+/* Make LiveView wrapper divs transparent for layout */
+[data-phx-session], [data-phx-teleported-src] { display: contents }
 
 /* This file is for your main application CSS */
-@import "tailwindcss";
-/* @import "tw-animate-css"; */
 
-@custom-variant dark (&:is(.dark *));
-
-:root {
-  --background: oklch(0.98 0 0);
-  --foreground: oklch(0.15 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.15 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.15 0 0);
-  --primary: oklch(0.55 0.18 240);
-  --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.94 0.01 240);
-  --secondary-foreground: oklch(0.15 0 0);
-  --muted: oklch(0.96 0.005 240);
-  --muted-foreground: oklch(0.5 0.01 240);
-  --accent: oklch(0.7 0.15 200);
-  --accent-foreground: oklch(0.98 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.9 0.005 240);
-  --input: oklch(0.9 0.005 240);
-  --ring: oklch(0.55 0.18 240);
-  --chart-1: oklch(0.55 0.18 240);
-  --chart-2: oklch(0.7 0.15 200);
-  --chart-3: oklch(0.6 0.12 280);
-  --chart-4: oklch(0.65 0.14 160);
-  --chart-5: oklch(0.58 0.16 320);
-  --radius: 0.75rem;
-  --sidebar: oklch(0.98 0 0);
-  --sidebar-foreground: oklch(0.15 0 0);
-  --sidebar-primary: oklch(0.55 0.18 240);
-  --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.94 0.01 240);
-  --sidebar-accent-foreground: oklch(0.15 0 0);
-  --sidebar-border: oklch(0.9 0.005 240);
-  --sidebar-ring: oklch(0.55 0.18 240);
+/* Markdown Content Styling - mimics T3/ChatGPT style */
+.markdown-content {
+  @apply text-base leading-7 text-base-content break-words;
 }
 
-.dark {
-  --background: oklch(0.12 0.01 240);
-  --foreground: oklch(0.96 0.005 240);
-  --card: oklch(0.16 0.01 240);
-  --card-foreground: oklch(0.96 0.005 240);
-  --popover: oklch(0.14 0.01 240);
-  --popover-foreground: oklch(0.96 0.005 240);
-  --primary: oklch(0.65 0.2 220);
-  --primary-foreground: oklch(0.12 0.01 240);
-  --secondary: oklch(0.2 0.015 240);
-  --secondary-foreground: oklch(0.96 0.005 240);
-  --muted: oklch(0.18 0.012 240);
-  --muted-foreground: oklch(0.65 0.01 240);
-  --accent: oklch(0.7 0.18 200);
-  --accent-foreground: oklch(0.12 0.01 240);
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(0.96 0.005 240);
-  --border: oklch(0.22 0.015 240);
-  --input: oklch(0.22 0.015 240);
-  --ring: oklch(0.65 0.2 220);
-  --chart-1: oklch(0.65 0.2 220);
-  --chart-2: oklch(0.7 0.18 200);
-  --chart-3: oklch(0.6 0.15 280);
-  --chart-4: oklch(0.68 0.16 160);
-  --chart-5: oklch(0.62 0.18 320);
-  --sidebar: oklch(0.14 0.01 240);
-  --sidebar-foreground: oklch(0.96 0.005 240);
-  --sidebar-primary: oklch(0.65 0.2 220);
-  --sidebar-primary-foreground: oklch(0.12 0.01 240);
-  --sidebar-accent: oklch(0.2 0.015 240);
-  --sidebar-accent-foreground: oklch(0.96 0.005 240);
-  --sidebar-border: oklch(0.22 0.015 240);
-  --sidebar-ring: oklch(0.65 0.2 220);
+.markdown-content > *:first-child {
+  @apply mt-0;
 }
 
-@theme inline {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+.markdown-content > *:last-child {
+  @apply mb-0;
 }
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+.markdown-content p {
+  @apply mb-4 leading-7;
 }
+
+/* T3/ChatGPT Style Headers */
+.markdown-content h1 {
+  @apply text-3xl font-bold mt-8 mb-4 text-base-content tracking-tight;
+}
+
+.markdown-content h2 {
+  @apply text-2xl font-semibold mt-8 mb-4 text-base-content tracking-tight;
+}
+
+.markdown-content h3 {
+  @apply text-xl font-semibold mt-6 mb-3 text-base-content tracking-tight;
+}
+
+.markdown-content h4 {
+  @apply text-lg font-semibold mt-4 mb-2 text-base-content;
+}
+
+/* Lists */
+.markdown-content ul {
+  @apply list-disc list-outside ml-5 mb-4 space-y-1 marker:text-accent;
+}
+
+.markdown-content ol {
+  @apply list-decimal list-outside ml-5 mb-4 space-y-1 marker:text-accent;
+}
+
+.markdown-content li {
+  @apply pl-1;
+}
+
+.markdown-content li > ul,
+.markdown-content li > ol {
+  @apply mt-1 mb-0;
+}
+
+.markdown-content li p {
+  @apply mb-1;
+}
+
+/* Code Blocks */
+.markdown-content pre {
+  @apply bg-[#f9f9f9] dark:bg-[#1e1e1e] p-4 rounded-lg mb-6 overflow-x-auto text-sm border border-base-300/50 font-mono shadow-sm;
+}
+
+.markdown-content code {
+  @apply bg-base-200/60 px-1.5 py-0.5 rounded-[4px] text-[0.875em] font-mono border border-base-200/50 text-base-content/90;
+}
+
+.markdown-content pre code {
+  @apply bg-transparent p-0 border-none text-inherit shadow-none;
+}
+
+.markdown-content a {
+  @apply text-primary font-medium hover:underline underline-offset-4 decoration-primary/30 hover:decoration-primary transition-all;
+}
+
+.markdown-content blockquote {
+  @apply border-l-[4px] border-primary/30 pl-4 py-1 my-6 italic text-base-content/80 bg-base-200/20 rounded-r;
+}
+
+.markdown-content hr {
+  @apply my-8 border-base-200;
+}
+
+.markdown-content table {
+  @apply w-full mb-6 border-collapse text-sm rounded-lg overflow-hidden border border-base-200;
+}
+
+.markdown-content th {
+  @apply bg-base-200/50 p-3 text-left font-semibold border-b border-base-200 text-base-content;
+}
+
+.markdown-content td {
+  @apply p-3 border-b border-base-200/40 align-top text-base-content/80;
+}
+
+.markdown-content tr:last-child td {
+  @apply border-b-0;
+}
+
+/* Strong tags should be clearly bold */
+.markdown-content strong {
+  @apply font-semibold text-base-content;
+}
+
+/* Previous styling backup */
+
+/* /* This file is for your main application CSS */ */
+/* @import "tailwindcss"; */
+/* /* @import "tw-animate-css"; */ */
+/**/
+/* @custom-variant dark (&:is(.dark *)); */
+/**/
+/* :root { */
+/*   --background: oklch(0.98 0 0); */
+/*   --foreground: oklch(0.15 0 0); */
+/*   --card: oklch(1 0 0); */
+/*   --card-foreground: oklch(0.15 0 0); */
+/*   --popover: oklch(1 0 0); */
+/*   --popover-foreground: oklch(0.15 0 0); */
+/*   --primary: oklch(0.55 0.18 240); */
+/*   --primary-foreground: oklch(0.98 0 0); */
+/*   --secondary: oklch(0.94 0.01 240); */
+/*   --secondary-foreground: oklch(0.15 0 0); */
+/*   --muted: oklch(0.96 0.005 240); */
+/*   --muted-foreground: oklch(0.5 0.01 240); */
+/*   --accent: oklch(0.7 0.15 200); */
+/*   --accent-foreground: oklch(0.98 0 0); */
+/*   --destructive: oklch(0.577 0.245 27.325); */
+/*   --destructive-foreground: oklch(0.98 0 0); */
+/*   --border: oklch(0.9 0.005 240); */
+/*   --input: oklch(0.9 0.005 240); */
+/*   --ring: oklch(0.55 0.18 240); */
+/*   --chart-1: oklch(0.55 0.18 240); */
+/*   --chart-2: oklch(0.7 0.15 200); */
+/*   --chart-3: oklch(0.6 0.12 280); */
+/*   --chart-4: oklch(0.65 0.14 160); */
+/*   --chart-5: oklch(0.58 0.16 320); */
+/*   --radius: 0.75rem; */
+/*   --sidebar: oklch(0.98 0 0); */
+/*   --sidebar-foreground: oklch(0.15 0 0); */
+/*   --sidebar-primary: oklch(0.55 0.18 240); */
+/*   --sidebar-primary-foreground: oklch(0.98 0 0); */
+/*   --sidebar-accent: oklch(0.94 0.01 240); */
+/*   --sidebar-accent-foreground: oklch(0.15 0 0); */
+/*   --sidebar-border: oklch(0.9 0.005 240); */
+/*   --sidebar-ring: oklch(0.55 0.18 240); */
+/* } */
+/**/
+/* .dark { */
+/*   --background: oklch(0.12 0.01 240); */
+/*   --foreground: oklch(0.96 0.005 240); */
+/*   --card: oklch(0.16 0.01 240); */
+/*   --card-foreground: oklch(0.96 0.005 240); */
+/*   --popover: oklch(0.14 0.01 240); */
+/*   --popover-foreground: oklch(0.96 0.005 240); */
+/*   --primary: oklch(0.65 0.2 220); */
+/*   --primary-foreground: oklch(0.12 0.01 240); */
+/*   --secondary: oklch(0.2 0.015 240); */
+/*   --secondary-foreground: oklch(0.96 0.005 240); */
+/*   --muted: oklch(0.18 0.012 240); */
+/*   --muted-foreground: oklch(0.65 0.01 240); */
+/*   --accent: oklch(0.7 0.18 200); */
+/*   --accent-foreground: oklch(0.12 0.01 240); */
+/*   --destructive: oklch(0.55 0.22 25); */
+/*   --destructive-foreground: oklch(0.96 0.005 240); */
+/*   --border: oklch(0.22 0.015 240); */
+/*   --input: oklch(0.22 0.015 240); */
+/*   --ring: oklch(0.65 0.2 220); */
+/*   --chart-1: oklch(0.65 0.2 220); */
+/*   --chart-2: oklch(0.7 0.18 200); */
+/*   --chart-3: oklch(0.6 0.15 280); */
+/*   --chart-4: oklch(0.68 0.16 160); */
+/*   --chart-5: oklch(0.62 0.18 320); */
+/*   --sidebar: oklch(0.14 0.01 240); */
+/*   --sidebar-foreground: oklch(0.96 0.005 240); */
+/*   --sidebar-primary: oklch(0.65 0.2 220); */
+/*   --sidebar-primary-foreground: oklch(0.12 0.01 240); */
+/*   --sidebar-accent: oklch(0.2 0.015 240); */
+/*   --sidebar-accent-foreground: oklch(0.96 0.005 240); */
+/*   --sidebar-border: oklch(0.22 0.015 240); */
+/*   --sidebar-ring: oklch(0.65 0.2 220); */
+/* } */
+/**/
+/* @theme inline { */
+/*   --font-sans: var(--font-geist-sans); */
+/*   --font-mono: var(--font-geist-mono); */
+/*   --color-background: var(--background); */
+/*   --color-foreground: var(--foreground); */
+/*   --color-card: var(--card); */
+/*   --color-card-foreground: var(--card-foreground); */
+/*   --color-popover: var(--popover); */
+/*   --color-popover-foreground: var(--popover-foreground); */
+/*   --color-primary: var(--primary); */
+/*   --color-primary-foreground: var(--primary-foreground); */
+/*   --color-secondary: var(--secondary); */
+/*   --color-secondary-foreground: var(--secondary-foreground); */
+/*   --color-muted: var(--muted); */
+/*   --color-muted-foreground: var(--muted-foreground); */
+/*   --color-accent: var(--accent); */
+/*   --color-accent-foreground: var(--accent-foreground); */
+/*   --color-destructive: var(--destructive); */
+/*   --color-destructive-foreground: var(--destructive-foreground); */
+/*   --color-border: var(--border); */
+/*   --color-input: var(--input); */
+/*   --color-ring: var(--ring); */
+/*   --color-chart-1: var(--chart-1); */
+/*   --color-chart-2: var(--chart-2); */
+/*   --color-chart-3: var(--chart-3); */
+/*   --color-chart-4: var(--chart-4); */
+/*   --color-chart-5: var(--chart-5); */
+/*   --radius-sm: calc(var(--radius) - 4px); */
+/*   --radius-md: calc(var(--radius) - 2px); */
+/*   --radius-lg: var(--radius); */
+/*   --radius-xl: calc(var(--radius) + 4px); */
+/*   --color-sidebar: var(--sidebar); */
+/*   --color-sidebar-foreground: var(--sidebar-foreground); */
+/*   --color-sidebar-primary: var(--sidebar-primary); */
+/*   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground); */
+/*   --color-sidebar-accent: var(--sidebar-accent); */
+/*   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground); */
+/*   --color-sidebar-border: var(--sidebar-border); */
+/*   --color-sidebar-ring: var(--sidebar-ring); */
+/* } */
+/**/
+/* @layer base { */
+/*   * { */
+/*     @apply border-border outline-ring/50; */
+/*   } */
+/*   body { */
+/*     @apply bg-background text-foreground; */
+/*   } */
+/* } */

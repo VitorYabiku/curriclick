@@ -9,7 +9,7 @@ defmodule Curriclick.Companies do
     resource Curriclick.Companies.JobListing do
       rpc_action :list_job_listings, :read
       rpc_action :get_job_listing, :read
-      rpc_action :find_matching_jobs, :read
+      rpc_action :find_matching_jobs, :find_matching_jobs
     end
 
     resource Curriclick.Companies.Company do
@@ -24,6 +24,7 @@ defmodule Curriclick.Companies do
   resources do
     resource Curriclick.Companies.Company
     resource Curriclick.Companies.JobListing
+    resource Curriclick.Companies.JobApplication
     # resource Curriclick.Companies.JobRequirement
   end
 end

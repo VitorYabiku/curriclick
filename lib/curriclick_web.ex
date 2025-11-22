@@ -50,7 +50,8 @@ defmodule CurriclickWeb do
 
   def live_view do
     quote do
-      use Phoenix.LiveView
+      use Phoenix.LiveView,
+        layout: {CurriclickWeb.Layouts, :app}
 
       unquote(html_helpers())
     end

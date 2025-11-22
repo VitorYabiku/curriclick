@@ -1,4 +1,4 @@
-defmodule Curriclick.Repo.Migrations.AddUserIdealJobVector do
+defmodule Curriclick.Repo.Migrations.MigrateResources1 do
   @moduledoc """
   Updates resources based on their most recent snapshots.
 
@@ -8,14 +8,14 @@ defmodule Curriclick.Repo.Migrations.AddUserIdealJobVector do
   use Ecto.Migration
 
   def up do
-    alter table(:users) do
-      add :ideal_job_vector, :vector, size: 1536
+    alter table(:job_listings) do
+      remove :test_echo_message
     end
   end
 
   def down do
-    alter table(:users) do
-      remove :ideal_job_vector
+    alter table(:job_listings) do
+      add :test_echo_message, :text
     end
   end
 end

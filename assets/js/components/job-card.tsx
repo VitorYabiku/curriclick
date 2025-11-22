@@ -37,9 +37,20 @@ export function JobCard({ job, matchScore }: JobCardProps) {
 
   const getMatchColor = (score: number) => {
     if (score >= 90) return "bg-primary text-primary-foreground";
-    if (score >= 80) return "bg-accent text-accent-foreground";
+    if (score >= 70) return "bg-accent text-accent-foreground";
+    if (score < 0) return "bg-destructive/10 text-destructive";
     return "bg-secondary text-secondary-foreground";
   };
+
+  const formatScore = (score: number) => {
+    if (!Number.isFinite(score)) return "0";
+    const fixed = score.toFixed(1);
+    const normalized = fixed.replace(/\.0$/, "");
+    return normalized === "-0" ? "0" : normalized;
+  };
+
+  const badgeLabel = matchScore >= 0 ? "Compatível" : "Incompatível";
+  const displayScore = formatScore(matchScore);
 
   // const requiredSkills = job.skills.filter((skill) => skill.required);
   // const niceToHaveSkills = job.skills.filter((skill) => !skill.required);
@@ -97,7 +108,7 @@ export function JobCard({ job, matchScore }: JobCardProps) {
           className={`${getMatchColor(matchScore)} flex items-center gap-1 w-fit text-xs`}
         >
           <Sparkles className="h-3 w-3" />
-          {matchScore}% Compatível
+          {displayScore}% {badgeLabel}
         </Badge>
 
         <div

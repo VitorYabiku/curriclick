@@ -14,6 +14,7 @@ defmodule CurriclickWeb.Router do
     plug :protect_from_forgery
     plug :put_secure_browser_headers
     plug :load_from_session
+    plug :put_layout, html: {CurriclickWeb.Layouts, :app}
   end
 
   pipeline :api do
@@ -31,7 +32,12 @@ defmodule CurriclickWeb.Router do
   scope "/", CurriclickWeb do
     pipe_through :browser
 
-    ash_authentication_live_session :authenticated_routes do
+    ash_authentication_live_session :chat_routes, layout: {CurriclickWeb.Layouts, :chat} do
+      live "/chat", ChatLive
+      live "/chat/:conversation_id", ChatLive
+    end
+
+    ash_authentication_live_session :authenticated_routes, layout: {CurriclickWeb.Layouts, :app} do
       # in each liveview, add one of the following at the top of the module:
       #
       # If an authenticated user must be present:
@@ -42,12 +48,17 @@ defmodule CurriclickWeb.Router do
       #
       # If an authenticated user must *not* be present:
       # on_mount {CurriclickWeb.LiveUserAuth, :live_no_user}
+
+      live "/dashboard", UserDashboardLive
     end
 
     post "/rpc/run", AshTypescriptRpcController, :run
     post "/rpc/validate", AshTypescriptRpcController, :validate
-    get "/", PageController, :jobs
-    # get "/jobs", PageController, :jobs
+
+    ash_authentication_live_session :public_jobs, layout: {CurriclickWeb.Layouts, :app} do
+      live "/", JobsLive
+      # get "/jobs", PageController, :jobs
+    end
   end
 
   scope "/", CurriclickWeb do
@@ -62,6 +73,7 @@ defmodule CurriclickWeb.Router do
                   reset_path: "/reset",
                   auth_routes_prefix: "/auth",
                   on_mount: [{CurriclickWeb.LiveUserAuth, :live_no_user}],
+                  layout: {CurriclickWeb.Layouts, :app},
                   overrides: [
                     CurriclickWeb.AuthOverrides,
                     AshAuthentication.Phoenix.Overrides.Default
@@ -69,6 +81,7 @@ defmodule CurriclickWeb.Router do
 
     # Remove this if you do not want to use the reset password feature
     reset_route auth_routes_prefix: "/auth",
+                layout: {CurriclickWeb.Layouts, :app},
                 overrides: [
                   CurriclickWeb.AuthOverrides,
                   AshAuthentication.Phoenix.Overrides.Default
@@ -77,11 +90,13 @@ defmodule CurriclickWeb.Router do
     # Remove this if you do not use the confirmation strategy
     confirm_route Curriclick.Accounts.User, :confirm_new_user,
       auth_routes_prefix: "/auth",
+      layout: {CurriclickWeb.Layouts, :app},
       overrides: [CurriclickWeb.AuthOverrides, AshAuthentication.Phoenix.Overrides.Default]
 
     # Remove this if you do not use the magic link strategy.
     magic_sign_in_route(Curriclick.Accounts.User, :magic_link,
       auth_routes_prefix: "/auth",
+      layout: {CurriclickWeb.Layouts, :app},
       overrides: [CurriclickWeb.AuthOverrides, AshAuthentication.Phoenix.Overrides.Default]
     )
   end
