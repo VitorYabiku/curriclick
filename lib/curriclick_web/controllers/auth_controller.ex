@@ -7,9 +7,9 @@ defmodule CurriclickWeb.AuthController do
 
     message =
       case activity do
-        {:confirm_new_user, :confirm} -> "Your email address has now been confirmed"
-        {:password, :reset} -> "Your password has successfully been reset"
-        _ -> "You are now signed in"
+        {:confirm_new_user, :confirm} -> "Seu endereço de e-mail foi confirmado"
+        {:password, :reset} -> "Sua senha foi redefinida com sucesso"
+        _ -> "Você entrou com sucesso"
       end
 
     conn
@@ -31,12 +31,12 @@ defmodule CurriclickWeb.AuthController do
            }
          }} ->
           """
-          You have already signed in another way, but have not confirmed your account.
-          You can confirm your account using the link we sent to you, or by resetting your password.
+          Você já entrou de outra forma, mas não confirmou sua conta.
+          Você pode confirmar sua conta usando o link que enviamos para você, ou redefinindo sua senha.
           """
 
         _ ->
-          "Incorrect email or password"
+          "E-mail ou senha incorretos"
       end
 
     conn
@@ -49,7 +49,7 @@ defmodule CurriclickWeb.AuthController do
 
     conn
     |> clear_session(:curriclick)
-    |> put_flash(:info, "You are now signed out")
+    |> put_flash(:info, "Você saiu com sucesso")
     |> redirect(to: return_to)
   end
 end

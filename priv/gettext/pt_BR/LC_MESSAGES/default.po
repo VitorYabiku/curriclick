@@ -1,0 +1,34 @@
+msgid ""
+msgstr ""
+"Language: pt_BR\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Sign in"
+msgstr "Entrar"
+
+msgid "Register"
+msgstr "Registrar-se"
+
+msgid "Sign in with password"
+msgstr "Entrar com senha"
+
+msgid "Register with password"
+msgstr "Registrar-se com senha"
+
+msgid "Forgot your password?"
+msgstr "Esqueceu sua senha?"
+
+msgid "Need an account?"
+msgstr "Precisa de uma conta?"
+
+msgid "Already have an account?"
+msgstr "Já tem uma conta?"
+
+msgid "Sign in to your account"
+msgstr "Entre na sua conta"
+
+msgid "Password"
+msgstr "Senha"
+
+msgid "Password Confirmation"
+msgstr "Confirmação de Senha"

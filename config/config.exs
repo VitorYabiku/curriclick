@@ -8,6 +8,10 @@
 
 import Config
 
+config :curriclick, CurriclickWeb.Gettext,
+  default_locale: "pt_BR",
+  locales: ~w(en pt_BR)
+
 config :curriclick, Curriclick.Repo, types: Curriclick.PostgrexTypes
 
 config :ash_typescript,

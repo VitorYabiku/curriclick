@@ -103,10 +103,10 @@ defmodule CurriclickWeb.JobsLive do
                 <div class="mb-6 inline-block p-4 bg-primary/10 rounded-full text-primary">
                   <.icon name="hero-sparkles" class="w-12 h-12" />
                 </div>
-                <h1 class="text-3xl font-bold">Encontre seu emprego dos sonhos</h1>
+                <h1 class="text-3xl font-bold">Encontre o emprego dos seus sonhos</h1>
                 <p class="py-6 text-base-content/70">
-                  Descreva sua função ideal, stack de tecnologia e preferências.
-                  <br />Nossa IA irá combinar você com as melhores oportunidades.
+                  Descreva sua função ideal, habilidades e preferências.
+                  <br />Nossa IA irá conectar você com as melhores oportunidades.
                 </p>
               </div>
             </div>
