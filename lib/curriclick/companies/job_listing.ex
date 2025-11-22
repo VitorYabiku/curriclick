@@ -153,6 +153,8 @@ defmodule Curriclick.Companies.JobListing do
       public? true
     end
 
+    has_many :applications, Curriclick.Companies.JobApplication
+
     # has_many :job_requirements, Curriclick.Companies.JobRequirement do
     #   destination_attribute :job_listing_id
     #   public? true

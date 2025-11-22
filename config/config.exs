@@ -8,6 +8,7 @@
 
 import Config
 
+
 config :curriclick, CurriclickWeb.Gettext,
   default_locale: "pt_BR",
   locales: ~w(en pt_BR)

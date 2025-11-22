@@ -1,10 +1,12 @@
 defmodule CurriclickWeb.JobsLive do
   use CurriclickWeb, :live_view
 
-  alias Curriclick.Companies.JobListing
+  alias Curriclick.Companies.{JobListing, JobApplication}
   require Ash.Query
 
-  @page_size 10
+  on_mount {CurriclickWeb.LiveUserAuth, :live_user_optional}
+
+  @page_size 20
 
   def mount(_params, _session, socket) do
     {:ok,
@@ -14,6 +16,14 @@ defmodule CurriclickWeb.JobsLive do
      |> assign(:results, [])
      |> assign(:page_size, @page_size)
      |> assign(:submitted?, false)}
+  end
+
+  def handle_params(params, _url, socket) do
+    case params["q"] do
+      nil -> {:noreply, socket}
+      "" -> {:noreply, socket}
+      desc -> search_jobs(socket, desc)
+    end
   end
 
   def handle_event("submit_form", %{"ideal_job_description" => desc}, socket) do
@@ -27,49 +37,75 @@ defmodule CurriclickWeb.JobsLive do
        |> assign(:current_page, 1)
        |> assign(:results, [])}
     else
-      query =
-        JobListing
-        |> Ash.Query.for_read(:find_matching_jobs, %{ideal_job_description: desc, limit: 50})
-        |> Ash.Query.load([:company])
+      {:noreply, push_patch(socket, to: ~p"/?#{[q: desc]}")}
+    end
+  end
 
-      case Ash.read(query) do
-        {:ok, records} ->
-          results =
-            Enum.map(records, fn r ->
-              score =
-                case r.match_score do
-                  nil -> 0.0
-                  val when is_float(val) -> Float.round(val * 100.0, 1)
-                  val when is_integer(val) -> val * 1.0
-                end
+  def handle_event("apply_to_job", %{"job_id" => job_id, "match" => match_score}, socket) do
+    case socket.assigns[:current_user] do
+      nil ->
+        desc = socket.assigns.ideal_job_description
+        return_to = ~p"/?#{[q: desc]}"
+        {:noreply, redirect(socket, to: ~p"/sign-in?#{[return_to: return_to]}")}
 
-              %{
-                id: r.id,
-                title: r.job_role_name,
-                company: (r.company && r.company.name) || "",
-                description: r.description,
-                match: score
-              }
-            end)
+      user ->
+        match_score =
+          case Float.parse(match_score) do
+            {val, _} -> val
+            :error -> nil
+          end
 
-          {:noreply,
-           socket
-           |> assign(:ideal_job_description, desc)
-           |> assign(:submitted?, true)
-           |> assign(:current_page, 1)
-           |> assign(:results, results)}
+        case JobApplication
+             |> Ash.Changeset.for_create(:create, %{
+               user_id: user.id,
+               job_listing_id: job_id,
+               search_query: socket.assigns.ideal_job_description,
+               match_score: match_score
+             })
+             |> Ash.create() do
+          {:ok, _} ->
+            {:noreply, put_flash(socket, :info, "Candidatura enviada com sucesso!")}
 
-        {:error, error} ->
-          message = Exception.message(error)
+          {:error, _} ->
+            {:noreply,
+             put_flash(socket, :info, "Você já se candidatou a esta vaga ou ocorreu um erro.")}
+        end
+    end
+  end
 
-          {:noreply,
-           socket
-           |> put_flash(:error, message)
-           |> assign(:ideal_job_description, desc)
-           |> assign(:submitted?, true)
-           |> assign(:current_page, 1)
-           |> assign(:results, [])}
-      end
+  def handle_event("apply_to_all_matches", _params, socket) do
+    case socket.assigns[:current_user] do
+      nil ->
+        desc = socket.assigns.ideal_job_description
+        return_to = ~p"/?#{[q: desc]}"
+        {:noreply, redirect(socket, to: ~p"/sign-in?#{[return_to: return_to]}")}
+
+      user ->
+        results = socket.assigns.results
+
+        count =
+          Enum.reduce(results, 0, fn job, acc ->
+            case JobApplication
+                 |> Ash.Changeset.for_create(:create, %{
+                   user_id: user.id,
+                   job_listing_id: job.id,
+                   search_query: socket.assigns.ideal_job_description,
+                   match_score: job.match
+                 })
+                 |> Ash.create() do
+              {:ok, _} -> acc + 1
+              _ -> acc
+            end
+          end)
+
+        message =
+          if count > 0 do
+            "Candidatura enviada para #{count} novas vagas!"
+          else
+            "Nenhuma nova candidatura enviada (provavelmente já enviada anteriormente)."
+          end
+
+        {:noreply, put_flash(socket, :info, message)}
     end
   end
 
@@ -80,6 +116,52 @@ defmodule CurriclickWeb.JobsLive do
   def handle_event("next_page", _params, socket) do
     total_pages = total_pages(socket.assigns.results, socket.assigns.page_size)
     {:noreply, assign(socket, :current_page, min(socket.assigns.current_page + 1, total_pages))}
+  end
+
+  defp search_jobs(socket, desc) do
+    query =
+      JobListing
+      |> Ash.Query.for_read(:find_matching_jobs, %{ideal_job_description: desc, limit: @page_size})
+      |> Ash.Query.load([:company])
+
+    case Ash.read(query) do
+      {:ok, records} ->
+        results =
+          Enum.map(records, fn r ->
+            score =
+              case r.match_score do
+                nil -> 0.0
+                val when is_float(val) -> Float.round(val * 100.0, 1)
+                val when is_integer(val) -> val * 1.0
+              end
+
+            %{
+              id: r.id,
+              title: r.job_role_name,
+              company: (r.company && r.company.name) || "",
+              description: r.description,
+              match: score
+            }
+          end)
+
+        {:noreply,
+         socket
+         |> assign(:ideal_job_description, desc)
+         |> assign(:submitted?, true)
+         |> assign(:current_page, 1)
+         |> assign(:results, results)}
+
+      {:error, error} ->
+        message = Exception.message(error)
+
+        {:noreply,
+         socket
+         |> put_flash(:error, message)
+         |> assign(:ideal_job_description, desc)
+         |> assign(:submitted?, true)
+         |> assign(:current_page, 1)
+         |> assign(:results, [])}
+    end
   end
 
   defp total_pages(results, page_size) do
@@ -143,6 +225,9 @@ defmodule CurriclickWeb.JobsLive do
               <div class="flex flex-col gap-4 w-full max-w-3xl">
                 <div class="chat-bubble bg-base-200 text-base-content">
                   Encontrei {length(@results)} vagas que correspondem aos seus critérios:
+                  <button class="btn btn-xs btn-primary ml-2" phx-click="apply_to_all_matches">
+                    Candidatar-se a todas
+                  </button>
                 </div>
 
                 <div class="grid grid-cols-1 gap-4 mt-2">
@@ -166,9 +251,17 @@ defmodule CurriclickWeb.JobsLive do
                           {job.description}
                         </p>
 
-                        <div class="card-actions justify-end mt-4 items-center border-t border-base-200 pt-3">
+                        <div class="card-actions justify-end mt-4 items-center border-t border-base-200 pt-3 gap-2">
                           <button class="btn btn-sm btn-ghost text-primary hover:bg-primary/10">
                             Ver Detalhes
+                          </button>
+                          <button
+                            class="btn btn-sm btn-primary"
+                            phx-click="apply_to_job"
+                            phx-value-job_id={job.id}
+                            phx-value-match={job.match}
+                          >
+                            Candidatar-se
                           </button>
                         </div>
                       </div>

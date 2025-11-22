@@ -24,6 +24,7 @@ defmodule Curriclick.Companies do
   resources do
     resource Curriclick.Companies.Company
     resource Curriclick.Companies.JobListing
+    resource Curriclick.Companies.JobApplication
     # resource Curriclick.Companies.JobRequirement
   end
 end

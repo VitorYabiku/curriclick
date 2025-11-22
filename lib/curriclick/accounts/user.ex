@@ -299,6 +299,8 @@ defmodule Curriclick.Accounts.User do
     has_many :valid_api_keys, Curriclick.Accounts.ApiKey do
       filter expr(valid)
     end
+
+    has_many :applications, Curriclick.Companies.JobApplication
   end
 
   identities do

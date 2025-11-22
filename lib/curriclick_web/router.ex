@@ -48,12 +48,14 @@ defmodule CurriclickWeb.Router do
       #
       # If an authenticated user must *not* be present:
       # on_mount {CurriclickWeb.LiveUserAuth, :live_no_user}
+
+      live "/dashboard", UserDashboardLive
     end
 
     post "/rpc/run", AshTypescriptRpcController, :run
     post "/rpc/validate", AshTypescriptRpcController, :validate
 
-    live_session :public, layout: {CurriclickWeb.Layouts, :app} do
+    ash_authentication_live_session :public_jobs, layout: {CurriclickWeb.Layouts, :app} do
       live "/", JobsLive
       # get "/jobs", PageController, :jobs
     end
