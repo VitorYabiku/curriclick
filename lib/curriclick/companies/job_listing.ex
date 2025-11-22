@@ -66,7 +66,7 @@ defmodule Curriclick.Companies.JobListing do
     end
 
     read :find_matching_jobs do
-      @result_count_limit 50
+      @result_count_limit 20
 
       description "Find job listings that match the user's ideal job description using AI embeddings"
 
@@ -86,18 +86,22 @@ defmodule Curriclick.Companies.JobListing do
       end
 
       prepare fn query, _context ->
-        limit = query.arguments.limit || @result_count_limit
-        search_text = query.arguments.ideal_job_description
+        limit = query.arguments[:limit] || @result_count_limit
+        search_text = query.arguments[:ideal_job_description]
 
-        case Curriclick.Ai.OpenAiEmbeddingModel.generate([search_text], []) do
-          {:ok, [search_vector]} ->
-            query
-            |> Ash.Query.sort(match_score: {%{search_vector: search_vector}, :desc_nils_last})
-            |> Ash.Query.load(match_score: %{search_vector: search_vector})
-            |> Ash.Query.limit(limit)
+        if search_text do
+          case Curriclick.Ai.OpenAiEmbeddingModel.generate([search_text], []) do
+            {:ok, [search_vector]} ->
+              query
+              |> Ash.Query.sort(match_score: {%{search_vector: search_vector}, :desc_nils_last})
+              |> Ash.Query.load(match_score: %{search_vector: search_vector})
+              |> Ash.Query.limit(limit)
 
-          {:error, error} ->
-            Ash.Query.add_error(query, error)
+            {:error, error} ->
+              Ash.Query.add_error(query, error)
+          end
+        else
+          query
         end
       end
     end

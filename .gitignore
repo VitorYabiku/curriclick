@@ -57,3 +57,6 @@ devenv.local.nix
 
 # LSP
 /.elixir_ls/
+
+# Ignore files too big for GitHub
+/priv/repo/postings.csv

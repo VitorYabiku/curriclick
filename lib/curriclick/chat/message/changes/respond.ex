@@ -41,10 +41,13 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
       # add the names of tools you want available in your conversation here.
       # i.e tools: [:lookup_weather]
       # |> AshAi.setup_ash_ai(otp_app: :curriclick, tools: [], actor: context.actor)
-      # Example of how to add tools defined in Curriclick.Chat
       |> AshAi.setup_ash_ai(
         otp_app: :curriclick,
-        tools: [:my_conversations, :message_history_for_conversation, :meaning_of_the_universe],
+        tools: [
+          :my_conversations,
+          :message_history_for_conversation,
+          :find_matching_job_listing_for_job_description
+        ],
         actor: context.actor
       )
       |> LLMChain.add_callback(%{
