@@ -10,8 +10,6 @@ defmodule Mix.Tasks.Curriclick.ImportCsv do
   def run(_) do
     Mix.Task.run("app.start")
     
-    alias Curriclick.Companies.{JobListing, Company}
-    
     file_path = "priv/repo/postings.csv"
     
     Logger.info("Starting CSV import from #{file_path}...")
@@ -106,17 +104,13 @@ defmodule Mix.Tasks.Curriclick.ImportCsv do
     expiry = parse_float(row["expiry"])
     closed_time = parse_float(row["closed_time"])
 
-    # Parse Pay Period
-    # CSV values: YEARLY, HOURLY, BIWEEKLY, MONTHLY, WEEKLY
-    # Ash accepts strings because I defined it as :string for simplicity in migration?
-    # Wait, I removed :pay_period constraints in migration: `modify :pay_period, :text, default: nil`
-    # But in resource it's still :string (atom removed).
-    # Ah, I defined it as :string in the resource file I edited earlier.
-    pay_period = row["pay_period"]
+    # Parse Atom fields (convert empty to nil)
+    pay_period = empty_to_nil(row["pay_period"])
+    work_type = empty_to_nil(row["work_type"])
+    currency = empty_to_nil(row["currency"])
+    application_type = empty_to_nil(row["application_type"])
+    formatted_experience_level = empty_to_nil(row["formatted_experience_level"])
     
-    # Parse Work Type (Employment Type)
-    work_type = row["work_type"] # FULL_TIME etc.
-
     # Parse Remote Allowed
     remote_allowed = 
       case row["remote_allowed"] do
@@ -135,12 +129,12 @@ defmodule Mix.Tasks.Curriclick.ImportCsv do
       location: row["location"],
       remote_allowed: remote_allowed,
       work_type: work_type,
-      formatted_work_type: row["formatted_work_type"],
+      # formatted_work_type: excluded
       min_salary: min_salary,
       max_salary: max_salary,
       med_salary: med_salary,
       pay_period: pay_period,
-      currency: row["currency"],
+      currency: currency,
       views: views,
       applies: applies,
       original_listed_time: original_listed_time,
@@ -149,8 +143,8 @@ defmodule Mix.Tasks.Curriclick.ImportCsv do
       closed_time: closed_time,
       job_posting_url: row["job_posting_url"],
       application_url: row["application_url"],
-      application_type: row["application_type"],
-      formatted_experience_level: row["formatted_experience_level"],
+      application_type: application_type,
+      formatted_experience_level: formatted_experience_level,
       skills_desc: row["skills_desc"],
       posting_domain: row["posting_domain"],
       sponsored: sponsored,
@@ -165,6 +159,10 @@ defmodule Mix.Tasks.Curriclick.ImportCsv do
     e -> Logger.error("Failed to import row: #{inspect(row["job_id"])} - #{inspect(e)}")
   end
   
+  defp empty_to_nil(""), do: nil
+  defp empty_to_nil(nil), do: nil
+  defp empty_to_nil(str), do: str
+
   defp parse_decimal(""), do: nil
   defp parse_decimal(nil), do: nil
   defp parse_decimal(str) do

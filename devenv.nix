@@ -34,7 +34,7 @@ in {
       user = "postgres";
     }];
     listen_addresses = "localhost";
-    # extensions = extensions: [ extensions.pgvector ];
+    extensions = extensions: [ extensions.pgvector ];
   };
 
   # https://devenv.sh/scripts/

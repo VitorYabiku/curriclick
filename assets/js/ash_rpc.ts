@@ -19,13 +19,13 @@ export type JobListingResourceSchema = {
   companyId: UUID;
   location: string | null;
   remoteAllowed: boolean | null;
-  workType: string | null;
+  workType: "CONTRACT" | "FULL_TIME" | "INTERNSHIP" | "OTHER" | "PART_TIME" | "TEMPORARY" | "VOLUNTEER" | null;
   formattedWorkType: string | null;
   minSalary: Decimal | null;
   maxSalary: Decimal | null;
   medSalary: Decimal | null;
-  payPeriod: string | null;
-  currency: string | null;
+  payPeriod: "BIWEEKLY" | "HOURLY" | "MONTHLY" | "WEEKLY" | "YEARLY" | null;
+  currency: "AUD" | "BBD" | "CAD" | "EUR" | "GBP" | "USD" | "BRL" | null;
   views: number | null;
   applies: number | null;
   originalListedTime: number | null;
@@ -34,8 +34,8 @@ export type JobListingResourceSchema = {
   closedTime: number | null;
   jobPostingUrl: string | null;
   applicationUrl: string | null;
-  applicationType: string | null;
-  formattedExperienceLevel: string | null;
+  applicationType: "ComplexOnsiteApply" | "OffsiteApply" | "SimpleOnsiteApply" | "UnknownApply" | null;
+  formattedExperienceLevel: "Associate" | "Director" | "Entry level" | "Executive" | "Internship" | "Mid-Senior level" | null;
   skillsDesc: string | null;
   postingDomain: string | null;
   sponsored: number | null;
@@ -110,9 +110,9 @@ export type JobListingFilterInput = {
   };
 
   workType?: {
-    eq?: string;
-    notEq?: string;
-    in?: Array<string>;
+    eq?: "CONTRACT" | "FULL_TIME" | "INTERNSHIP" | "OTHER" | "PART_TIME" | "TEMPORARY" | "VOLUNTEER";
+    notEq?: "CONTRACT" | "FULL_TIME" | "INTERNSHIP" | "OTHER" | "PART_TIME" | "TEMPORARY" | "VOLUNTEER";
+    in?: Array<"CONTRACT" | "FULL_TIME" | "INTERNSHIP" | "OTHER" | "PART_TIME" | "TEMPORARY" | "VOLUNTEER">;
   };
 
   formattedWorkType?: {
@@ -152,15 +152,15 @@ export type JobListingFilterInput = {
   };
 
   payPeriod?: {
-    eq?: string;
-    notEq?: string;
-    in?: Array<string>;
+    eq?: "BIWEEKLY" | "HOURLY" | "MONTHLY" | "WEEKLY" | "YEARLY";
+    notEq?: "BIWEEKLY" | "HOURLY" | "MONTHLY" | "WEEKLY" | "YEARLY";
+    in?: Array<"BIWEEKLY" | "HOURLY" | "MONTHLY" | "WEEKLY" | "YEARLY">;
   };
 
   currency?: {
-    eq?: string;
-    notEq?: string;
-    in?: Array<string>;
+    eq?: "AUD" | "BBD" | "CAD" | "EUR" | "GBP" | "USD" | "BRL";
+    notEq?: "AUD" | "BBD" | "CAD" | "EUR" | "GBP" | "USD" | "BRL";
+    in?: Array<"AUD" | "BBD" | "CAD" | "EUR" | "GBP" | "USD" | "BRL">;
   };
 
   views?: {
@@ -236,15 +236,15 @@ export type JobListingFilterInput = {
   };
 
   applicationType?: {
-    eq?: string;
-    notEq?: string;
-    in?: Array<string>;
+    eq?: "ComplexOnsiteApply" | "OffsiteApply" | "SimpleOnsiteApply" | "UnknownApply";
+    notEq?: "ComplexOnsiteApply" | "OffsiteApply" | "SimpleOnsiteApply" | "UnknownApply";
+    in?: Array<"ComplexOnsiteApply" | "OffsiteApply" | "SimpleOnsiteApply" | "UnknownApply">;
   };
 
   formattedExperienceLevel?: {
-    eq?: string;
-    notEq?: string;
-    in?: Array<string>;
+    eq?: "Associate" | "Director" | "Entry level" | "Executive" | "Internship" | "Mid-Senior level";
+    notEq?: "Associate" | "Director" | "Entry level" | "Executive" | "Internship" | "Mid-Senior level";
+    in?: Array<"Associate" | "Director" | "Entry level" | "Executive" | "Internship" | "Mid-Senior level">;
   };
 
   skillsDesc?: {
@@ -916,9 +916,19 @@ async function executeValidationRpcRequest<T>(
 
 
 export type ListJobListingsFields = UnifiedFieldSelection<JobListingResourceSchema>[];
+
+
 export type InferListJobListingsResult<
   Fields extends ListJobListingsFields,
-> = Array<InferResult<JobListingResourceSchema, Fields>>;
+> = {
+  results: Array<InferResult<JobListingResourceSchema, Fields>>;
+  hasMore: boolean;
+  limit: number;
+  after: string | null;
+  before: string | null;
+  previousPage: string;
+  nextPage: string;
+};
 
 export type ListJobListingsResult<Fields extends ListJobListingsFields> = | { success: true; data: InferListJobListingsResult<Fields>; }
 | { success: false; errors: AshRpcError[]; }
@@ -930,6 +940,13 @@ export async function listJobListings<Fields extends ListJobListingsFields>(
   fields: Fields;
   filter?: JobListingFilterInput;
   sort?: string;
+  page: {
+    limit?: number;
+    after?: string;
+    before?: string;
+    offset?: never;
+    count?: never;
+  };
   headers?: Record<string, string>;
   fetchOptions?: RequestInit;
   customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
@@ -939,7 +956,8 @@ export async function listJobListings<Fields extends ListJobListingsFields>(
     action: "list_job_listings",
     ...(config.fields !== undefined && { fields: config.fields }),
     ...(config.filter && { filter: config.filter }),
-    ...(config.sort && { sort: config.sort })
+    ...(config.sort && { sort: config.sort }),
+    ...(config.page && { page: config.page })
   };
 
   return executeActionRpcRequest<ListJobListingsResult<Fields>>(
@@ -968,9 +986,19 @@ export async function validateListJobListings(
 
 
 export type GetJobListingFields = UnifiedFieldSelection<JobListingResourceSchema>[];
+
+
 export type InferGetJobListingResult<
   Fields extends GetJobListingFields,
-> = Array<InferResult<JobListingResourceSchema, Fields>>;
+> = {
+  results: Array<InferResult<JobListingResourceSchema, Fields>>;
+  hasMore: boolean;
+  limit: number;
+  after: string | null;
+  before: string | null;
+  previousPage: string;
+  nextPage: string;
+};
 
 export type GetJobListingResult<Fields extends GetJobListingFields> = | { success: true; data: InferGetJobListingResult<Fields>; }
 | { success: false; errors: AshRpcError[]; }
@@ -982,6 +1010,13 @@ export async function getJobListing<Fields extends GetJobListingFields>(
   fields: Fields;
   filter?: JobListingFilterInput;
   sort?: string;
+  page: {
+    limit?: number;
+    after?: string;
+    before?: string;
+    offset?: never;
+    count?: never;
+  };
   headers?: Record<string, string>;
   fetchOptions?: RequestInit;
   customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
@@ -991,7 +1026,8 @@ export async function getJobListing<Fields extends GetJobListingFields>(
     action: "get_job_listing",
     ...(config.fields !== undefined && { fields: config.fields }),
     ...(config.filter && { filter: config.filter }),
-    ...(config.sort && { sort: config.sort })
+    ...(config.sort && { sort: config.sort }),
+    ...(config.page && { page: config.page })
   };
 
   return executeActionRpcRequest<GetJobListingResult<Fields>>(

@@ -58,11 +58,11 @@ defmodule Curriclick.Companies.JobListing do
       description "Read job listings"
       primary? true
 
-      # pagination do
-      #   keyset? true
-      #   default_limit 20
-      #   max_page_size 25
-      # end
+      pagination do
+        keyset? true
+        default_limit 20
+        max_page_size 25
+      end
     end
 
     read :find_matching_jobs do
@@ -119,21 +119,26 @@ defmodule Curriclick.Companies.JobListing do
               listings =
                 Enum.flat_map(hits, fn hit ->
                   source = hit["_source"]
+                  score = hit["_score"]
 
                   with {:ok, id} <- Ash.Type.cast_input(Ash.Type.UUID, source["id"]),
-                       {:ok, company_id} <- Ash.Type.cast_input(Ash.Type.UUID, source["company_id"]) do
+                       {:ok, company_id} <- Ash.Type.cast_input(Ash.Type.UUID, source["company_id"]),
+                       {:ok, min_salary} <- Ash.Type.cast_input(:decimal, source["min_salary"]),
+                       {:ok, max_salary} <- Ash.Type.cast_input(:decimal, source["max_salary"]),
+                       {:ok, currency} <- Ash.Type.cast_input(:atom, source["currency"]) do
                     [
                       struct(__MODULE__, %{
                         id: id,
+                        match_score: score,
                         title: source["title"],
                         description: source["description"],
                         company_id: company_id,
                         location: source["location"],
                         work_type: (source["work_type"] && String.to_existing_atom(source["work_type"])) || nil,
                         remote_allowed: source["remote_allowed"] == 1.0 or source["remote_allowed"] == true,
-                        min_salary: source["min_salary"],
-                        max_salary: source["max_salary"],
-                        currency: source["currency"],
+                        min_salary: min_salary,
+                        max_salary: max_salary,
+                        currency: currency,
                         pay_period: (source["pay_period"] && String.to_existing_atom(source["pay_period"])) || nil
                       })
                     ]
@@ -218,10 +223,11 @@ defmodule Curriclick.Companies.JobListing do
       allow_nil? true
     end
 
-    attribute :work_type, :string do
+    attribute :work_type, :atom do
       description "Work type: FULL_TIME, PART_TIME, etc."
       public? true
       allow_nil? true
+      constraints [one_of: [:CONTRACT, :FULL_TIME, :INTERNSHIP, :OTHER, :PART_TIME, :TEMPORARY, :VOLUNTEER]]
     end
 
     attribute :formatted_work_type, :string do
@@ -245,15 +251,17 @@ defmodule Curriclick.Companies.JobListing do
       allow_nil? true
     end
 
-    attribute :pay_period, :string do
+    attribute :pay_period, :atom do
       public? true
       allow_nil? true
+      constraints [one_of: [:BIWEEKLY, :HOURLY, :MONTHLY, :WEEKLY, :YEARLY]]
     end
 
-    attribute :currency, :string do
+    attribute :currency, :atom do
       public? true
       allow_nil? true
-      default "USD"
+      default :USD
+      constraints [one_of: [:AUD, :BBD, :CAD, :EUR, :GBP, :USD, :BRL]]
     end
     
     attribute :views, :integer do
@@ -296,14 +304,16 @@ defmodule Curriclick.Companies.JobListing do
       allow_nil? true
     end
 
-    attribute :application_type, :string do
+    attribute :application_type, :atom do
       public? true
       allow_nil? true
+      constraints [one_of: [:ComplexOnsiteApply, :OffsiteApply, :SimpleOnsiteApply, :UnknownApply]]
     end
 
-    attribute :formatted_experience_level, :string do
+    attribute :formatted_experience_level, :atom do
       public? true
       allow_nil? true
+      constraints [one_of: [:Associate, :Director, :"Entry level", :Executive, :Internship, :"Mid-Senior level"]]
     end
 
     attribute :skills_desc, :string do

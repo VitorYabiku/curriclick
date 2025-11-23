@@ -25,17 +25,12 @@ defmodule Curriclick.Companies do
     resource Curriclick.Companies.Company do
       rpc_action :list_companies, :read
     end
-
-    # resource Curriclick.Companies.JobRequirement do
-    #   rpc_action :list_job_requirements, :read
-    # end
   end
 
   resources do
     resource Curriclick.Companies.Company
     resource Curriclick.Companies.JobListing
     resource Curriclick.Companies.JobApplication
-    # resource Curriclick.Companies.JobRequirement
 
     resource Curriclick.Companies.JobListing do
       define :find_matching_jobs,
