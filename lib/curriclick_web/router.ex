@@ -74,6 +74,7 @@ defmodule CurriclickWeb.Router do
                   auth_routes_prefix: "/auth",
                   on_mount: [{CurriclickWeb.LiveUserAuth, :live_no_user}],
                   layout: {CurriclickWeb.Layouts, :app},
+                  gettext_backend: {CurriclickWeb.Gettext, "auth"},
                   overrides: [
                     CurriclickWeb.AuthOverrides,
                     AshAuthentication.Phoenix.Overrides.Default
@@ -82,6 +83,7 @@ defmodule CurriclickWeb.Router do
     # Remove this if you do not want to use the reset password feature
     reset_route auth_routes_prefix: "/auth",
                 layout: {CurriclickWeb.Layouts, :app},
+                gettext_backend: {CurriclickWeb.Gettext, "auth"},
                 overrides: [
                   CurriclickWeb.AuthOverrides,
                   AshAuthentication.Phoenix.Overrides.Default
@@ -91,12 +93,14 @@ defmodule CurriclickWeb.Router do
     confirm_route Curriclick.Accounts.User, :confirm_new_user,
       auth_routes_prefix: "/auth",
       layout: {CurriclickWeb.Layouts, :app},
+      gettext_backend: {CurriclickWeb.Gettext, "auth"},
       overrides: [CurriclickWeb.AuthOverrides, AshAuthentication.Phoenix.Overrides.Default]
 
     # Remove this if you do not use the magic link strategy.
     magic_sign_in_route(Curriclick.Accounts.User, :magic_link,
       auth_routes_prefix: "/auth",
       layout: {CurriclickWeb.Layouts, :app},
+      gettext_backend: {CurriclickWeb.Gettext, "auth"},
       overrides: [CurriclickWeb.AuthOverrides, AshAuthentication.Phoenix.Overrides.Default]
     )
   end

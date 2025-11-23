@@ -137,7 +137,7 @@ defmodule CurriclickWeb.JobsLive do
 
             %{
               id: r.id,
-              title: r.job_role_name,
+              title: r.title,
               company: (r.company && r.company.name) || "",
               description: r.description,
               match: score

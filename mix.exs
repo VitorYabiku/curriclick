@@ -41,6 +41,7 @@ defmodule Curriclick.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:nimble_csv, "~> 1.1"},
       {:mdex, "~> 0.7"},
       {:bcrypt_elixir, "~> 3.0"},
       {:picosat_elixir, "~> 0.2"},

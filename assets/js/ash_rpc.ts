@@ -5,16 +5,44 @@
 
 
 
+export type Decimal = string;
 export type UUID = string;
 
 // JobListing Schema
 export type JobListingResourceSchema = {
   __type: "Resource";
-  __primitiveFields: "id" | "jobRoleName" | "description" | "companyId";
+  __primitiveFields: "id" | "originalId" | "title" | "description" | "companyId" | "location" | "remoteAllowed" | "workType" | "formattedWorkType" | "minSalary" | "maxSalary" | "medSalary" | "payPeriod" | "currency" | "views" | "applies" | "originalListedTime" | "listedTime" | "expiry" | "closedTime" | "jobPostingUrl" | "applicationUrl" | "applicationType" | "formattedExperienceLevel" | "skillsDesc" | "postingDomain" | "sponsored" | "compensationType" | "normalizedSalary" | "zipCode" | "fips";
   id: UUID;
-  jobRoleName: string;
+  originalId: string | null;
+  title: string;
   description: string;
   companyId: UUID;
+  location: string | null;
+  remoteAllowed: boolean | null;
+  workType: string | null;
+  formattedWorkType: string | null;
+  minSalary: Decimal | null;
+  maxSalary: Decimal | null;
+  medSalary: Decimal | null;
+  payPeriod: string | null;
+  currency: string | null;
+  views: number | null;
+  applies: number | null;
+  originalListedTime: number | null;
+  listedTime: number | null;
+  expiry: number | null;
+  closedTime: number | null;
+  jobPostingUrl: string | null;
+  applicationUrl: string | null;
+  applicationType: string | null;
+  formattedExperienceLevel: string | null;
+  skillsDesc: string | null;
+  postingDomain: string | null;
+  sponsored: number | null;
+  compensationType: string | null;
+  normalizedSalary: Decimal | null;
+  zipCode: string | null;
+  fips: string | null;
   matchScore: { __type: "ComplexCalculation"; __returnType: number | null; __args: { searchVector?: Array<number> }; };
   cosineDistance: { __type: "ComplexCalculation"; __returnType: number | null; __args: { vector1?: Array<number>; vector2?: Array<number> }; };
   company: { __type: "Relationship"; __resource: CompanyResourceSchema | null; };
@@ -46,7 +74,13 @@ export type JobListingFilterInput = {
     in?: Array<UUID>;
   };
 
-  jobRoleName?: {
+  originalId?: {
+    eq?: string;
+    notEq?: string;
+    in?: Array<string>;
+  };
+
+  title?: {
     eq?: string;
     notEq?: string;
     in?: Array<string>;
@@ -62,6 +96,205 @@ export type JobListingFilterInput = {
     eq?: UUID;
     notEq?: UUID;
     in?: Array<UUID>;
+  };
+
+  location?: {
+    eq?: string;
+    notEq?: string;
+    in?: Array<string>;
+  };
+
+  remoteAllowed?: {
+    eq?: boolean;
+    notEq?: boolean;
+  };
+
+  workType?: {
+    eq?: string;
+    notEq?: string;
+    in?: Array<string>;
+  };
+
+  formattedWorkType?: {
+    eq?: string;
+    notEq?: string;
+    in?: Array<string>;
+  };
+
+  minSalary?: {
+    eq?: Decimal;
+    notEq?: Decimal;
+    greaterThan?: Decimal;
+    greaterThanOrEqual?: Decimal;
+    lessThan?: Decimal;
+    lessThanOrEqual?: Decimal;
+    in?: Array<Decimal>;
+  };
+
+  maxSalary?: {
+    eq?: Decimal;
+    notEq?: Decimal;
+    greaterThan?: Decimal;
+    greaterThanOrEqual?: Decimal;
+    lessThan?: Decimal;
+    lessThanOrEqual?: Decimal;
+    in?: Array<Decimal>;
+  };
+
+  medSalary?: {
+    eq?: Decimal;
+    notEq?: Decimal;
+    greaterThan?: Decimal;
+    greaterThanOrEqual?: Decimal;
+    lessThan?: Decimal;
+    lessThanOrEqual?: Decimal;
+    in?: Array<Decimal>;
+  };
+
+  payPeriod?: {
+    eq?: string;
+    notEq?: string;
+    in?: Array<string>;
+  };
+
+  currency?: {
+    eq?: string;
+    notEq?: string;
+    in?: Array<string>;
+  };
+
+  views?: {
+    eq?: number;
+    notEq?: number;
+    greaterThan?: number;
+    greaterThanOrEqual?: number;
+    lessThan?: number;
+    lessThanOrEqual?: number;
+    in?: Array<number>;
+  };
+
+  applies?: {
+    eq?: number;
+    notEq?: number;
+    greaterThan?: number;
+    greaterThanOrEqual?: number;
+    lessThan?: number;
+    lessThanOrEqual?: number;
+    in?: Array<number>;
+  };
+
+  originalListedTime?: {
+    eq?: number;
+    notEq?: number;
+    greaterThan?: number;
+    greaterThanOrEqual?: number;
+    lessThan?: number;
+    lessThanOrEqual?: number;
+    in?: Array<number>;
+  };
+
+  listedTime?: {
+    eq?: number;
+    notEq?: number;
+    greaterThan?: number;
+    greaterThanOrEqual?: number;
+    lessThan?: number;
+    lessThanOrEqual?: number;
+    in?: Array<number>;
+  };
+
+  expiry?: {
+    eq?: number;
+    notEq?: number;
+    greaterThan?: number;
+    greaterThanOrEqual?: number;
+    lessThan?: number;
+    lessThanOrEqual?: number;
+    in?: Array<number>;
+  };
+
+  closedTime?: {
+    eq?: number;
+    notEq?: number;
+    greaterThan?: number;
+    greaterThanOrEqual?: number;
+    lessThan?: number;
+    lessThanOrEqual?: number;
+    in?: Array<number>;
+  };
+
+  jobPostingUrl?: {
+    eq?: string;
+    notEq?: string;
+    in?: Array<string>;
+  };
+
+  applicationUrl?: {
+    eq?: string;
+    notEq?: string;
+    in?: Array<string>;
+  };
+
+  applicationType?: {
+    eq?: string;
+    notEq?: string;
+    in?: Array<string>;
+  };
+
+  formattedExperienceLevel?: {
+    eq?: string;
+    notEq?: string;
+    in?: Array<string>;
+  };
+
+  skillsDesc?: {
+    eq?: string;
+    notEq?: string;
+    in?: Array<string>;
+  };
+
+  postingDomain?: {
+    eq?: string;
+    notEq?: string;
+    in?: Array<string>;
+  };
+
+  sponsored?: {
+    eq?: number;
+    notEq?: number;
+    greaterThan?: number;
+    greaterThanOrEqual?: number;
+    lessThan?: number;
+    lessThanOrEqual?: number;
+    in?: Array<number>;
+  };
+
+  compensationType?: {
+    eq?: string;
+    notEq?: string;
+    in?: Array<string>;
+  };
+
+  normalizedSalary?: {
+    eq?: Decimal;
+    notEq?: Decimal;
+    greaterThan?: Decimal;
+    greaterThanOrEqual?: Decimal;
+    lessThan?: Decimal;
+    lessThanOrEqual?: Decimal;
+    in?: Array<Decimal>;
+  };
+
+  zipCode?: {
+    eq?: string;
+    notEq?: string;
+    in?: Array<string>;
+  };
+
+  fips?: {
+    eq?: string;
+    notEq?: string;
+    in?: Array<string>;
   };
 
   matchScore?: {

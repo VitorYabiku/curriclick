@@ -1,0 +1,25 @@
+msgid ""
+msgstr ""
+"Language: pt_BR\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Request magic link"
+msgstr "Enviar link de acesso"
+
+msgid "Sign in with magic link"
+msgstr "Entrar com link de acesso"
+
+msgid "Sign in"
+msgstr "Entrar"
+
+msgid "Register"
+msgstr "Cadastre-se"
+
+msgid "Forgot your password?"
+msgstr "Esqueceu sua senha?"
+
+msgid "Need an account?"
+msgstr "Precisa de uma conta?"
+
+msgid "Already have an account?"
+msgstr "Já tem uma conta?"

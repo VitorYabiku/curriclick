@@ -1,4 +1,4 @@
-defmodule Curriclick.Repo.Migrations.MigrateResources2 do
+defmodule Curriclick.Repo.Migrations.AddJobListingFields do
   @moduledoc """
   Updates resources based on their most recent snapshots.
 
@@ -26,6 +26,53 @@ defmodule Curriclick.Repo.Migrations.MigrateResources2 do
       add :conversation_id, :uuid, null: false
       add :response_to_id, :uuid
     end
+
+    alter table(:job_listings) do
+      remove :description_vector
+      add :location, :text
+      add :work_type, :text
+      add :min_salary, :decimal
+      add :max_salary, :decimal
+      add :currency, :text, default: "USD"
+      add :pay_period, :text, default: "monthly"
+    end
+
+    create table(:job_applications, primary_key: false) do
+      add :id, :uuid, null: false, default: fragment("gen_random_uuid()"), primary_key: true
+
+      add :user_id,
+          references(:users,
+            column: :id,
+            name: "job_applications_user_id_fkey",
+            type: :uuid,
+            prefix: "public"
+          ),
+          null: false
+
+      add :job_listing_id,
+          references(:job_listings,
+            column: :id,
+            name: "job_applications_job_listing_id_fkey",
+            type: :uuid,
+            prefix: "public"
+          ),
+          null: false
+
+      add :search_query, :text
+      add :match_score, :float
+
+      add :inserted_at, :utc_datetime_usec,
+        null: false,
+        default: fragment("(now() AT TIME ZONE 'utc')")
+
+      add :updated_at, :utc_datetime_usec,
+        null: false,
+        default: fragment("(now() AT TIME ZONE 'utc')")
+    end
+
+    create unique_index(:job_applications, [:user_id, :job_listing_id],
+             name: "job_applications_unique_application_index"
+           )
 
     create table(:conversations, primary_key: false) do
       add :id, :uuid, null: false, default: fragment("uuid_generate_v7()"), primary_key: true
@@ -91,6 +138,26 @@ defmodule Curriclick.Repo.Migrations.MigrateResources2 do
     end
 
     drop table(:conversations)
+
+    drop_if_exists unique_index(:job_applications, [:user_id, :job_listing_id],
+                     name: "job_applications_unique_application_index"
+                   )
+
+    drop constraint(:job_applications, "job_applications_user_id_fkey")
+
+    drop constraint(:job_applications, "job_applications_job_listing_id_fkey")
+
+    drop table(:job_applications)
+
+    alter table(:job_listings) do
+      remove :pay_period
+      remove :currency
+      remove :max_salary
+      remove :min_salary
+      remove :work_type
+      remove :location
+      add :description_vector, :vector, size: 1536
+    end
 
     drop table(:messages)
   end
