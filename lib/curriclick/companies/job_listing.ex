@@ -85,23 +85,57 @@ defmodule Curriclick.Companies.JobListing do
         constraints min: 1, max: 100
       end
 
-      prepare fn query, _context ->
-        limit = query.arguments[:limit] || @result_count_limit
+      manual fn query, _ecto_query, _context ->
         search_text = query.arguments[:ideal_job_description]
+        limit = query.arguments[:limit] || 20
 
-        if search_text do
-          case Curriclick.Ai.OpenAiEmbeddingModel.generate([search_text], []) do
-            {:ok, [search_vector]} ->
-              query
-              |> Ash.Query.sort(match_score: {%{search_vector: search_vector}, :desc_nils_last})
-              |> Ash.Query.load(match_score: %{search_vector: search_vector})
-              |> Ash.Query.limit(limit)
+        api_url = System.get_env("ELASTIC_API_URL")
+        api_key = System.get_env("ELASTIC_API_KEY")
+
+        if is_nil(api_url) or is_nil(api_key) do
+          {:error, "ELASTIC_API_URL or ELASTIC_API_KEY environment variables are not set"}
+        else
+          api_url = String.trim_trailing(api_url, "/")
+          url = "#{api_url}/_search"
+
+          headers = [
+            {"Content-Type", "application/json"},
+            {"Authorization", "ApiKey #{api_key}"}
+          ]
+
+          body = %{
+            "min_score" => 5.0,
+            "size" => limit,
+            "query" => %{
+              "semantic" => %{
+                "field" => "description_semantic",
+                "query" => search_text
+              }
+            }
+          }
+
+          case Req.post(url, json: body, headers: headers) do
+            {:ok, %{status: 200, body: %{"hits" => %{"hits" => hits}}}} ->
+              listings =
+                Enum.map(hits, fn hit ->
+                  source = hit["_source"]
+
+                  struct(__MODULE__, %{
+                    id: source["id"],
+                    job_role_name: source["job_role_name"],
+                    description: source["description"],
+                    company_id: source["company_id"]
+                  })
+                end)
+
+              {:ok, listings}
+
+            {:ok, response} ->
+              {:error, "Elasticsearch request failed: #{inspect(response.body)}"}
 
             {:error, error} ->
-              Ash.Query.add_error(query, error)
+              {:error, "Request error: #{inspect(error)}"}
           end
-        else
-          query
         end
       end
     end

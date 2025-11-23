@@ -38,7 +38,9 @@ defmodule Curriclick.Companies do
     # resource Curriclick.Companies.JobRequirement
 
     resource Curriclick.Companies.JobListing do
-      define :find_matching_jobs, action: :find_matching_jobs, args: [:ideal_job_description]
+      define :find_matching_jobs,
+        action: :find_matching_jobs,
+        args: [:ideal_job_description, :limit]
     end
   end
 end
