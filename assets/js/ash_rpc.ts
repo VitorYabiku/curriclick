@@ -1089,10 +1089,36 @@ export async function findMatchingJobs<Fields extends FindMatchingJobsFields>(
     ...(config.sort && { sort: config.sort })
   };
 
-  return executeActionRpcRequest<FindMatchingJobsResult<Fields>>(
-    payload,
-    config
-  );
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...processedConfig.headers,
+    ...config.headers,
+  };
+
+  const fetchFunction = config.customFetch || processedConfig.customFetch || fetch;
+  const fetchOptions: RequestInit = {
+    ...processedConfig.fetchOptions,
+    ...config.fetchOptions,
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+  };
+
+  const response = await fetchFunction("/rpc/run", fetchOptions);
+
+  const result = response.ok ? await response.json() : null;
+
+  
+
+  if (!response.ok) {
+    return {
+      success: false,
+      errors: [{ type: "network", message: response.statusText, details: {} }],
+    };
+  }
+
+  const result = await response.json();
+  return result as FindMatchingJobsResult<Fields>;
 }
 
 
@@ -1103,16 +1129,27 @@ export async function validateFindMatchingJobs(
   fetchOptions?: RequestInit;
   customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
-): Promise<ValidationResult> {
+): Promise<ValidateFindMatchingJobsResult> {
   const payload = {
     action: "find_matching_jobs",
     input: config.input
   };
 
-  return executeValidationRpcRequest<ValidationResult>(
-    payload,
-    config
-  );
+  const response = await fetchFunction("/rpc/validate", fetchOptions);
+
+  const result = response.ok ? await response.json() : null;
+
+  
+
+  if (!response.ok) {
+    return {
+      success: false,
+      errors: [{ type: "network", message: response.statusText, details: {} }],
+    };
+  }
+
+  const result = await response.json();
+  return result as ValidateFindMatchingJobsResult;
 }
 
 
@@ -1177,10 +1214,36 @@ export async function listCompanies<Fields extends ListCompaniesFields, Config e
     ...(config.page && { page: config.page })
   };
 
-  return executeActionRpcRequest<ListCompaniesResult<Fields, Config["page"]>>(
-    payload,
-    config
-  );
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...processedConfig.headers,
+    ...config.headers,
+  };
+
+  const fetchFunction = config.customFetch || processedConfig.customFetch || fetch;
+  const fetchOptions: RequestInit = {
+    ...processedConfig.fetchOptions,
+    ...config.fetchOptions,
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+  };
+
+  const response = await fetchFunction("/rpc/run", fetchOptions);
+
+  const result = response.ok ? await response.json() : null;
+
+  
+
+  if (!response.ok) {
+    return {
+      success: false,
+      errors: [{ type: "network", message: response.statusText, details: {} }],
+    };
+  }
+
+  const result = await response.json();
+  return result as ListCompaniesResult<Fields, Config["page"]>;
 }
 
 
@@ -1190,15 +1253,41 @@ export async function validateListCompanies(
   fetchOptions?: RequestInit;
   customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
-): Promise<ValidationResult> {
+): Promise<ValidateListCompaniesResult> {
   const payload = {
     action: "list_companies"
   };
 
-  return executeValidationRpcRequest<ValidationResult>(
-    payload,
-    config
-  );
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...processedConfig.headers,
+    ...config.headers,
+  };
+
+  const fetchFunction = config.customFetch || processedConfig.customFetch || fetch;
+  const fetchOptions: RequestInit = {
+    ...processedConfig.fetchOptions,
+    ...config.fetchOptions,
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+  };
+
+  const response = await fetchFunction("/rpc/validate", fetchOptions);
+
+  const result = response.ok ? await response.json() : null;
+
+  
+
+  if (!response.ok) {
+    return {
+      success: false,
+      errors: [{ type: "network", message: response.statusText, details: {} }],
+    };
+  }
+
+  const result = await response.json();
+  return result as ValidateListCompaniesResult;
 }
 
 
