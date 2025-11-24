@@ -22,8 +22,12 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
 
       system_prompt =
         LangChain.Message.new_system!("""
-        You are a helpful chat bot.
-        Your job is to use the tools at your disposal to assist the user.
+        You are a helpful chat bot with expertise in matching people with available job postings
+        for a job search platform.
+        Your job is to use the tools at your disposal to assist the user,
+        never using the tools with information that was not provided by the user.
+        If you need more information, ask the user to provide it and inform the
+        reason you need the information and how you are gonna use it.
         Format your response using Markdown. Use headers (##, ###, ####) to structure your response.
         """)
 
@@ -32,7 +36,7 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
       new_message_id = Ash.UUIDv7.generate()
 
       %{
-        llm: ChatOpenAI.new!(%{model: "gpt-5-mini", stream: true}),
+        llm: ChatOpenAI.new!(%{model: "gpt-5.1", stream: true}),
         custom_context: Map.new(Ash.Context.to_opts(context))
       }
       |> LLMChain.new!()
@@ -46,7 +50,7 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
         tools: [
           :my_conversations,
           :message_history_for_conversation,
-          :find_matching_job_listing_for_job_description
+          :find_suitable_job_postings_for_user
         ],
         actor: context.actor
       )

@@ -19,13 +19,10 @@ IO.puts("")
 test_description = "Marketing senior specialist"
 
 try do
-  result = JobListing
-  |> Ash.Query.for_read(:find_matching_jobs, %{
-    ideal_job_description: test_description,
+  result = Curriclick.Companies.find_matching_jobs(%{
+    query: test_description,
     limit: 10
   })
-  |> Ash.Query.ensure_selected([:match_score])
-  |> Ash.read()
   
   case result do
     {:ok, job_listings} ->
@@ -69,15 +66,9 @@ try do
             _ -> "⚪"                                               # White for unknown
           end
           
-          company_name = 
-            case job.company do
-              %Ash.NotLoaded{} -> "Unknown Company"
-              %{name: name} -> name
-              nil -> "Unknown Company"
-              _ -> "Unknown Company"
-            end
+          company_name = job.company_name || "Unknown Company"
           
-          IO.puts("#{index}. #{job.job_role_name} at #{company_name}")
+          IO.puts("#{index}. #{job.title} at #{company_name}")
           IO.puts("   #{score_color} Match Score: #{score_display}")
           IO.puts("   📝 #{String.slice(job.description, 0, 100)}...")
           IO.puts("")

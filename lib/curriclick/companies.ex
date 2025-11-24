@@ -2,13 +2,9 @@ defmodule Curriclick.Companies do
   use Ash.Domain, otp_app: :curriclick, extensions: [AshAi, AshAdmin.Domain, AshTypescript.Rpc]
 
   tools do
-    tool :find_matching_job_listing_for_job_description,
+    tool :find_suitable_job_postings_for_user,
          Curriclick.Companies.JobListing,
-         :find_matching_jobs do
-      description """
-      Find job listings that match the provided job description using vector embeddings for semantic search.
-      """
-    end
+         :find_matching_jobs
   end
 
   admin do
@@ -33,9 +29,7 @@ defmodule Curriclick.Companies do
     resource Curriclick.Companies.JobApplication
 
     resource Curriclick.Companies.JobListing do
-      define :find_matching_jobs,
-        action: :find_matching_jobs,
-        args: [:ideal_job_description, :limit]
+      define :find_matching_jobs, action: :find_matching_jobs
     end
   end
 end

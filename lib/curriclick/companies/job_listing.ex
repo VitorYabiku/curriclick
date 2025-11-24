@@ -29,6 +29,8 @@ defmodule Curriclick.Companies.JobListing do
     authorizers: [Ash.Policy.Authorizer],
     extensions: [AshTypescript.Resource]
 
+  @result_count_default_limit 20
+
   require Ash.Query
 
   postgres do
@@ -60,34 +62,182 @@ defmodule Curriclick.Companies.JobListing do
 
       pagination do
         keyset? true
-        default_limit 20
+        default_limit @result_count_default_limit
         max_page_size 25
       end
     end
 
-    read :find_matching_jobs do
-      @result_count_limit 20
+    action :find_matching_jobs, {:array, Curriclick.Companies.JobListingMatch} do
+      description """
+      <action_purpose>
+        Find job listings that match the user's query using AI embeddings and hybrid search.
+        The search engine is Elasticsearch with semantic search capabilities.
+      </action_purpose>
 
-      description "Find job listings that match the user's ideal job description using AI embeddings"
+      <instructions>
+        <instruction_group name="Input Processing">
+          - **Language**: All search queries MUST be converted to **English**.
+          - **Execution Strategy**:
+            - **Run Immediately**: Execute the search with whatever information the user has provided, even if it is basic or incomplete.
+            - **Do Not Ask First**: Do NOT ask for clarification before running the tool. Show results first.
+            - **Clarify Later**: Only ask for more details or clarification *after* presenting the initial results, and only if it would significantly improve the outcome.
+          - **Ambiguity**: If the request is ambiguous, make a reasonable best guess, run the search, and then explain your assumptions in the final response.
+        </instruction_group>
 
-      argument :ideal_job_description, :string do
-        description "The user's ideal job description to match against for matching with job listings"
-        allow_nil? false
+        <instruction_group name="Tool Arguments">
+          - **Relevance**: Only include arguments that are strictly relevant to the user's request. **OMIT** arguments that are not used (do not send `nil` or empty lists).
+          - **Limit**: Request 20-30 results (`limit: 20` or `limit: 30`) to allow for post-filtering.
+          - **Filters**: Only use filter arguments if the user **EXPLICITLY** specifies them.
+        </instruction_group>
+
+        <instruction_group name="Post-Processing & Output">
+          - **Critical Filtering**: Filter the 20-30 results down to the best 3-10 matches based on the user's constraints (especially negative constraints like "no Java").
+          - **Presentation Format**:
+            - Provide a **summary** of the best job postings.
+            - Include **Pros & Cons**, **Success Probability**, and **Missing Info** for each.
+        </instruction_group>
+      </instructions>
+
+      <examples>
+        <example>
+          <user_input>
+            "Sou um desenvolvedor Elixir sênior. Odeio Java. USD."
+          </user_input>
+          <tool_call>
+            find_matching_jobs(%{
+              query: "Senior Elixir Developer",
+              limit: 30,
+              currencies: [:USD],
+              semantic_title_boost: 2.0,
+              semantic_skills_boost: 2.0
+            })
+          </tool_call>
+          <response_summary>
+            "Encontrei 3 vagas para você (filtrei vagas Java):
+            1. **Senior Elixir Engineer**...
+            ..."
+          </response_summary>
+        </example>
+      </examples>
+      """
+
+      argument :query, :string do
+        description "The text to search for."
+        allow_nil? true
         public? true
         constraints max_length: 2000
       end
 
       argument :limit, :integer do
-        description "Maximum number of matching job listings to return"
+        description "Maximum number of results to fetch."
         allow_nil? true
         public? true
-        default @result_count_limit
+        default @result_count_default_limit
         constraints min: 1, max: 100
       end
 
-      manual fn query, _ecto_query, _context ->
-        search_text = query.arguments[:ideal_job_description]
-        limit = query.arguments[:limit] || 20
+      argument :min_score, :float do
+        description "Minimum semantic score."
+        allow_nil? true
+        public? true
+        default 5.0
+      end
+
+      # Semantic Boosts
+      argument :semantic_aggregate_boost, :float do
+        description "Boost for description_semantic."
+        allow_nil? true
+        public? true
+        default 1.0
+      end
+
+      argument :semantic_title_boost, :float do
+        description "Boost for title_semantic."
+        allow_nil? true
+        public? true
+        default 0.0
+      end
+
+      argument :semantic_description_boost, :float do
+        description "Boost for description_individual_semantic."
+        allow_nil? true
+        public? true
+        default 0.0
+      end
+
+      argument :semantic_skills_boost, :float do
+        description "Boost for skills_desc_semantic."
+        allow_nil? true
+        public? true
+        default 0.0
+      end
+
+      argument :semantic_query_profile_boost, :float do
+        description "Boost for query_profile_semantic."
+        allow_nil? true
+        public? true
+        default 0.0
+      end
+
+      # Text Boosts
+      argument :text_title_boost, :float do
+        description "Boost for title text."
+        allow_nil? true
+        public? true
+        default 0.0
+      end
+
+      argument :text_description_boost, :float do
+        description "Boost for description text."
+        allow_nil? true
+        public? true
+        default 0.0
+      end
+
+      argument :text_skills_boost, :float do
+        description "Boost for skills_desc text."
+        allow_nil? true
+        public? true
+        default 0.0
+      end
+
+      argument :text_query_profile_boost, :float do
+        description "Boost for query_profile text."
+        allow_nil? true
+        public? true
+        default 0.0
+      end
+
+      # Filters
+      argument :work_types, {:array, :atom} do
+        description "Filter by work types"
+        allow_nil? true
+        public? true
+
+        constraints items: [
+                      one_of: [
+                        :CONTRACT,
+                        :FULL_TIME,
+                        :INTERNSHIP,
+                        :OTHER,
+                        :PART_TIME,
+                        :TEMPORARY,
+                        :VOLUNTEER
+                      ]
+                    ]
+      end
+
+      argument :remote_allowed, :boolean do
+        description "Filter by remote allowed"
+        allow_nil? true
+        public? true
+      end
+
+      run fn input, _context ->
+        query = input.arguments
+        search_text = query[:query]
+        limit = query[:limit] || @result_count_default_limit
+        min_score = query[:min_score] || 5.0
 
         api_url = System.get_env("ELASTIC_API_URL")
         api_key = System.get_env("ELASTIC_API_KEY")
@@ -103,13 +253,89 @@ defmodule Curriclick.Companies.JobListing do
             {"Authorization", "ApiKey #{api_key}"}
           ]
 
+          # Helper to add semantic clauses
+          add_semantic = fn clauses, field, boost ->
+            if search_text && boost && boost > 0.0 do
+              clauses ++
+                [
+                  %{
+                    "semantic" => %{
+                      "field" => field,
+                      "query" => search_text,
+                      "boost" => boost
+                    }
+                  }
+                ]
+            else
+              clauses
+            end
+          end
+
+          # Helper to add text match clauses
+          add_text = fn clauses, field, boost ->
+            if search_text && boost && boost > 0.0 do
+              clauses ++
+                [
+                  %{
+                    "match" => %{
+                      field => %{
+                        "query" => search_text,
+                        "boost" => boost
+                      }
+                    }
+                  }
+                ]
+            else
+              clauses
+            end
+          end
+
+          should_clauses =
+            []
+            |> add_semantic.("description_semantic", query[:semantic_aggregate_boost])
+            |> add_semantic.("title_semantic", query[:semantic_title_boost])
+            |> add_semantic.(
+              "description_individual_semantic",
+              query[:semantic_description_boost]
+            )
+            |> add_semantic.("skills_desc_semantic", query[:semantic_skills_boost])
+            |> add_semantic.("query_profile_semantic", query[:semantic_query_profile_boost])
+            |> add_text.("title", query[:text_title_boost])
+            |> add_text.("description", query[:text_description_boost])
+            |> add_text.("skills_desc", query[:text_skills_boost])
+            |> add_text.("query_profile", query[:text_query_profile_boost])
+
+          # Helper to add term filters
+          add_term_filter = fn clauses, field, value ->
+            if value != nil do
+              clauses ++ [%{"term" => %{field => value}}]
+            else
+              clauses
+            end
+          end
+
+          # Helper to add terms filters
+          add_terms_filter = fn clauses, field, values ->
+            if values && values != [] do
+              clauses ++ [%{"terms" => %{field => values}}]
+            else
+              clauses
+            end
+          end
+
+          filter_clauses =
+            []
+            |> add_terms_filter.("work_type", query[:work_types])
+            |> add_term_filter.("remote_allowed", query[:remote_allowed])
+
           body = %{
-            "min_score" => 5.0,
+            "min_score" => min_score,
             "size" => limit,
             "query" => %{
-              "semantic" => %{
-                "field" => "description_semantic",
-                "query" => search_text
+              "bool" => %{
+                "should" => should_clauses,
+                "filter" => filter_clauses,
+                "minimum_should_match" => if(length(should_clauses) > 0, do: 1, else: 0)
               }
             }
           }
@@ -121,25 +347,16 @@ defmodule Curriclick.Companies.JobListing do
                   source = hit["_source"]
                   score = hit["_score"]
 
-                  with {:ok, id} <- Ash.Type.cast_input(Ash.Type.UUID, source["id"]),
-                       {:ok, company_id} <- Ash.Type.cast_input(Ash.Type.UUID, source["company_id"]),
-                       {:ok, min_salary} <- Ash.Type.cast_input(:decimal, source["min_salary"]),
-                       {:ok, max_salary} <- Ash.Type.cast_input(:decimal, source["max_salary"]),
-                       {:ok, currency} <- Ash.Type.cast_input(:atom, source["currency"]) do
+                  with {:ok, id} <- Ash.Type.cast_input(Ash.Type.UUID, source["id"]) do
                     [
-                      struct(__MODULE__, %{
+                      struct(Curriclick.Companies.JobListingMatch, %{
                         id: id,
                         match_score: score,
                         title: source["title"],
                         description: source["description"],
-                        company_id: company_id,
-                        location: source["location"],
-                        work_type: (source["work_type"] && String.to_existing_atom(source["work_type"])) || nil,
-                        remote_allowed: source["remote_allowed"] == 1.0 or source["remote_allowed"] == true,
-                        min_salary: min_salary,
-                        max_salary: max_salary,
-                        currency: currency,
-                        pay_period: (source["pay_period"] && String.to_existing_atom(source["pay_period"])) || nil
+                        # company_name: source["company_name"] # Needs to be available in ES or fetched
+                        # Placeholder until company fetch is solved
+                        company_name: "Unknown Company"
                       })
                     ]
                   else
@@ -161,12 +378,36 @@ defmodule Curriclick.Companies.JobListing do
 
     create :create do
       accept [
-        :original_id, :title, :description, :company_id, :location, :remote_allowed, :work_type,
-        :formatted_work_type, :min_salary, :max_salary, :med_salary, :pay_period, :currency,
-        :views, :applies, :original_listed_time, :job_posting_url, :application_url,
-        :application_type, :expiry, :closed_time, :formatted_experience_level, :skills_desc,
-        :listed_time, :posting_domain, :sponsored, :compensation_type, :normalized_salary,
-        :zip_code, :fips
+        :original_id,
+        :title,
+        :description,
+        :company_id,
+        :location,
+        :remote_allowed,
+        :work_type,
+        :formatted_work_type,
+        :min_salary,
+        :max_salary,
+        :med_salary,
+        :pay_period,
+        :currency,
+        :views,
+        :applies,
+        :original_listed_time,
+        :job_posting_url,
+        :application_url,
+        :application_type,
+        :expiry,
+        :closed_time,
+        :formatted_experience_level,
+        :skills_desc,
+        :listed_time,
+        :posting_domain,
+        :sponsored,
+        :compensation_type,
+        :normalized_salary,
+        :zip_code,
+        :fips
       ]
     end
 
@@ -203,7 +444,7 @@ defmodule Curriclick.Companies.JobListing do
       description "Description of the job listing"
       allow_nil? false
       public? true
-      constraints max_length: 10000
+      constraints max_length: 10_000
     end
 
     attribute :company_id, :uuid do
@@ -227,7 +468,16 @@ defmodule Curriclick.Companies.JobListing do
       description "Work type: FULL_TIME, PART_TIME, etc."
       public? true
       allow_nil? true
-      constraints [one_of: [:CONTRACT, :FULL_TIME, :INTERNSHIP, :OTHER, :PART_TIME, :TEMPORARY, :VOLUNTEER]]
+
+      constraints one_of: [
+                    :CONTRACT,
+                    :FULL_TIME,
+                    :INTERNSHIP,
+                    :OTHER,
+                    :PART_TIME,
+                    :TEMPORARY,
+                    :VOLUNTEER
+                  ]
     end
 
     attribute :formatted_work_type, :string do
@@ -254,44 +504,44 @@ defmodule Curriclick.Companies.JobListing do
     attribute :pay_period, :atom do
       public? true
       allow_nil? true
-      constraints [one_of: [:BIWEEKLY, :HOURLY, :MONTHLY, :WEEKLY, :YEARLY]]
+      constraints one_of: [:BIWEEKLY, :HOURLY, :MONTHLY, :WEEKLY, :YEARLY]
     end
 
     attribute :currency, :atom do
       public? true
       allow_nil? true
       default :USD
-      constraints [one_of: [:AUD, :BBD, :CAD, :EUR, :GBP, :USD, :BRL]]
+      constraints one_of: [:AUD, :BBD, :CAD, :EUR, :GBP, :USD, :BRL]
     end
-    
+
     attribute :views, :integer do
       public? true
       allow_nil? true
     end
-    
+
     attribute :applies, :integer do
       public? true
       allow_nil? true
     end
-    
+
     attribute :original_listed_time, :float do
-       public? true
-       allow_nil? true
+      public? true
+      allow_nil? true
     end
 
     attribute :listed_time, :float do
-       public? true
-       allow_nil? true
+      public? true
+      allow_nil? true
     end
-    
+
     attribute :expiry, :float do
-       public? true
-       allow_nil? true
+      public? true
+      allow_nil? true
     end
-    
+
     attribute :closed_time, :float do
-       public? true
-       allow_nil? true
+      public? true
+      allow_nil? true
     end
 
     attribute :job_posting_url, :string do
@@ -307,46 +557,54 @@ defmodule Curriclick.Companies.JobListing do
     attribute :application_type, :atom do
       public? true
       allow_nil? true
-      constraints [one_of: [:ComplexOnsiteApply, :OffsiteApply, :SimpleOnsiteApply, :UnknownApply]]
+      constraints one_of: [:ComplexOnsiteApply, :OffsiteApply, :SimpleOnsiteApply, :UnknownApply]
     end
 
     attribute :formatted_experience_level, :atom do
       public? true
       allow_nil? true
-      constraints [one_of: [:Associate, :Director, :"Entry level", :Executive, :Internship, :"Mid-Senior level"]]
+
+      constraints one_of: [
+                    :Associate,
+                    :Director,
+                    :"Entry level",
+                    :Executive,
+                    :Internship,
+                    :"Mid-Senior level"
+                  ]
     end
 
     attribute :skills_desc, :string do
       public? true
       allow_nil? true
-      constraints max_length: 10000
+      constraints max_length: 10_000
     end
-    
+
     attribute :posting_domain, :string do
       public? true
       allow_nil? true
     end
-    
+
     attribute :sponsored, :integer do
       public? true
       allow_nil? true
     end
-    
+
     attribute :compensation_type, :string do
       public? true
       allow_nil? true
     end
-    
+
     attribute :normalized_salary, :decimal do
       public? true
       allow_nil? true
     end
-    
+
     attribute :zip_code, :string do
       public? true
       allow_nil? true
     end
-    
+
     attribute :fips, :string do
       public? true
       allow_nil? true
@@ -364,36 +622,5 @@ defmodule Curriclick.Companies.JobListing do
     end
 
     has_many :applications, Curriclick.Companies.JobApplication
-
-    # has_many :job_requirements, Curriclick.Companies.JobRequirement do
-    #   destination_attribute :job_listing_id
-    #   public? true
-    # end
-  end
-
-  calculations do
-    calculate :match_score,
-              :float,
-              expr(1 - vector_cosine_distance(description_vector, ^arg(:search_vector))) do
-      argument :search_vector, {:array, :float} do
-        allow_nil? false
-      end
-
-      public? true
-    end
-
-    calculate :cosine_distance,
-              :float,
-              expr(vector_cosine_distance(^arg(:vector1), ^arg(:vector2))) do
-      argument :vector1, {:array, :float} do
-        allow_nil? false
-      end
-
-      argument :vector2, {:array, :float} do
-        allow_nil? false
-      end
-
-      public? true
-    end
   end
 end

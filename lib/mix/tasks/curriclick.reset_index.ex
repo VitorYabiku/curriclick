@@ -19,9 +19,9 @@ defmodule Mix.Tasks.Curriclick.ResetIndex do
 
     api_url = String.trim_trailing(api_url, "/")
     index_name = "job-postings"
-    index_url = "#{api_url}/#{index_name}"
+    _index_url = "#{api_url}/#{index_name}"
 
-    headers = [
+    _headers = [
       {"Content-Type", "application/json"},
       {"Authorization", "ApiKey #{api_key}"}
     ]

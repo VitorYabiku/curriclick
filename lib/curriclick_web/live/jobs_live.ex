@@ -1,7 +1,7 @@
 defmodule CurriclickWeb.JobsLive do
   use CurriclickWeb, :live_view
 
-  alias Curriclick.Companies.{JobListing, JobApplication}
+  alias Curriclick.Companies.JobApplication
   require Ash.Query
 
   on_mount {CurriclickWeb.LiveUserAuth, :live_user_optional}
@@ -119,12 +119,11 @@ defmodule CurriclickWeb.JobsLive do
   end
 
   defp search_jobs(socket, desc) do
-    query =
-      JobListing
-      |> Ash.Query.for_read(:find_matching_jobs, %{ideal_job_description: desc, limit: @page_size})
-      |> Ash.Query.load([:company])
+    input =
+      Curriclick.Companies.JobListing
+      |> Ash.ActionInput.for_action(:find_matching_jobs, %{query: desc, limit: @page_size})
 
-    case Ash.read(query) do
+    case Ash.run_action(input) do
       {:ok, records} ->
         results =
           Enum.map(records, fn r ->
@@ -138,7 +137,7 @@ defmodule CurriclickWeb.JobsLive do
             %{
               id: r.id,
               title: r.title,
-              company: (r.company && r.company.name) || "",
+              company: r.company_name || "",
               description: r.description,
               match: score
             }
