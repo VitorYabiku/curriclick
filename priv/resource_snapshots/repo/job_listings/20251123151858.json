@@ -69,15 +69,15 @@
     },
     {
       "allow_nil?": true,
-      "default": "0.0",
+      "default": "nil",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "match_score",
-      "type": "float"
+      "source": "location",
+      "type": "text"
     },
     {
       "allow_nil?": true,
@@ -88,7 +88,67 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "ideal_job_description",
+      "source": "location_type",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "employment_type",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "min_salary",
+      "type": "decimal"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "max_salary",
+      "type": "decimal"
+    },
+    {
+      "allow_nil?": true,
+      "default": "\"USD\"",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "currency",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "\"monthly\"",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "pay_period",
       "type": "text"
     },
     {
@@ -114,18 +174,6 @@
       "size": null,
       "source": "updated_at",
       "type": "utc_datetime_usec"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": 1536,
-      "source": "description_vector",
-      "type": "vector"
     }
   ],
   "base_filter": null,
@@ -133,7 +181,7 @@
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "F38F34BE118AAAC1CE8C44348F80C1D46691FB4CBCC495E967636BF64D080B29",
+  "hash": "75D486FE833570A5FC3AEA47EABCF62107F528E07BC4B770FADB6C6511F21AB7",
   "identities": [],
   "multitenancy": {
     "attribute": null,

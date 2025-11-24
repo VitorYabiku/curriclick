@@ -27,7 +27,7 @@ defmodule Curriclick.Companies.JobListing do
     domain: Curriclick.Companies,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTypescript.Resource, AshAi]
+    extensions: [AshTypescript.Resource]
 
   postgres do
     table "job_listings"
@@ -38,16 +38,16 @@ defmodule Curriclick.Companies.JobListing do
     type_name "JobListing"
   end
 
-  vectorize do
-    # Configure to vectorize individual attributes
-    attributes description: :description_vector
-
-    # Use after_action strategy to automatically generate embeddings
-    strategy :after_action
-
-    # Reference the custom embedding model
-    embedding_model Curriclick.Ai.OpenAiEmbeddingModel
-  end
+  # vectorize do
+  #   # Configure to vectorize individual attributes
+  #   attributes description: :description_vector
+  #
+  #   # Use after_action strategy to automatically generate embeddings
+  #   strategy :after_action
+  #
+  #   # Reference the custom embedding model
+  #   embedding_model Curriclick.Ai.OpenAiEmbeddingModel
+  # end
 
   actions do
     defaults [:destroy]
@@ -143,7 +143,7 @@ defmodule Curriclick.Companies.JobListing do
     end
 
     read :find_matching_jobs do
-      @result_count_limit 50
+      @result_count_limit 20
 
       description "Find job listings that match the user's ideal job description using AI embeddings"
 
@@ -162,30 +162,94 @@ defmodule Curriclick.Companies.JobListing do
         constraints min: 1, max: 100
       end
 
-      prepare fn query, _context ->
-        limit = query.arguments.limit || @result_count_limit
-        search_text = query.arguments.ideal_job_description
+      manual fn query, _ecto_query, _context ->
+        search_text = query.arguments[:ideal_job_description]
+        limit = query.arguments[:limit] || 20
 
-        case Curriclick.Ai.OpenAiEmbeddingModel.generate([search_text], []) do
-          {:ok, [search_vector]} ->
-            query
-            |> Ash.Query.sort(match_score: {%{search_vector: search_vector}, :desc_nils_last})
-            |> Ash.Query.load(match_score: %{search_vector: search_vector})
-            |> Ash.Query.limit(limit)
+        api_url = System.get_env("ELASTIC_API_URL")
+        api_key = System.get_env("ELASTIC_API_KEY")
 
-          {:error, error} ->
-            Ash.Query.add_error(query, error)
+        if is_nil(api_url) or is_nil(api_key) do
+          {:error, "ELASTIC_API_URL or ELASTIC_API_KEY environment variables are not set"}
+        else
+          api_url = String.trim_trailing(api_url, "/")
+          url = "#{api_url}/job-postings/_search"
+
+          headers = [
+            {"Content-Type", "application/json"},
+            {"Authorization", "ApiKey #{api_key}"}
+          ]
+
+          body = %{
+            "min_score" => 5.0,
+            "size" => limit,
+            "query" => %{
+              "semantic" => %{
+                "field" => "description_semantic",
+                "query" => search_text
+              }
+            }
+          }
+
+          case Req.post(url, json: body, headers: headers) do
+            {:ok, %{status: 200, body: %{"hits" => %{"hits" => hits}}}} ->
+              listings =
+                Enum.flat_map(hits, fn hit ->
+                  source = hit["_source"]
+                  score = hit["_score"]
+
+                  with {:ok, id} <- Ash.Type.cast_input(Ash.Type.UUID, source["id"]),
+                       {:ok, company_id} <- Ash.Type.cast_input(Ash.Type.UUID, source["company_id"]),
+                       {:ok, min_salary} <- Ash.Type.cast_input(:decimal, source["min_salary"]),
+                       {:ok, max_salary} <- Ash.Type.cast_input(:decimal, source["max_salary"]),
+                       {:ok, currency} <- Ash.Type.cast_input(:atom, source["currency"]) do
+                    [
+                      struct(__MODULE__, %{
+                        id: id,
+                        match_score: score,
+                        title: source["title"],
+                        description: source["description"],
+                        company_id: company_id,
+                        location: source["location"],
+                        work_type: (source["work_type"] && String.to_existing_atom(source["work_type"])) || nil,
+                        remote_allowed: source["remote_allowed"] == 1.0 or source["remote_allowed"] == true,
+                        min_salary: min_salary,
+                        max_salary: max_salary,
+                        currency: currency,
+                        pay_period: (source["pay_period"] && String.to_existing_atom(source["pay_period"])) || nil
+                      })
+                    ]
+                  else
+                    _ -> []
+                  end
+                end)
+
+              {:ok, listings}
+
+            {:ok, response} ->
+              {:error, "Elasticsearch request failed: #{inspect(response.body)}"}
+
+            {:error, error} ->
+              {:error, "Request error: #{inspect(error)}"}
+          end
         end
       end
     end
 
     create :create do
-      accept [:job_role_name, :description, :company_id]
+      accept [
+        :original_id, :title, :description, :company_id, :location, :remote_allowed, :work_type,
+        :formatted_work_type, :min_salary, :max_salary, :med_salary, :pay_period, :currency,
+        :views, :applies, :original_listed_time, :job_posting_url, :application_url,
+        :application_type, :expiry, :closed_time, :formatted_experience_level, :skills_desc,
+        :listed_time, :posting_domain, :sponsored, :compensation_type, :normalized_salary,
+        :zip_code, :fips
+      ]
     end
 
     update :update do
       primary? true
-      accept [:job_role_name, :description]
+      accept [:title, :description]
     end
   end
 
@@ -199,24 +263,170 @@ defmodule Curriclick.Companies.JobListing do
   attributes do
     uuid_primary_key :id
 
-    attribute :job_role_name, :string do
-      description "Name of the job role (e.g., Senior Machine Learning Engineer, Junior Developer, Product Manager)"
+    attribute :original_id, :string do
+      description "Original Job ID from CSV"
+      public? true
+      allow_nil? true
+    end
+
+    attribute :title, :string do
+      description "Title of the job"
       allow_nil? false
       public? true
       constraints max_length: 255
     end
 
     attribute :description, :string do
-      description "Description of the job listing, with everything you need to know about the position, the company, and the job requirements"
+      description "Description of the job listing"
       allow_nil? false
       public? true
-      constraints max_length: 3000
+      constraints max_length: 10000
     end
 
     attribute :company_id, :uuid do
       description "ID of the company this job listing belongs to"
       allow_nil? false
       public? true
+    end
+
+    attribute :location, :string do
+      description "Location of the job"
+      public? true
+    end
+
+    attribute :remote_allowed, :boolean do
+      description "Whether the job is remote allowed"
+      public? true
+      allow_nil? true
+    end
+
+    attribute :work_type, :atom do
+      description "Work type: FULL_TIME, PART_TIME, etc."
+      public? true
+      allow_nil? true
+      constraints [one_of: [:CONTRACT, :FULL_TIME, :INTERNSHIP, :OTHER, :PART_TIME, :TEMPORARY, :VOLUNTEER]]
+    end
+
+    attribute :formatted_work_type, :string do
+      description "Formatted work type"
+      public? true
+      allow_nil? true
+    end
+
+    attribute :min_salary, :decimal do
+      public? true
+      allow_nil? true
+    end
+
+    attribute :max_salary, :decimal do
+      public? true
+      allow_nil? true
+    end
+
+    attribute :med_salary, :decimal do
+      public? true
+      allow_nil? true
+    end
+
+    attribute :pay_period, :atom do
+      public? true
+      allow_nil? true
+      constraints [one_of: [:BIWEEKLY, :HOURLY, :MONTHLY, :WEEKLY, :YEARLY]]
+    end
+
+    attribute :currency, :atom do
+      public? true
+      allow_nil? true
+      default :USD
+      constraints [one_of: [:AUD, :BBD, :CAD, :EUR, :GBP, :USD, :BRL]]
+    end
+    
+    attribute :views, :integer do
+      public? true
+      allow_nil? true
+    end
+    
+    attribute :applies, :integer do
+      public? true
+      allow_nil? true
+    end
+    
+    attribute :original_listed_time, :float do
+       public? true
+       allow_nil? true
+    end
+
+    attribute :listed_time, :float do
+       public? true
+       allow_nil? true
+    end
+    
+    attribute :expiry, :float do
+       public? true
+       allow_nil? true
+    end
+    
+    attribute :closed_time, :float do
+       public? true
+       allow_nil? true
+    end
+
+    attribute :job_posting_url, :string do
+      public? true
+      allow_nil? true
+    end
+
+    attribute :application_url, :string do
+      public? true
+      allow_nil? true
+    end
+
+    attribute :application_type, :atom do
+      public? true
+      allow_nil? true
+      constraints [one_of: [:ComplexOnsiteApply, :OffsiteApply, :SimpleOnsiteApply, :UnknownApply]]
+    end
+
+    attribute :formatted_experience_level, :atom do
+      public? true
+      allow_nil? true
+      constraints [one_of: [:Associate, :Director, :"Entry level", :Executive, :Internship, :"Mid-Senior level"]]
+    end
+
+    attribute :skills_desc, :string do
+      public? true
+      allow_nil? true
+      constraints max_length: 10000
+    end
+    
+    attribute :posting_domain, :string do
+      public? true
+      allow_nil? true
+    end
+    
+    attribute :sponsored, :integer do
+      public? true
+      allow_nil? true
+    end
+    
+    attribute :compensation_type, :string do
+      public? true
+      allow_nil? true
+    end
+    
+    attribute :normalized_salary, :decimal do
+      public? true
+      allow_nil? true
+    end
+    
+    attribute :zip_code, :string do
+      public? true
+      allow_nil? true
+    end
+    
+    attribute :fips, :string do
+      public? true
+      allow_nil? true
     end
 
     create_timestamp :inserted_at

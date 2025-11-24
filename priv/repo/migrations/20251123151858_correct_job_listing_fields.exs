@@ -1,4 +1,4 @@
-defmodule Curriclick.Repo.Migrations.MigrateResources1 do
+defmodule Curriclick.Repo.Migrations.CorrectJobListingFields do
   @moduledoc """
   Updates resources based on their most recent snapshots.
 
@@ -8,14 +8,18 @@ defmodule Curriclick.Repo.Migrations.MigrateResources1 do
   use Ecto.Migration
 
   def up do
+    rename table(:job_listings), :work_type, to: :location_type
+
     alter table(:job_listings) do
-      remove :test_echo_message
+      add :employment_type, :text
     end
   end
 
   def down do
     alter table(:job_listings) do
-      add :test_echo_message, :text
+      remove :employment_type
     end
+
+    rename table(:job_listings), :location_type, to: :work_type
   end
 end

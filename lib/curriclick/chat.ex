@@ -13,12 +13,6 @@ defmodule Curriclick.Chat do
       Retrieve the message history for a given conversation.
       """
     end
-
-    tool :meaning_of_the_universe, Curriclick.Chat.Conversation, :meaning_of_the_universe do
-      description """
-      Retrieve the meaning of the universe.
-      """
-    end
   end
 
   resources do
@@ -26,7 +20,6 @@ defmodule Curriclick.Chat do
       define :create_conversation, action: :create
       define :get_conversation, action: :read, get_by: [:id]
       define :my_conversations
-      define :meaning_of_the_universe
     end
 
     resource Curriclick.Chat.Message do

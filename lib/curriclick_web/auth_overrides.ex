@@ -11,6 +11,18 @@ defmodule CurriclickWeb.AuthOverrides do
 
   override AshAuthentication.Phoenix.Components.Banner do
     set :text, "Entre na sua conta"
+    set :image_url, nil
+    set :dark_image_url, nil
+  end
+
+  override AshAuthentication.Phoenix.Components.HorizontalRule do
+    set :text, "ou"
+  end
+
+  override AshAuthentication.Phoenix.Components.Password do
+    set :sign_in_toggle_text, "Já tem uma conta? Entrar"
+    set :register_toggle_text, "Não tem uma conta? Cadastre-se"
+    set :reset_toggle_text, "Esqueceu sua senha?"
   end
 
   override AshAuthentication.Phoenix.Components.Password.SignInForm do
@@ -19,8 +31,8 @@ defmodule CurriclickWeb.AuthOverrides do
   end
 
   override AshAuthentication.Phoenix.Components.Password.RegisterForm do
-    set :button_text, "Registrar"
-    set :disable_button_text, "Registrando..."
+    set :button_text, "Cadastrar-se"
+    set :disable_button_text, "Cadastrando..."
   end
 
   override AshAuthentication.Phoenix.Components.Password.ResetForm do

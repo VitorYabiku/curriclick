@@ -51,12 +51,6 @@ defmodule Curriclick.Chat.Conversation do
       require_atomic? false
       change Curriclick.Chat.Conversation.Changes.GenerateName
     end
-
-    action :meaning_of_the_universe, :string do
-      run fn input, _ ->
-        {:ok, "4206669"}
-      end
-    end
   end
 
   pub_sub do
