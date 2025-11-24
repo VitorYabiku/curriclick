@@ -50,7 +50,7 @@ defmodule CurriclickWeb.ChatLive do
                       <%= if message.tool_calls && message.tool_calls != [] do %>
                         <div class="flex flex-col gap-2 mb-4">
                           <%= for tool_call <- message.tool_calls do %>
-                            <details class="collapse collapse-arrow bg-base-200 border border-base-300 rounded-lg">
+                            <details id={"tool-#{tool_call["call_id"]}"} class="collapse collapse-arrow bg-base-200 border border-base-300 rounded-lg">
                               <summary class="collapse-title text-sm font-medium min-h-0 py-2 px-4">
                                 <div class="flex items-center gap-2">
                                   <.icon name="hero-wrench-screwdriver" class="w-4 h-4" /> Usando ferramenta:

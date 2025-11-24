@@ -298,7 +298,7 @@ defmodule CurriclickWeb.JobsLive do
         <form phx-submit="submit_form" class="max-w-3xl mx-auto relative">
           <div class="join w-full shadow-lg rounded-2xl border border-base-300 bg-base-100 p-1.5">
             <!-- Filter Toggle -->
-            <div class="dropdown dropdown-top dropdown-hover join-item">
+            <div class="dropdown dropdown-top join-item">
               <div tabindex="0" role="button" class="btn btn-ghost btn-circle btn-sm h-full w-10">
                 <.icon name="hero-adjustments-horizontal" class="w-5 h-5 opacity-70" />
               </div>

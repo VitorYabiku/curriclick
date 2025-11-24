@@ -90,4 +90,84 @@ defmodule CurriclickWeb.Layouts do
     </div>
     """
   end
+
+  @doc """
+  Renders the application header.
+  """
+  attr :current_user, :map, default: nil
+
+  def app_header(assigns) do
+    ~H"""
+    <header class="navbar sticky top-0 z-50 bg-base-200/90 backdrop-blur border-b border-base-200">
+      <div class="flex-1">
+        <a href={~p"/"} class="btn btn-ghost text-xl">Curriclick</a>
+      </div>
+      <div class="flex-none">
+        <ul class="menu menu-horizontal px-1 gap-2 items-center">
+          <%= if @current_user do %>
+            <li>
+              <.link navigate={~p"/"}>Busca de empregos</.link>
+            </li>
+            <li>
+              <div class="dropdown dropdown-end">
+                <div tabindex="0" role="button" class="btn btn-ghost px-2 gap-2">
+                  <div class="avatar placeholder">
+                    <div class="bg-neutral text-neutral-content rounded-full w-8">
+                      <span class="text-xs">
+                        {@current_user.email |> to_string() |> String.slice(0, 2) |> String.upcase()}
+                      </span>
+                    </div>
+                  </div>
+                  <.icon name="hero-chevron-down" class="w-4 h-4 opacity-50" />
+                </div>
+                <ul
+                  tabindex="0"
+                  class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content rounded-box w-max bg-base-200"
+                >
+                  <li>
+                    <.theme_toggle />
+                  </li>
+                  <li>
+                    <.link href={~p"/dashboard"} class="text-lg">Suas candidaturas</.link>
+                  </li>
+                  <li>
+                    <.link
+                      href={~p"/sign-out"}
+                      class="text-error text-lg"
+                      data-confirm="Tem certeza de que deseja sair?"
+                    >
+                      Sair
+                    </.link>
+                  </li>
+                </ul>
+              </div>
+            </li>
+          <% else %>
+            <li>
+              <div class="dropdown dropdown-end">
+                <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
+                  <.icon name="hero-swatch" class="size-5" />
+                </div>
+                <ul
+                  tabindex="0"
+                  class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content rounded-box w-max bg-base-200"
+                >
+                  <li>
+                    <.theme_toggle />
+                  </li>
+                </ul>
+              </div>
+            </li>
+            <li><.link navigate={~p"/sign-in"}>Entrar</.link></li>
+            <li>
+              <.link navigate={~p"/register"} class="btn btn-primary btn-sm text-primary-content">
+                Cadastrar-se
+              </.link>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    </header>
+    """
+  end
 end

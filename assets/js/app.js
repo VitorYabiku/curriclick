@@ -82,6 +82,15 @@ const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: { _csrf_token: csrfToken },
   hooks: hooks,
+  dom: {
+    onBeforeElUpdated(from, to) {
+      if (from.nodeName === "DETAILS") {
+        if (from.hasAttribute("open")) {
+          to.setAttribute("open", "");
+        }
+      }
+    },
+  },
 });
 
 // Show progress bar on live navigation and form submits

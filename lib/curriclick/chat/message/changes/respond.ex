@@ -4,6 +4,7 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
 
   alias LangChain.Chains.LLMChain
   alias LangChain.ChatModels.ChatOpenAI
+  # alias LangChain.ChatModels.ChatGoogleAI
   require Logger
 
   @impl true
@@ -36,7 +37,8 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
       new_message_id = Ash.UUIDv7.generate()
 
       %{
-        llm: ChatOpenAI.new!(%{model: "gpt-5.1", stream: true}),
+        llm: ChatOpenAI.new!(%{model: "gpt-5-mini", stream: true}),
+        # llm: ChatGoogleAI.new!(%{model: "gemini-3-pro-preview", stream: true}),
         custom_context: Map.new(Ash.Context.to_opts(context))
       }
       |> LLMChain.new!()
