@@ -106,7 +106,7 @@ defmodule CurriclickWeb.Layouts do
         <ul class="menu menu-horizontal px-1 gap-2 items-center">
           <%= if @current_user do %>
             <li>
-              <.link navigate={~p"/"}>Busca de empregos</.link>
+              <.link navigate={~p"/chat"}>Busca de empregos</.link>
             </li>
             <li>
               <div class="dropdown dropdown-end">
@@ -126,6 +126,9 @@ defmodule CurriclickWeb.Layouts do
                 >
                   <li>
                     <.theme_toggle />
+                  </li>
+                  <li>
+                    <.link href={~p"/profile"} class="text-lg">Meu perfil</.link>
                   </li>
                   <li>
                     <.link href={~p"/dashboard"} class="text-lg">Suas candidaturas</.link>

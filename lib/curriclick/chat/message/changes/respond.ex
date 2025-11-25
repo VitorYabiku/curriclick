@@ -6,11 +6,15 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
   alias LangChain.ChatModels.ChatOpenAI
   # alias LangChain.ChatModels.ChatGoogleAI
   require Logger
+  alias Curriclick.Accounts.User
 
   @impl true
   def change(changeset, _opts, context) do
     Ash.Changeset.before_transaction(changeset, fn changeset ->
       message = changeset.data
+      actor = context.actor
+
+      profile_summary = summarize_profile(actor)
 
       messages =
         Curriclick.Chat.Message
@@ -50,8 +54,17 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
         It is acceptable to run an initial search with partial information and then refine based on the user's feedback.
         </understanding_the_user>
 
+        <profile_usage>
+        - The following saved profile belongs to the signed-in user. Use it together with this conversation for every search and evaluation.
+        - If the profile is empty or missing key items, gather the gaps gradually; keep questions short.
+        - When the user provides new stable info (role, skills, experience, remote preference, constraints), ask if they want it saved. Only call the update tool after explicit consent.
+        - Respect remote preference in search and ranking: remote_only > remote_friendly > hybrid > on_site; "no_preference" means do not filter.
+        </profile_usage>
+
         <tool_usage>
-        When you need to search for jobs, use the tool `find_suitable_job_postings_for_user`.
+        - get_user_profile: call once early when profile relevance matters or when you need to confirm saved data.
+        - update_user_profile: only after the user explicitly agrees to save/update specific fields; include only confirmed values.
+        - find_suitable_job_postings_for_user: build the query with profile interests, skills, experience, and remote preference plus the current request.
         </tool_usage>
 
         <selecting_and_presenting_results>
@@ -59,7 +72,7 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
 
         For each recommended job, present:
         - Title, company, and location, clearly indicating if it is remote from Brazil, hybrid, or on-site when that is known.
-        - Why it fits: explicitly connect the job requirements and context to the user's skills, seniority, preferences, and constraints.
+        - Why it fits: explicitly connect the job requirements and context to the user's skills, seniority, preferences, and constraints (including saved profile fields).
         - Possible gaps: requirements the user might not fully meet, explained honestly but constructively.
         - Practical information when available: salary range and currency, type of employment, and how the user can apply or get more details.
 
@@ -82,6 +95,10 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
         - If you need clarification, explain in one or two short sentences why the question will improve the next recommendations before asking.
         - Format responses with Markdown: headings (##, ###), lists, and bold text for important points.
         </constraints>
+
+        <user_profile>
+        #{profile_summary}
+        </user_profile>
         """)
 
       message_chain = message_chain(messages)
@@ -91,7 +108,9 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
       %{
         llm: ChatOpenAI.new!(%{model: "gpt-5-mini", stream: true}),
         # llm: ChatGoogleAI.new!(%{model: "gemini-3-pro-preview", stream: true}),
-        custom_context: Map.new(Ash.Context.to_opts(context))
+        custom_context:
+          Map.new(Ash.Context.to_opts(context))
+          |> Map.put(:user_profile_summary, profile_summary)
       }
       |> LLMChain.new!()
       |> LLMChain.add_message(system_prompt)
@@ -104,7 +123,9 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
         tools: [
           :my_conversations,
           :message_history_for_conversation,
-          :find_suitable_job_postings_for_user
+          :find_suitable_job_postings_for_user,
+          :get_user_profile,
+          :update_user_profile
         ],
         actor: context.actor
       )
@@ -232,4 +253,42 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
         [LangChain.Message.new_user!(text)]
     end)
   end
+
+  defp summarize_profile(nil) do
+    "User not authenticated; no saved profile."
+  end
+
+  defp summarize_profile(%User{} = user) do
+    user =
+      user
+      |> Ash.load!([
+        :profile_job_interests,
+        :profile_education,
+        :profile_skills,
+        :profile_experience,
+        :profile_remote_preference,
+        :profile_custom_instructions
+      ])
+
+    """
+    job_interests: #{present_or_missing(user.profile_job_interests)}
+    education: #{present_or_missing(user.profile_education)}
+    skills: #{present_or_missing(user.profile_skills)}
+    experience: #{present_or_missing(user.profile_experience)}
+    remote_preference: #{human_remote_preference(user.profile_remote_preference)}
+    custom_instructions: #{present_or_missing(user.profile_custom_instructions)}
+    """
+  end
+
+  defp present_or_missing(nil), do: "not provided"
+  defp present_or_missing(""), do: "not provided"
+  defp present_or_missing(value), do: value
+
+  defp human_remote_preference(nil), do: "not provided"
+  defp human_remote_preference(:no_preference), do: "no preference"
+  defp human_remote_preference(:remote_only), do: "remote only"
+  defp human_remote_preference(:remote_friendly), do: "remote-friendly or hybrid"
+  defp human_remote_preference(:hybrid), do: "hybrid"
+  defp human_remote_preference(:on_site), do: "on-site"
+  defp human_remote_preference(other), do: to_string(other)
 end

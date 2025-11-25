@@ -6,6 +6,17 @@ defmodule Curriclick.Accounts.User do
     authorizers: [Ash.Policy.Authorizer],
     extensions: [AshAuthentication]
 
+  require Ash.Query
+
+  @profile_fields [
+    :profile_job_interests,
+    :profile_education,
+    :profile_skills,
+    :profile_experience,
+    :profile_remote_preference,
+    :profile_custom_instructions
+  ]
+
   authentication do
     add_ons do
       log_out_everywhere do
@@ -272,11 +283,37 @@ defmodule Curriclick.Accounts.User do
       argument :api_key, :string, allow_nil?: false
       prepare AshAuthentication.Strategy.ApiKey.SignInPreparation
     end
+
+    read :my_profile do
+      description "Return the authenticated user's saved profile"
+      get? true
+      filter expr(id == ^actor(:id))
+      prepare build(load: @profile_fields)
+    end
+
+    update :update_profile do
+      description "Edit the authenticated user's saved profile fields"
+      require_atomic? false
+      accept @profile_fields
+      filter expr(id == ^actor(:id))
+
+      change fn changeset, _context ->
+        normalize_profile_fields(changeset)
+      end
+    end
   end
 
   policies do
     bypass AshAuthentication.Checks.AshAuthenticationInteraction do
       authorize_if always()
+    end
+
+    policy action(:my_profile) do
+      authorize_if expr(id == actor(:id))
+    end
+
+    policy action(:update_profile) do
+      authorize_if expr(id == actor(:id))
     end
   end
 
@@ -293,6 +330,37 @@ defmodule Curriclick.Accounts.User do
     end
 
     attribute :confirmed_at, :utc_datetime_usec
+
+    attribute :profile_job_interests, :string do
+      public? true
+      allow_nil? true
+    end
+
+    attribute :profile_education, :string do
+      public? true
+      allow_nil? true
+    end
+
+    attribute :profile_skills, :string do
+      public? true
+      allow_nil? true
+    end
+
+    attribute :profile_experience, :string do
+      public? true
+      allow_nil? true
+    end
+
+    attribute :profile_remote_preference, :atom do
+      public? true
+      allow_nil? true
+      constraints one_of: [:remote_only, :remote_friendly, :hybrid, :on_site, :no_preference]
+    end
+
+    attribute :profile_custom_instructions, :string do
+      public? true
+      allow_nil? true
+    end
   end
 
   relationships do
@@ -305,5 +373,15 @@ defmodule Curriclick.Accounts.User do
 
   identities do
     identity :unique_email, [:email]
+  end
+
+  defp normalize_profile_fields(changeset) do
+    Enum.reduce(@profile_fields, changeset, fn field, cs ->
+      case Ash.Changeset.fetch_change(cs, field) do
+        {:ok, ""} -> Ash.Changeset.force_change_attribute(cs, field, nil)
+        {:ok, _} -> cs
+        :error -> cs
+      end
+    end)
   end
 end
