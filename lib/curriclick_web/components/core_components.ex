@@ -162,6 +162,7 @@ defmodule CurriclickWeb.CoreComponents do
   attr :multiple, :boolean, default: false, doc: "the multiple flag for select inputs"
   attr :class, :string, default: nil, doc: "the input class to use over defaults"
   attr :error_class, :string, default: nil, doc: "the input error class to use over defaults"
+  attr :label_class, :string, default: nil, doc: "extra classes for the label text"
 
   attr :rest, :global,
     include: ~w(accept autocomplete capture cols disabled form list max maxlength min minlength
@@ -209,7 +210,7 @@ defmodule CurriclickWeb.CoreComponents do
     ~H"""
     <div class="fieldset mb-2">
       <label>
-        <span :if={@label} class="label mb-1">{@label}</span>
+        <span :if={@label} class={["label mb-1", @label_class]}>{@label}</span>
         <select
           id={@id}
           name={@name}
@@ -230,7 +231,7 @@ defmodule CurriclickWeb.CoreComponents do
     ~H"""
     <div class="fieldset mb-2">
       <label>
-        <span :if={@label} class="label mb-1">{@label}</span>
+        <span :if={@label} class={["label mb-1", @label_class]}>{@label}</span>
         <textarea
           id={@id}
           name={@name}
@@ -251,7 +252,7 @@ defmodule CurriclickWeb.CoreComponents do
     ~H"""
     <div class="fieldset mb-2">
       <label>
-        <span :if={@label} class="label mb-1">{@label}</span>
+        <span :if={@label} class={["label mb-1", @label_class]}>{@label}</span>
         <input
           type={@type}
           name={@name}

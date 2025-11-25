@@ -19,6 +19,7 @@ defmodule Curriclick.Chat do
     resource Curriclick.Chat.Conversation do
       define :create_conversation, action: :create
       define :get_conversation, action: :read, get_by: [:id]
+      define :delete_conversation, action: :destroy
       define :my_conversations
     end
 

@@ -6,6 +6,9 @@ defmodule Curriclick.Chat.Conversation do
     data_layer: AshPostgres.DataLayer,
     notifiers: [Ash.Notifier.PubSub]
 
+  require Ash.Query
+  import Ash.Resource.Change.Builtins, only: [cascade_destroy: 2]
+
   oban do
     triggers do
       trigger :name_conversation do
@@ -27,8 +30,6 @@ defmodule Curriclick.Chat.Conversation do
   end
 
   actions do
-    defaults [:destroy]
-
     read :read do
       primary? true
       pagination keyset?: true, required?: false
@@ -50,6 +51,13 @@ defmodule Curriclick.Chat.Conversation do
       transaction? false
       require_atomic? false
       change Curriclick.Chat.Conversation.Changes.GenerateName
+    end
+
+    destroy :destroy do
+      require_atomic? false
+
+      # Delete dependent messages before removing the conversation to satisfy FK constraints.
+      change cascade_destroy(:messages, after_action?: false)
     end
   end
 

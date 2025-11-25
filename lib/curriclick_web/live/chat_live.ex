@@ -50,10 +50,14 @@ defmodule CurriclickWeb.ChatLive do
                       <%= if message.tool_calls && message.tool_calls != [] do %>
                         <div class="flex flex-col gap-2 mb-4">
                           <%= for tool_call <- message.tool_calls do %>
-                            <details id={"tool-#{tool_call["call_id"]}"} class="collapse collapse-arrow bg-base-200 border border-base-300 rounded-lg">
+                            <details
+                              id={"tool-#{tool_call["call_id"]}"}
+                              class="collapse collapse-arrow bg-base-200 border border-base-300 rounded-lg"
+                            >
                               <summary class="collapse-title text-sm font-medium min-h-0 py-2 px-4">
                                 <div class="flex items-center gap-2">
-                                  <.icon name="hero-wrench-screwdriver" class="w-4 h-4" /> Usando ferramenta:
+                                  <.icon name="hero-wrench-screwdriver" class="w-4 h-4" />
+                                  Usando ferramenta:
                                   <span class="font-mono text-xs bg-base-300 px-1 rounded">
                                     {tool_call["name"]}
                                   </span>
@@ -179,18 +183,18 @@ defmodule CurriclickWeb.ChatLive do
           </div>
 
           <div class="flex-1 overflow-y-auto -mx-2 px-2">
-            <div class="text-[10px] font-bold text-base-content/40 uppercase tracking-wider mb-2 px-2">
-              Recente
+            <div class="divider text-[10px] font-bold text-base-content/50 uppercase tracking-wider mx-1">
+              Chats Anteriores
             </div>
             <ul class="space-y-0.5" phx-update="stream" id="conversations-list">
               <%= for {id, conversation} <- @streams.conversations do %>
-                <li id={id}>
+                <li id={id} class="group relative">
                   <.link
                     navigate={~p"/chat/#{conversation.id}"}
                     phx-click="select_conversation"
                     phx-value-id={conversation.id}
                     class={[
-                      "group flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-all hover:bg-base-200",
+                      "group flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-all hover:bg-base-200 pr-10",
                       if(@conversation && @conversation.id == conversation.id,
                         do: "bg-base-200 font-medium text-base-content",
                         else: "text-base-content/70"
@@ -204,6 +208,17 @@ defmodule CurriclickWeb.ChatLive do
                       {build_conversation_title_string(conversation.title)}
                     </span>
                   </.link>
+                  <button
+                    type="button"
+                    class="absolute right-2 top-1/2 -translate-y-1/2 btn btn-ghost btn-circle btn-xs text-error opacity-0 group-hover:opacity-100 focus:opacity-100 focus-visible:opacity-100 transition-opacity"
+                    phx-click="delete_conversation"
+                    phx-value-id={conversation.id}
+                    phx-click-stop
+                    data-confirm="Tem certeza que deseja excluir esta conversa? Essa ação não pode ser desfeita."
+                    aria-label="Excluir conversa"
+                  >
+                    <.icon name="hero-trash" class="w-3.5 h-3.5" />
+                  </button>
                 </li>
               <% end %>
             </ul>
@@ -322,6 +337,23 @@ defmodule CurriclickWeb.ChatLive do
     end
   end
 
+  def handle_event("delete_conversation", %{"id" => id}, socket) do
+    with {:ok, conversation} <-
+           Curriclick.Chat.get_conversation(id, actor: socket.assigns.current_user),
+         :ok <-
+           Curriclick.Chat.delete_conversation(conversation, actor: socket.assigns.current_user) do
+      socket =
+        socket
+        |> stream_delete(:conversations, conversation)
+        |> maybe_reset_deleted_conversation(conversation)
+
+      {:noreply, socket}
+    else
+      _ ->
+        {:noreply, put_flash(socket, :error, "Erro ao excluir a conversa.")}
+    end
+  end
+
   def handle_info(
         %Phoenix.Socket.Broadcast{
           topic: "chat:messages:" <> conversation_id,
@@ -380,6 +412,20 @@ defmodule CurriclickWeb.ChatLive do
       :message_form,
       form
     )
+  end
+
+  defp maybe_reset_deleted_conversation(socket, conversation) do
+    if socket.assigns[:conversation] && socket.assigns.conversation.id == conversation.id do
+      CurriclickWeb.Endpoint.unsubscribe("chat:messages:#{conversation.id}")
+
+      socket
+      |> assign(:conversation, nil)
+      |> stream(:messages, [], reset: true)
+      |> assign_message_form()
+      |> push_patch(to: ~p"/chat")
+    else
+      socket
+    end
   end
 
   defp to_markdown(text) do
