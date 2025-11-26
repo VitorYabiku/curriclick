@@ -59,9 +59,9 @@ defmodule CurriclickWeb.UserProfileLive do
 
   def render(assigns) do
     ~H"""
-    <div class="min-h-screen bg-gradient-to-b from-base-200/60 via-base-200/30 to-base-100">
-      <div class="max-w-5xl mx-auto px-4 pb-12 pt-8 space-y-6">
-        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <div class="min-h-screen w-full bg-base-200">
+      <div class="max-w-5xl mx-auto px-4 pb-12 pt-8 space-y-6 bg-base-200">
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between bg-base-100/95 border border-base-200 shadow-sm rounded-xl px-4 py-3">
           <div class="space-y-1">
             <p class="text-xs md:text-sm uppercase tracking-wide text-base-content/70 font-semibold">
               Perfil
@@ -85,72 +85,170 @@ defmodule CurriclickWeb.UserProfileLive do
             phx-submit="save"
             class="card bg-base-100/95 shadow-xl border border-base-300/70 backdrop-blur-sm"
           >
-            <div class="card-body grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="space-y-3">
-                <.input
-                  field={@form[:profile_job_interests]}
-                  label="Interesses profissionais / cargos"
-                  label_class="text-sm font-semibold text-base-content/80"
-                  class="w-full input input-bordered input-md lg:input-lg text-base"
-                  placeholder="Ex.: Desenvolvedor backend Elixir, APIs, produtos B2B"
-                />
+            <div class="card-body grid grid-cols-1 gap-6">
+              <div class="rounded-xl border border-base-300/70 bg-base-300/60 p-4 shadow-sm">
+                <div class="flex items-start justify-between gap-3 flex-wrap">
+                  <div class="space-y-1">
+                    <p class="text-lg font-semibold text-base-content/90">Informações pessoais</p>
+                    <p class="text-base text-base-content/70">
+                      Opcional, ajuda a personalizar suas recomendações.
+                    </p>
+                  </div>
+                </div>
 
-                <.input
-                  field={@form[:profile_skills]}
-                  label="Principais habilidades"
-                  label_class="text-sm font-semibold text-base-content/80"
-                  class="w-full input input-bordered input-md lg:input-lg text-base"
-                  placeholder="Ex.: Elixir, Phoenix, PostgreSQL, AWS, liderança técnica"
-                />
+                <div class="divider my-2"></div>
 
-                <.input
-                  type="textarea"
-                  field={@form[:profile_experience]}
-                  rows="3"
-                  label="Resumo da experiência"
-                  label_class="text-sm font-semibold text-base-content/80"
-                  class="w-full textarea textarea-bordered text-base leading-relaxed"
-                  placeholder="Ex.: 4 anos desenvolvendo serviços web, liderança de squad por 1 ano"
-                />
+                <div class="mt-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <.input
+                    field={@form[:profile_first_name]}
+                    label="Nome"
+                    label_class="text-base font-semibold text-base-content/80"
+                    class="w-full input input-bordered input-lg text-lg"
+                    placeholder="Seu nome"
+                  />
 
-                <.input
-                  type="textarea"
-                  field={@form[:profile_custom_instructions]}
-                  rows="5"
-                  label="Instruções para a IA"
-                  label_class="text-sm font-semibold text-base-content/80"
-                  class="w-full textarea textarea-bordered text-base leading-relaxed"
-                  placeholder="Tom de voz, preferências de vaga, o que evitar, como priorizar resultados"
-                />
+                  <.input
+                    field={@form[:profile_last_name]}
+                    label="Sobrenome"
+                    label_class="text-base font-semibold text-base-content/80"
+                    class="w-full input input-bordered input-lg text-lg"
+                    placeholder="Seu sobrenome"
+                  />
+
+                  <.input
+                    type="date"
+                    field={@form[:profile_birth_date]}
+                    label="Data de nascimento"
+                    label_class="text-base font-semibold text-base-content/80"
+                    class="w-full input input-bordered input-lg text-lg"
+                  />
+
+                  <.input
+                    field={@form[:profile_phone]}
+                    label="Telefone"
+                    label_class="text-base font-semibold text-base-content/80"
+                    class="w-full input input-bordered input-lg text-lg"
+                    placeholder="(11) 91234-5678"
+                  />
+
+                  <.input
+                    field={@form[:profile_location]}
+                    label="Cidade / UF e CEP"
+                    label_class="text-base font-semibold text-base-content/80"
+                    class="w-full input input-bordered input-lg text-lg"
+                    placeholder="São Paulo - SP, CEP 01234-567"
+                  />
+
+                  <.input
+                    field={@form[:profile_cpf]}
+                    label="CPF"
+                    label_class="text-base font-semibold text-base-content/80"
+                    class="w-full input input-bordered input-lg text-lg"
+                    placeholder="000.000.000-00"
+                  />
+                </div>
               </div>
 
               <div class="space-y-3">
-                <.input
-                  type="textarea"
-                  field={@form[:profile_education]}
-                  rows="3"
-                  label="Educação e cursos"
-                  label_class="text-sm font-semibold text-base-content/80"
-                  class="w-full textarea textarea-bordered text-base leading-relaxed"
-                  placeholder="Graduação, certificações, cursos relevantes"
-                />
+                <div class="space-y-3 rounded-xl border border-base-300/70 bg-base-300/60 p-4 shadow-sm">
+                  <div class="space-y-1">
+                    <p class="text-lg font-semibold text-base-content/90">
+                      Experiência e habilidades
+                    </p>
+                    <p class="text-base text-base-content/70">
+                      Conte à IA sobre sua área de atuação.
+                    </p>
+                  </div>
+
+                  <div class="divider my-2"></div>
+
+                  <div class="space-y-3">
+                    <.input
+                      field={@form[:profile_job_interests]}
+                      label="Interesses profissionais / cargos"
+                      label_class="text-base font-semibold text-base-content/80"
+                      class="w-full input input-bordered input-lg text-lg"
+                      placeholder="Ex.: Desenvolvedor backend Elixir, APIs, produtos B2B"
+                    />
+
+                    <.input
+                      field={@form[:profile_skills]}
+                      label="Principais habilidades"
+                      label_class="text-base font-semibold text-base-content/80"
+                      class="w-full input input-bordered input-lg text-lg"
+                      placeholder="Ex.: Elixir, Phoenix, PostgreSQL, AWS, liderança técnica"
+                    />
+
+                    <.input
+                      type="textarea"
+                      field={@form[:profile_experience]}
+                      rows="3"
+                      label="Resumo da experiência"
+                      label_class="text-base font-semibold text-base-content/80"
+                      class="w-full textarea textarea-bordered textarea-lg text-lg leading-relaxed"
+                      placeholder="Ex.: 4 anos desenvolvendo serviços web, liderança de squad por 1 ano"
+                    />
+                  </div>
+                </div>
+
+                <div class="space-y-3 rounded-xl border border-base-300/70 bg-base-300/60 p-4 shadow-sm">
+                  <div class="space-y-1">
+                    <p class="text-lg font-semibold text-base-content/90">Educação</p>
+                    <p class="text-base text-base-content/70">Formações, certificações e cursos.</p>
+                  </div>
+
+                  <div class="divider my-2"></div>
+
+                  <.input
+                    type="textarea"
+                    field={@form[:profile_education]}
+                    rows="3"
+                    label="Educação e cursos"
+                    label_class="text-base font-semibold text-base-content/80"
+                    class="w-full textarea textarea-bordered textarea-lg text-lg leading-relaxed"
+                    placeholder="Graduação, certificações, cursos relevantes"
+                  />
+                </div>
+
+                <div class="space-y-3 rounded-xl border border-base-300/70 bg-base-300/60 p-4 shadow-sm">
+                  <div class="space-y-1">
+                    <p class="text-lg font-semibold text-base-content/90">Instruções para a IA</p>
+                    <p class="text-base text-base-content/70">
+                      Personalize como a IA deve responder.
+                    </p>
+                  </div>
+
+                  <div class="divider my-2"></div>
+
+                  <.input
+                    type="textarea"
+                    field={@form[:profile_custom_instructions]}
+                    rows="5"
+                    label="Instruções para a IA"
+                    label_class="text-base font-semibold text-base-content/80"
+                    class="w-full textarea textarea-bordered textarea-lg text-lg leading-relaxed"
+                    placeholder="Tom de voz, preferências de vaga, o que evitar, como priorizar resultados"
+                  />
+                </div>
               </div>
 
-              <div class="md:col-span-2 space-y-3 rounded-xl border border-base-300/70 bg-base-200/60 p-4 shadow-sm">
+              <div class="space-y-3 rounded-xl border border-base-300/70 bg-base-300/60 p-4 shadow-sm">
                 <div class="space-y-1">
-                  <p class="text-sm font-semibold text-base-content/90">
+                  <p class="text-lg font-semibold text-base-content/90">
                     Preferência de modalidade
                   </p>
-                  <p class="text-sm text-base-content/70">
+                  <p class="text-base text-base-content/70">
                     Escolha as modalidades que você aceita.
                   </p>
                 </div>
 
+                <div class="divider my-2"></div>
+
                 <div class="grid grid-cols-1 gap-2 md:grid-cols-3">
                   <label class="flex w-full items-start justify-between gap-3 rounded-lg border border-base-300/60 bg-base-100 px-3 py-2 shadow-sm">
                     <div class="min-w-0 space-y-1 break-words">
-                      <p class="font-semibold text-base-content/90">Remoto</p>
-                      <p class="text-sm text-base-content/70">Trabalhar 100% à distância.</p>
+                      <p class="font-semibold text-base-content/90 text-base">Remoto</p>
+                      <p class="text-base text-base-content/70">Trabalhar 100% à distância.</p>
                     </div>
                     <div class="join shrink-0">
                       <input
@@ -159,7 +257,7 @@ defmodule CurriclickWeb.UserProfileLive do
                         value="true"
                         checked={@remote_flags.remote}
                         class={[
-                          "join-item btn btn-sm md:btn-md",
+                          "join-item btn btn-md md:btn-lg text-base",
                           @remote_flags.remote && "btn-primary",
                           !@remote_flags.remote && "btn-ghost"
                         ]}
@@ -171,7 +269,7 @@ defmodule CurriclickWeb.UserProfileLive do
                         value="false"
                         checked={!@remote_flags.remote}
                         class={[
-                          "join-item btn btn-sm md:btn-md",
+                          "join-item btn btn-md md:btn-lg text-base",
                           !@remote_flags.remote && "btn-primary",
                           @remote_flags.remote && "btn-ghost"
                         ]}
@@ -182,8 +280,8 @@ defmodule CurriclickWeb.UserProfileLive do
 
                   <label class="flex w-full items-start justify-between gap-3 rounded-lg border border-base-300/60 bg-base-100 px-3 py-2 shadow-sm">
                     <div class="min-w-0 space-y-1 break-words">
-                      <p class="font-semibold text-base-content/90">Híbrido</p>
-                      <p class="text-sm text-base-content/70">
+                      <p class="font-semibold text-base-content/90 text-base">Híbrido</p>
+                      <p class="text-base text-base-content/70">
                         Modelo flexível entre escritório e remoto.
                       </p>
                     </div>
@@ -194,7 +292,7 @@ defmodule CurriclickWeb.UserProfileLive do
                         value="true"
                         checked={@remote_flags.hybrid}
                         class={[
-                          "join-item btn btn-sm md:btn-md",
+                          "join-item btn btn-md md:btn-lg text-base",
                           @remote_flags.hybrid && "btn-primary",
                           !@remote_flags.hybrid && "btn-ghost"
                         ]}
@@ -206,7 +304,7 @@ defmodule CurriclickWeb.UserProfileLive do
                         value="false"
                         checked={!@remote_flags.hybrid}
                         class={[
-                          "join-item btn btn-sm md:btn-md",
+                          "join-item btn btn-md md:btn-lg text-base",
                           !@remote_flags.hybrid && "btn-primary",
                           @remote_flags.hybrid && "btn-ghost"
                         ]}
@@ -217,8 +315,8 @@ defmodule CurriclickWeb.UserProfileLive do
 
                   <label class="flex w-full items-start justify-between gap-3 rounded-lg border border-base-300/60 bg-base-100 px-3 py-2 shadow-sm md:col-span-1">
                     <div class="min-w-0 space-y-1 break-words">
-                      <p class="font-semibold text-base-content/90">Presencial</p>
-                      <p class="text-sm text-base-content/70">Atuação no escritório / cliente.</p>
+                      <p class="font-semibold text-base-content/90 text-base">Presencial</p>
+                      <p class="text-base text-base-content/70">Atuação no escritório / cliente.</p>
                     </div>
                     <div class="join shrink-0">
                       <input
@@ -227,7 +325,7 @@ defmodule CurriclickWeb.UserProfileLive do
                         value="true"
                         checked={@remote_flags.on_site}
                         class={[
-                          "join-item btn btn-sm md:btn-md",
+                          "join-item btn btn-md md:btn-lg text-base",
                           @remote_flags.on_site && "btn-primary",
                           !@remote_flags.on_site && "btn-ghost"
                         ]}
@@ -239,7 +337,7 @@ defmodule CurriclickWeb.UserProfileLive do
                         value="false"
                         checked={!@remote_flags.on_site}
                         class={[
-                          "join-item btn btn-sm md:btn-md",
+                          "join-item btn btn-md md:btn-lg text-base",
                           !@remote_flags.on_site && "btn-primary",
                           @remote_flags.on_site && "btn-ghost"
                         ]}
@@ -252,7 +350,7 @@ defmodule CurriclickWeb.UserProfileLive do
             </div>
 
             <div class="card-actions border-t border-base-300/70 px-6 py-4 bg-base-200/60 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-              <div class="alert bg-base-200/80 border border-base-300 text-base-content/80 shadow-sm w-full md:max-w-xl">
+              <div class="alert bg-base-300/80 border border-base-300 text-base-content/80 shadow-sm w-full md:max-w-xl">
                 <.icon name="hero-information-circle" class="h-5 w-5 text-primary" />
                 <div class="space-y-1">
                   <p class="font-semibold text-base-content/90">Dicas rápidas</p>

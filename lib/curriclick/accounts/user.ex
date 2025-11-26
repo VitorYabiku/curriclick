@@ -14,7 +14,13 @@ defmodule Curriclick.Accounts.User do
     :profile_skills,
     :profile_experience,
     :profile_remote_preference,
-    :profile_custom_instructions
+    :profile_custom_instructions,
+    :profile_first_name,
+    :profile_last_name,
+    :profile_birth_date,
+    :profile_location,
+    :profile_cpf,
+    :profile_phone
   ]
 
   authentication do
@@ -288,7 +294,7 @@ defmodule Curriclick.Accounts.User do
       description "Return the authenticated user's saved profile"
       get? true
       filter expr(id == ^actor(:id))
-      prepare build(load: @profile_fields)
+      prepare build(load: @profile_fields ++ [:profile_full_name])
     end
 
     update :update_profile do
@@ -361,6 +367,40 @@ defmodule Curriclick.Accounts.User do
       public? true
       allow_nil? true
     end
+
+    attribute :profile_first_name, :string do
+      public? true
+      allow_nil? true
+    end
+
+    attribute :profile_last_name, :string do
+      public? true
+      allow_nil? true
+    end
+
+    attribute :profile_birth_date, :date do
+      public? true
+      allow_nil? true
+      sensitive? true
+    end
+
+    attribute :profile_location, :string do
+      public? true
+      allow_nil? true
+      sensitive? true
+    end
+
+    attribute :profile_cpf, :string do
+      public? true
+      allow_nil? true
+      sensitive? true
+    end
+
+    attribute :profile_phone, :string do
+      public? true
+      allow_nil? true
+      sensitive? true
+    end
   end
 
   relationships do
@@ -369,6 +409,22 @@ defmodule Curriclick.Accounts.User do
     end
 
     has_many :applications, Curriclick.Companies.JobApplication
+  end
+
+  calculations do
+    calculate :profile_full_name, :string do
+      public? true
+
+      calculation fn record, _ctx ->
+        [record.profile_first_name, record.profile_last_name]
+        |> Enum.reject(&is_nil_or_blank/1)
+        |> Enum.join(" ")
+        |> case do
+          "" -> nil
+          full -> full
+        end
+      end
+    end
   end
 
   identities do
@@ -384,4 +440,6 @@ defmodule Curriclick.Accounts.User do
       end
     end)
   end
+
+  defp is_nil_or_blank(value), do: is_nil(value) or value == ""
 end
