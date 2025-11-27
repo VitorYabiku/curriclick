@@ -67,7 +67,24 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
         - get_user_profile: call once early when profile relevance matters or when you need to confirm saved data.
         - update_user_profile: only after the user explicitly agrees to save/update specific fields; include only confirmed values.
         - find_suitable_job_postings_for_user: build the query with profile interests, skills, experience, and remote preference plus the current request.
+        - set_chat_job_cards: Display job results in the side panel. ALWAYS call this after filtering results from find_suitable_job_postings_for_user.
         </tool_usage>
+
+        <job_cards_workflow>
+        After receiving results from find_suitable_job_postings_for_user:
+        1. Filter to 3–10 best matches based on user profile and stated preferences.
+        2. For EACH job, generate personalized enrichment:
+           - match_quality: one of "bad_match", "moderate_match", "good_match", "very_good_match" based on overall fit.
+           - pros: 2–4 bullet points explaining why this job fits the user (connect to their skills, experience, goals, location/remote preference).
+           - cons: 1–3 bullet points on potential gaps or mismatches (missing skills, location constraints, seniority mismatch, etc.).
+           - success_probability: float 0.0–1.0 estimating likelihood of getting hired given the user's profile vs. job requirements.
+           - missing_info: brief note if profile gaps prevent accurate assessment (e.g., "Seniority level unclear").
+           - summary: 1–2 sentence pitch the user can review before applying.
+           - description: the full job description text so the user can see all details.
+           - selected: set true ONLY for very_good_match jobs where the user's profile aligns almost perfectly.
+        3. Call set_chat_job_cards with conversation_id "#{message.conversation_id}" and the enriched job_cards array.
+        4. In your chat response, briefly summarize highlights; the detailed cards appear in the panel.
+        </job_cards_workflow>
 
         <selecting_and_presenting_results>
         From the tool results, select 3–10 job postings that best match what you know about the user.
@@ -258,21 +275,24 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
   defp summarize_profile(%User{} = user) do
     user =
       user
-      |> Ash.load!([
-        :profile_job_interests,
-        :profile_education,
-        :profile_skills,
-        :profile_experience,
-        :profile_remote_preference,
-        :profile_custom_instructions,
-        :profile_first_name,
-        :profile_last_name,
-        :profile_full_name,
-        :profile_birth_date,
-        :profile_location,
-        :profile_phone,
-        :profile_cpf
-      ], actor: user)
+      |> Ash.load!(
+        [
+          :profile_job_interests,
+          :profile_education,
+          :profile_skills,
+          :profile_experience,
+          :profile_remote_preference,
+          :profile_custom_instructions,
+          :profile_first_name,
+          :profile_last_name,
+          :profile_full_name,
+          :profile_birth_date,
+          :profile_location,
+          :profile_phone,
+          :profile_cpf
+        ],
+        actor: user
+      )
 
     """
     full_name: #{name_or_missing(user)}
@@ -327,7 +347,9 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
     trimmed = String.trim(value)
 
     case String.length(trimmed) do
-      len when len <= 4 -> String.duplicate("*", len)
+      len when len <= 4 ->
+        String.duplicate("*", len)
+
       len ->
         visible = String.slice(trimmed, -4, 4)
         String.duplicate("*", len - 4) <> visible
@@ -342,19 +364,21 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
   defp human_remote_preference(:on_site), do: "on-site"
   defp human_remote_preference(other), do: to_string(other)
 
+  @no_auth_tools [
+    :find_suitable_job_postings_for_user,
+    :set_chat_job_cards
+  ]
+
   defp tool_list(nil) do
-    [
-      :find_suitable_job_postings_for_user
-    ]
+    @no_auth_tools
   end
 
   defp tool_list(_actor) do
-    [
-      :my_conversations,
-      :message_history_for_conversation,
-      :find_suitable_job_postings_for_user,
-      :get_user_profile,
-      :update_user_profile
-    ]
+    @no_auth_tools ++
+      [
+        :message_history_for_conversation,
+        :get_user_profile,
+        :update_user_profile
+      ]
   end
 end

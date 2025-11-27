@@ -67,6 +67,58 @@ defmodule Curriclick.Companies.JobListing do
       end
     end
 
+    action :set_chat_job_cards, :boolean do
+      description """
+      <action_purpose>
+        Display job cards in the chat UI side panel for user review and selection.
+        Call this after filtering results from find_suitable_job_postings_for_user.
+      </action_purpose>
+
+      <instructions>
+        - After calling find_suitable_job_postings_for_user and filtering to best 3-10 matches, call this tool.
+        - For each job, provide enriched data: pros, cons, success_probability, missing_info, summary.
+        - Set `selected: true` for jobs with very high match scores where you're confident the user would be interested.
+        - The summary should be suitable for application confirmation (why this job fits the user).
+        - Pros/cons should be specific to the user's profile, not generic.
+      </instructions>
+      """
+
+      argument :conversation_id, :uuid do
+        description "The conversation ID to broadcast job cards to"
+        allow_nil? false
+        public? true
+      end
+
+      argument :job_cards, {:array, Curriclick.Companies.JobCardPresentation} do
+        description "List of job cards with enriched data for display"
+        allow_nil? false
+        public? true
+      end
+
+      run fn input, _context ->
+        conversation_id = input.arguments.conversation_id
+        job_cards = input.arguments.job_cards
+
+        # Persist job cards to conversation
+        # We use authorize?: false because this is a system-level tool execution
+        # and we want to ensure the update happens regardless of specific policy states
+        # (though we could also pass the actor from input.context if needed)
+        Curriclick.Chat.Conversation
+        |> Ash.Query.filter(id == ^conversation_id)
+        |> Ash.read_one!(authorize?: false)
+        |> Ash.Changeset.for_update(:update_job_cards, %{job_cards: job_cards})
+        |> Ash.update!(authorize?: false)
+
+        Phoenix.PubSub.broadcast(
+          Curriclick.PubSub,
+          "chat:job_cards:#{conversation_id}",
+          {:job_cards_updated, %{job_cards: job_cards, conversation_id: conversation_id}}
+        )
+
+        {:ok, true}
+      end
+    end
+
     action :find_matching_jobs, {:array, Curriclick.Companies.JobListingMatch} do
       description """
       <action_purpose>

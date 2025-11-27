@@ -46,6 +46,10 @@ defmodule Curriclick.Chat.Conversation do
       filter expr(user_id == ^actor(:id))
     end
 
+    update :update_job_cards do
+      accept [:job_cards]
+    end
+
     update :generate_name do
       accept []
       transaction? false
@@ -79,6 +83,11 @@ defmodule Curriclick.Chat.Conversation do
 
     attribute :title, :string do
       public? true
+    end
+
+    attribute :job_cards, {:array, Curriclick.Companies.JobCardPresentation} do
+      public? true
+      default []
     end
 
     timestamps()
