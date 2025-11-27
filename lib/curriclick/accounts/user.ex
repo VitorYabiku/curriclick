@@ -293,7 +293,6 @@ defmodule Curriclick.Accounts.User do
     read :my_profile do
       description "Return the authenticated user's saved profile"
       get? true
-      filter expr(id == ^actor(:id))
       prepare build(load: @profile_fields ++ [:profile_full_name])
     end
 
@@ -301,7 +300,6 @@ defmodule Curriclick.Accounts.User do
       description "Edit the authenticated user's saved profile fields"
       require_atomic? false
       accept @profile_fields
-      filter expr(id == ^actor(:id))
 
       change fn changeset, _context ->
         normalize_profile_fields(changeset)
@@ -314,12 +312,18 @@ defmodule Curriclick.Accounts.User do
       authorize_if always()
     end
 
-    policy action(:my_profile) do
-      authorize_if expr(id == actor(:id))
+    # Allow reads of a user record when the actor is that user.
+    # This is used both for normal reads and for the bulk-read
+    # authorization that happens before bulk updates (e.g. tools).
+    policy action_type(:read) do
+      authorize_if expr(id == ^actor(:id))
     end
 
+    # Allow updating the profile only when the actor is the user
+    # being updated. This must align with the bulk-update
+    # authorization path used by AshAi.Tools.execute/3.
     policy action(:update_profile) do
-      authorize_if expr(id == actor(:id))
+      authorize_if expr(id == ^actor(:id))
     end
   end
 

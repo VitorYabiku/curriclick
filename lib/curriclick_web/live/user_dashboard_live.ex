@@ -139,7 +139,7 @@ defmodule CurriclickWeb.UserDashboardLive do
               Você ainda não se candidatou a nenhuma vaga. Utilize a busca para encontrar oportunidades que combinam com você.
             </p>
             <div class="mt-6">
-              <.link navigate={~p"/"} class="btn btn-primary">
+              <.link navigate={~p"/chat"} class="btn btn-primary">
                 Buscar Vagas
               </.link>
             </div>

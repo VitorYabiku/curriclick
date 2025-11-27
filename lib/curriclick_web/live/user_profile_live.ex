@@ -59,9 +59,9 @@ defmodule CurriclickWeb.UserProfileLive do
 
   def render(assigns) do
     ~H"""
-    <div class="min-h-screen w-full bg-base-200">
-      <div class="max-w-5xl mx-auto px-4 pb-12 pt-8 space-y-6 bg-base-200">
-        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between bg-base-100/95 border border-base-200 shadow-sm rounded-xl px-4 py-3">
+    <div class="min-h-screen w-full">
+      <div class="max-w-5xl mx-auto px-4 pb-12 pt-8 space-y-6">
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between bg-base-100/95 border border-base-100 rounded-xl px-4 py-3">
           <div class="space-y-1">
             <p class="text-xs md:text-sm uppercase tracking-wide text-base-content/70 font-semibold">
               Perfil
@@ -83,10 +83,10 @@ defmodule CurriclickWeb.UserProfileLive do
             for={@form}
             phx-change="validate"
             phx-submit="save"
-            class="card bg-base-100/95 shadow-xl border border-base-300/70 backdrop-blur-sm"
+            class="card bg-base-100/95 backdrop-blur-sm"
           >
             <div class="card-body grid grid-cols-1 gap-6">
-              <div class="rounded-xl border border-base-300/70 bg-base-300/60 p-4 shadow-sm">
+              <div class="rounded-xl bg-base-200 p-4 shadow-sm">
                 <div class="flex items-start justify-between gap-3 flex-wrap">
                   <div class="space-y-1">
                     <p class="text-lg font-semibold text-base-content/90">Informações pessoais</p>
@@ -150,7 +150,7 @@ defmodule CurriclickWeb.UserProfileLive do
               </div>
 
               <div class="space-y-3">
-                <div class="space-y-3 rounded-xl border border-base-300/70 bg-base-300/60 p-4 shadow-sm">
+                <div class="space-y-3 rounded-xl bg-base-200 p-4 shadow-sm">
                   <div class="space-y-1">
                     <p class="text-lg font-semibold text-base-content/90">
                       Experiência e habilidades
@@ -191,7 +191,7 @@ defmodule CurriclickWeb.UserProfileLive do
                   </div>
                 </div>
 
-                <div class="space-y-3 rounded-xl border border-base-300/70 bg-base-300/60 p-4 shadow-sm">
+                <div class="space-y-3 rounded-xl bg-base-200 p-4 shadow-sm">
                   <div class="space-y-1">
                     <p class="text-lg font-semibold text-base-content/90">Educação</p>
                     <p class="text-base text-base-content/70">Formações, certificações e cursos.</p>
@@ -210,7 +210,7 @@ defmodule CurriclickWeb.UserProfileLive do
                   />
                 </div>
 
-                <div class="space-y-3 rounded-xl border border-base-300/70 bg-base-300/60 p-4 shadow-sm">
+                <div class="space-y-3 rounded-xl bg-base-200 p-4 shadow-sm">
                   <div class="space-y-1">
                     <p class="text-lg font-semibold text-base-content/90">Instruções para a IA</p>
                     <p class="text-base text-base-content/70">
@@ -232,7 +232,7 @@ defmodule CurriclickWeb.UserProfileLive do
                 </div>
               </div>
 
-              <div class="space-y-3 rounded-xl border border-base-300/70 bg-base-300/60 p-4 shadow-sm">
+              <div class="space-y-3 rounded-xl bg-base-200 p-4 shadow-sm">
                 <div class="space-y-1">
                   <p class="text-lg font-semibold text-base-content/90">
                     Preferência de modalidade
@@ -245,7 +245,7 @@ defmodule CurriclickWeb.UserProfileLive do
                 <div class="divider my-2"></div>
 
                 <div class="grid grid-cols-1 gap-2 md:grid-cols-3">
-                  <label class="flex w-full items-start justify-between gap-3 rounded-lg border border-base-300/60 bg-base-100 px-3 py-2 shadow-sm">
+                  <label class="flex w-full items-start justify-between gap-3 rounded-lg bg-base-100 px-3 py-2 shadow-sm">
                     <div class="min-w-0 space-y-1 break-words">
                       <p class="font-semibold text-base-content/90 text-base">Remoto</p>
                       <p class="text-base text-base-content/70">Trabalhar 100% à distância.</p>
@@ -278,7 +278,7 @@ defmodule CurriclickWeb.UserProfileLive do
                     </div>
                   </label>
 
-                  <label class="flex w-full items-start justify-between gap-3 rounded-lg border border-base-300/60 bg-base-100 px-3 py-2 shadow-sm">
+                  <label class="flex w-full items-start justify-between gap-3 rounded-lg bg-base-100 px-3 py-2 shadow-sm">
                     <div class="min-w-0 space-y-1 break-words">
                       <p class="font-semibold text-base-content/90 text-base">Híbrido</p>
                       <p class="text-base text-base-content/70">
@@ -313,7 +313,7 @@ defmodule CurriclickWeb.UserProfileLive do
                     </div>
                   </label>
 
-                  <label class="flex w-full items-start justify-between gap-3 rounded-lg border border-base-300/60 bg-base-100 px-3 py-2 shadow-sm md:col-span-1">
+                  <label class="flex w-full items-start justify-between gap-3 rounded-lg bg-base-100 px-3 py-2 shadow-sm md:col-span-1">
                     <div class="min-w-0 space-y-1 break-words">
                       <p class="font-semibold text-base-content/90 text-base">Presencial</p>
                       <p class="text-base text-base-content/70">Atuação no escritório / cliente.</p>
@@ -349,11 +349,11 @@ defmodule CurriclickWeb.UserProfileLive do
               </div>
             </div>
 
-            <div class="card-actions border-t border-base-300/70 px-6 py-4 bg-base-200/60 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-              <div class="alert bg-base-300/80 border border-base-300 text-base-content/80 shadow-sm w-full md:max-w-xl">
+            <div class="card-actions px-6 py-4 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div class="alert bg-base-200 text-base-content/80 shadow-sm w-full md:max-w-xl">
                 <.icon name="hero-information-circle" class="h-5 w-5 text-primary" />
                 <div class="space-y-1">
-                  <p class="font-semibold text-base-content/90">Dicas rápidas</p>
+                  <p class="font-semibold text-base-content/90">Dicas</p>
                   <ul class="list-disc pl-4 space-y-1">
                     <li class="leading-relaxed">Campos em branco limpam instruções anteriores.</li>
                     <li class="leading-relaxed">
