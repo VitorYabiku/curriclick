@@ -415,14 +415,16 @@ defmodule Curriclick.Accounts.User do
     calculate :profile_full_name, :string do
       public? true
 
-      calculation fn record, _ctx ->
-        [record.profile_first_name, record.profile_last_name]
-        |> Enum.reject(&is_nil_or_blank/1)
-        |> Enum.join(" ")
-        |> case do
-          "" -> nil
-          full -> full
-        end
+      calculation fn records, _ctx ->
+        Enum.map(records, fn record ->
+          [record.profile_first_name, record.profile_last_name]
+          |> Enum.reject(&is_nil_or_blank/1)
+          |> Enum.join(" ")
+          |> case do
+            "" -> nil
+            full -> full
+          end
+        end)
       end
     end
   end

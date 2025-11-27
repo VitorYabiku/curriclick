@@ -82,6 +82,7 @@ defmodule Curriclick.Companies.JobListing do
             - **Do Not Ask First**: Do NOT ask for clarification before running the tool. Show results first.
             - **Clarify Later**: Only ask for more details or clarification *after* presenting the initial results, and only if it would significantly improve the outcome.
           - **Ambiguity**: If the request is ambiguous, make a reasonable best guess, run the search, and then explain your assumptions in the final response.
+          - **Profile Context**: When available, include `profile_context` (saved interests, skills, experience, location, remote preference, custom instructions) and `profile_remote_preference` so the service can bias results without asking the user again.
         </instruction_group>
 
         <instruction_group name="Tool Arguments">
@@ -126,6 +127,13 @@ defmodule Curriclick.Companies.JobListing do
         allow_nil? true
         public? true
         constraints max_length: 2000
+      end
+
+      argument :profile_context, :string do
+        description "Serialized user profile (interests, skills, experience, location, custom instructions, remote preference) to enrich the search."
+        allow_nil? true
+        public? true
+        constraints max_length: 4000
       end
 
       argument :limit, :integer do
@@ -176,7 +184,7 @@ defmodule Curriclick.Companies.JobListing do
         description "Boost for query_profile_semantic."
         allow_nil? true
         public? true
-        default 0.0
+        default 1.0
       end
 
       # Text Boosts
@@ -205,7 +213,14 @@ defmodule Curriclick.Companies.JobListing do
         description "Boost for query_profile text."
         allow_nil? true
         public? true
-        default 0.0
+        default 1.0
+      end
+
+      argument :profile_remote_preference, :atom do
+        description "User's saved remote preference (remote_only, remote_friendly, hybrid, on_site, no_preference)."
+        allow_nil? true
+        public? true
+        constraints one_of: [:remote_only, :remote_friendly, :hybrid, :on_site, :no_preference]
       end
 
       # Filters
@@ -235,7 +250,21 @@ defmodule Curriclick.Companies.JobListing do
 
       run fn input, _context ->
         query = input.arguments
-        search_text = query[:query]
+
+        present? = fn text -> is_binary(text) and String.trim(text) != "" end
+
+        search_text =
+          case query[:query] do
+            text when is_binary(text) -> if present?.(text), do: String.trim(text), else: nil
+            _ -> nil
+          end
+
+        profile_context =
+          case query[:profile_context] do
+            text when is_binary(text) -> if present?.(text), do: String.trim(text), else: nil
+            _ -> nil
+          end
+
         limit = query[:limit] || @result_count_default_limit
         min_score = query[:min_score] || 5.0
 
@@ -254,14 +283,14 @@ defmodule Curriclick.Companies.JobListing do
           ]
 
           # Helper to add semantic clauses
-          add_semantic = fn clauses, field, boost ->
-            if search_text && boost && boost > 0.0 do
+          add_semantic = fn clauses, field, boost, text ->
+            if present?.(text) && boost && boost > 0.0 do
               clauses ++
                 [
                   %{
                     "semantic" => %{
                       "field" => field,
-                      "query" => search_text,
+                      "query" => text,
                       "boost" => boost
                     }
                   }
@@ -272,14 +301,14 @@ defmodule Curriclick.Companies.JobListing do
           end
 
           # Helper to add text match clauses
-          add_text = fn clauses, field, boost ->
-            if search_text && boost && boost > 0.0 do
+          add_text = fn clauses, field, boost, text ->
+            if present?.(text) && boost && boost > 0.0 do
               clauses ++
                 [
                   %{
                     "match" => %{
                       field => %{
-                        "query" => search_text,
+                        "query" => text,
                         "boost" => boost
                       }
                     }
@@ -292,18 +321,23 @@ defmodule Curriclick.Companies.JobListing do
 
           should_clauses =
             []
-            |> add_semantic.("description_semantic", query[:semantic_aggregate_boost])
-            |> add_semantic.("title_semantic", query[:semantic_title_boost])
+            |> add_semantic.("description_semantic", query[:semantic_aggregate_boost], search_text)
+            |> add_semantic.("title_semantic", query[:semantic_title_boost], search_text)
             |> add_semantic.(
               "description_individual_semantic",
-              query[:semantic_description_boost]
+              query[:semantic_description_boost],
+              search_text
             )
-            |> add_semantic.("skills_desc_semantic", query[:semantic_skills_boost])
-            |> add_semantic.("query_profile_semantic", query[:semantic_query_profile_boost])
-            |> add_text.("title", query[:text_title_boost])
-            |> add_text.("description", query[:text_description_boost])
-            |> add_text.("skills_desc", query[:text_skills_boost])
-            |> add_text.("query_profile", query[:text_query_profile_boost])
+            |> add_semantic.("skills_desc_semantic", query[:semantic_skills_boost], search_text)
+            |> add_semantic.(
+              "query_profile_semantic",
+              query[:semantic_query_profile_boost],
+              profile_context
+            )
+            |> add_text.("title", query[:text_title_boost], search_text)
+            |> add_text.("description", query[:text_description_boost], search_text)
+            |> add_text.("skills_desc", query[:text_skills_boost], search_text)
+            |> add_text.("query_profile", query[:text_query_profile_boost], profile_context)
 
           # Helper to add term filters
           add_term_filter = fn clauses, field, value ->
@@ -323,10 +357,24 @@ defmodule Curriclick.Companies.JobListing do
             end
           end
 
+          remote_allowed_from_profile =
+            case query[:profile_remote_preference] do
+              :remote_only -> true
+              :remote_friendly -> true
+              :on_site -> false
+              _ -> nil
+            end
+
+          remote_allowed_filter =
+            case {query[:remote_allowed], remote_allowed_from_profile} do
+              {nil, profile_value} -> profile_value
+              {explicit, _} -> explicit
+            end
+
           filter_clauses =
             []
             |> add_terms_filter.("work_type", query[:work_types])
-            |> add_term_filter.("remote_allowed", query[:remote_allowed])
+            |> add_term_filter.("remote_allowed", remote_allowed_filter)
 
           body = %{
             "min_score" => min_score,

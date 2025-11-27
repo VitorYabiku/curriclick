@@ -7,11 +7,11 @@ defmodule Curriclick.Accounts do
 
   tools do
     tool :get_user_profile, Curriclick.Accounts.User, :my_profile do
-      description "Fetch the signed-in user's saved profile (interests, education, skills, experience, remote preference, custom instructions)."
+      description "Fetch the signed-in user's saved profile (name, contact/location, interests, education, skills, experience, remote preference, custom instructions). Keep sensitive fields (phone, CPF, birth_date) private unless the user asks to share them."
     end
 
     tool :update_user_profile, Curriclick.Accounts.User, :update_profile do
-      description "Update the signed-in user's saved profile after they explicitly confirm the change."
+      description "Update the signed-in user's saved profile after they explicitly confirm the change, including name/contact, interests, skills, education, experience, remote preference, and custom instructions."
     end
   end
 

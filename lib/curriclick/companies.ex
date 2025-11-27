@@ -4,7 +4,9 @@ defmodule Curriclick.Companies do
   tools do
     tool :find_suitable_job_postings_for_user,
          Curriclick.Companies.JobListing,
-         :find_matching_jobs
+         :find_matching_jobs do
+      description "Search job postings using the user's request plus saved profile (interests, skills, experience, location, remote preference, custom instructions). Always include profile_context and profile_remote_preference when available."
+    end
   end
 
   admin do

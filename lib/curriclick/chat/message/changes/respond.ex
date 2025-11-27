@@ -55,9 +55,11 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
         </understanding_the_user>
 
         <profile_usage>
-        - The following saved profile belongs to the signed-in user. Use it together with this conversation for every search and evaluation.
-        - If the profile is empty or missing key items, gather the gaps gradually; keep questions short.
-        - When the user provides new stable info (role, skills, experience, remote preference, constraints), ask if they want it saved. Only call the update tool after explicit consent.
+        - The following saved profile belongs to the signed-in user. Use it with the conversation history on every tool call and recommendation.
+        - Saved fields: full name, job interests, education, skills, experience, remote preference, location/phone/CPF/birth date, and custom instructions.
+        - Apply profile_custom_instructions as an overlay on tone, formatting, and filtering; do not override safety rules.
+        - Treat sensitive items (birth_date, phone, CPF) as private—only surface or send them when the user clearly asks or when pre-filling forms they requested.
+        - If the profile is empty or missing key items, gather gaps gradually; keep questions short. When the user provides new stable info, ask if they want it saved, then call update_user_profile only after explicit consent.
         - Respect remote preference in search and ranking: remote_only > remote_friendly > hybrid > on_site; "no_preference" means do not filter.
         </profile_usage>
 
@@ -92,6 +94,7 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
         <constraints>
         - NEVER fabricate job postings, salaries, companies, locations, or benefits that are not returned by tools or explicitly provided by the user.
         - NEVER claim that a specific job exists if the tool did not return it.
+        - Keep sensitive profile data (phone, CPF, birth_date) private unless the user explicitly asks you to share or use it.
         - If you need clarification, explain in one or two short sentences why the question will improve the next recommendations before asking.
         - Format responses with Markdown: headings (##, ###), lists, and bold text for important points.
         </constraints>
@@ -120,13 +123,7 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
       # |> AshAi.setup_ash_ai(otp_app: :curriclick, tools: [], actor: context.actor)
       |> AshAi.setup_ash_ai(
         otp_app: :curriclick,
-        tools: [
-          :my_conversations,
-          :message_history_for_conversation,
-          :find_suitable_job_postings_for_user,
-          :get_user_profile,
-          :update_user_profile
-        ],
+        tools: tool_list(context.actor),
         actor: context.actor
       )
       |> LLMChain.add_callback(%{
@@ -267,15 +264,27 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
         :profile_skills,
         :profile_experience,
         :profile_remote_preference,
-        :profile_custom_instructions
-      ])
+        :profile_custom_instructions,
+        :profile_first_name,
+        :profile_last_name,
+        :profile_full_name,
+        :profile_birth_date,
+        :profile_location,
+        :profile_phone,
+        :profile_cpf
+      ], actor: user)
 
     """
+    full_name: #{name_or_missing(user)}
     job_interests: #{present_or_missing(user.profile_job_interests)}
     education: #{present_or_missing(user.profile_education)}
     skills: #{present_or_missing(user.profile_skills)}
     experience: #{present_or_missing(user.profile_experience)}
     remote_preference: #{human_remote_preference(user.profile_remote_preference)}
+    location: #{present_or_missing(user.profile_location)}
+    birth_date: #{format_date_or_missing(user.profile_birth_date)}
+    phone: #{masked_or_missing(user.profile_phone)}
+    cpf: #{masked_or_missing(user.profile_cpf)}
     custom_instructions: #{present_or_missing(user.profile_custom_instructions)}
     """
   end
@@ -284,6 +293,47 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
   defp present_or_missing(""), do: "not provided"
   defp present_or_missing(value), do: value
 
+  defp name_or_missing(%{profile_full_name: name}) when is_binary(name) and name != "",
+    do: name
+
+  defp name_or_missing(%{profile_first_name: first, profile_last_name: last}) do
+    [first, last]
+    |> Enum.reject(&(&1 in [nil, ""]))
+    |> Enum.join(" ")
+    |> case do
+      "" -> "not provided"
+      combined -> combined
+    end
+  end
+
+  defp name_or_missing(_), do: "not provided"
+
+  defp format_date_or_missing(nil), do: "not provided"
+
+  defp format_date_or_missing(%Date{} = date) do
+    Date.to_iso8601(date)
+  end
+
+  defp format_date_or_missing(value) when is_binary(value) and value != "" do
+    value
+  end
+
+  defp format_date_or_missing(_), do: "not provided"
+
+  defp masked_or_missing(nil), do: "not provided"
+  defp masked_or_missing(""), do: "not provided"
+
+  defp masked_or_missing(value) when is_binary(value) do
+    trimmed = String.trim(value)
+
+    case String.length(trimmed) do
+      len when len <= 4 -> String.duplicate("*", len)
+      len ->
+        visible = String.slice(trimmed, -4, 4)
+        String.duplicate("*", len - 4) <> visible
+    end
+  end
+
   defp human_remote_preference(nil), do: "not provided"
   defp human_remote_preference(:no_preference), do: "no preference"
   defp human_remote_preference(:remote_only), do: "remote only"
@@ -291,4 +341,20 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
   defp human_remote_preference(:hybrid), do: "hybrid"
   defp human_remote_preference(:on_site), do: "on-site"
   defp human_remote_preference(other), do: to_string(other)
+
+  defp tool_list(nil) do
+    [
+      :find_suitable_job_postings_for_user
+    ]
+  end
+
+  defp tool_list(_actor) do
+    [
+      :my_conversations,
+      :message_history_for_conversation,
+      :find_suitable_job_postings_for_user,
+      :get_user_profile,
+      :update_user_profile
+    ]
+  end
 end

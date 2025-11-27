@@ -1035,6 +1035,7 @@ export async function validateGetJobListing(
 
 export type FindMatchingJobsInput = {
   query?: string;
+  profileContext?: string;
   limit?: number;
   minScore?: number;
   semanticAggregateBoost?: number;
@@ -1046,6 +1047,7 @@ export type FindMatchingJobsInput = {
   textDescriptionBoost?: number;
   textSkillsBoost?: number;
   textQueryProfileBoost?: number;
+  profileRemotePreference?: "remote_only" | "remote_friendly" | "hybrid" | "on_site" | "no_preference";
   workTypes?: Array<string>;
   remoteAllowed?: boolean;
 };
