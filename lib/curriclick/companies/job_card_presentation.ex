@@ -66,6 +66,11 @@ defmodule Curriclick.Companies.JobCardPresentation do
       description "Whether this job is selected for application (LLM sets true for very high matches)"
     end
 
+    attribute :keywords, {:array, Curriclick.Companies.Keyword} do
+      public? true
+      description "Keywords extracted from the job listing with explanations"
+    end
+
     attribute :remote_allowed, :boolean do
       public? true
     end

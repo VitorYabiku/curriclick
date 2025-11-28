@@ -99,14 +99,17 @@ defmodule CurriclickWeb.Layouts do
   def app_header(assigns) do
     ~H"""
     <header class="navbar sticky top-0 z-50 bg-base-200/90 backdrop-blur border-b border-base-200">
-      <div class="flex-1">
+      <div class="navbar-start">
         <a href={~p"/"} class="btn btn-ghost text-xl">Curriclick</a>
       </div>
-      <div class="flex-none">
+      <div class="navbar-end">
         <ul class="menu menu-horizontal px-1 gap-2 items-center">
           <%= if @current_user do %>
             <li>
               <.link navigate={~p"/chat"}>Busca de empregos</.link>
+            </li>
+            <li>
+              <.link href={~p"/dashboard"}>Minhas candidaturas</.link>
             </li>
             <li>
               <div class="dropdown dropdown-end">
@@ -129,9 +132,6 @@ defmodule CurriclickWeb.Layouts do
                   </li>
                   <li>
                     <.link href={~p"/profile"} class="text-lg">Meu perfil</.link>
-                  </li>
-                  <li>
-                    <.link href={~p"/dashboard"} class="text-lg">Suas candidaturas</.link>
                   </li>
                   <li>
                     <.link

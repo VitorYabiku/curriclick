@@ -15,7 +15,7 @@ defmodule Curriclick.Companies.JobApplication do
 
     create :create do
       primary? true
-      accept [:user_id, :job_listing_id, :search_query, :match_score]
+      accept [:user_id, :job_listing_id, :conversation_id, :search_query, :summary, :pros, :cons, :keywords, :match_quality, :hiring_probability, :missing_info]
     end
   end
 
@@ -32,6 +32,10 @@ defmodule Curriclick.Companies.JobApplication do
       allow_nil? false
     end
 
+    attribute :conversation_id, :uuid do
+      allow_nil? true
+    end
+
     attribute :job_listing_id, :uuid do
       allow_nil? false
     end
@@ -41,9 +45,39 @@ defmodule Curriclick.Companies.JobApplication do
       public? true
     end
 
-    attribute :match_score, :float do
+    attribute :summary, :string do
       allow_nil? true
       public? true
+    end
+
+    attribute :pros, {:array, :string} do
+      public? true
+      default []
+    end
+
+    attribute :cons, {:array, :string} do
+      public? true
+      default []
+    end
+
+    attribute :keywords, {:array, :map} do
+      public? true
+      default []
+    end
+
+    attribute :match_quality, :atom do
+      public? true
+      constraints one_of: [:bad_match, :moderate_match, :good_match, :very_good_match]
+    end
+
+    attribute :hiring_probability, :float do
+      public? true
+      allow_nil? true
+    end
+
+    attribute :missing_info, :string do
+      public? true
+      allow_nil? true
     end
 
     create_timestamp :inserted_at
@@ -53,6 +87,10 @@ defmodule Curriclick.Companies.JobApplication do
   relationships do
     belongs_to :user, Curriclick.Accounts.User do
       allow_nil? false
+    end
+
+    belongs_to :conversation, Curriclick.Chat.Conversation do
+      allow_nil? true
     end
 
     belongs_to :job_listing, Curriclick.Companies.JobListing do

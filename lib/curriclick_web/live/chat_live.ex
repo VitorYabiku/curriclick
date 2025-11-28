@@ -89,6 +89,16 @@ defmodule CurriclickWeb.ChatLive do
                       
                       <!-- Meta info -->
                       <div class="flex flex-wrap gap-3">
+                        <%= if expanded_job.keywords && expanded_job.keywords != [] do %>
+                          <div class="w-full flex flex-wrap gap-1 mb-2">
+                             <%= for keyword <- expanded_job.keywords do %>
+                               <div class="tooltip" data-tip={keyword.explanation}>
+                                 <span class="badge badge-ghost badge-sm cursor-help">{keyword.term}</span>
+                               </div>
+                             <% end %>
+                          </div>
+                        <% end %>
+
                         <%= if expanded_job.remote_allowed do %>
                           <span class="badge badge-lg badge-outline gap-2 p-3">
                             <.icon name="hero-home" class="w-4 h-4" /> Remoto
@@ -429,6 +439,19 @@ defmodule CurriclickWeb.ChatLive do
                         <p class="text-xs text-base-content/70 line-clamp-2">
                           {job_card.summary}
                         </p>
+
+                        <%= if job_card.keywords && job_card.keywords != [] do %>
+                          <div class="flex flex-wrap gap-1 mt-2 mb-1">
+                             <%= for keyword <- Enum.take(job_card.keywords, 3) do %>
+                               <div class="tooltip" data-tip={keyword.explanation}>
+                                 <span class="badge badge-ghost badge-xs text-base-content/60 cursor-help">{keyword.term}</span>
+                               </div>
+                             <% end %>
+                             <%= if length(job_card.keywords) > 3 do %>
+                               <span class="badge badge-ghost badge-xs text-base-content/60">+{length(job_card.keywords) - 3}</span>
+                             <% end %>
+                          </div>
+                        <% end %>
                         
                         <!-- Quick info badges -->
                         <div class="flex flex-wrap gap-1.5">
@@ -609,17 +632,25 @@ defmodule CurriclickWeb.ChatLive do
     end
   end
 
-  defp success_probability_to_score(nil), do: 0.5
-  defp success_probability_to_score(prob) when is_float(prob), do: prob
-  defp success_probability_to_score(_), do: 0.5
 
-  defp create_job_application(user, job_card, search_query) do
+  defp create_job_application(user, job_card, search_query, conversation_id \\ nil) do
     Curriclick.Companies.JobApplication
     |> Ash.Changeset.for_create(:create, %{
       user_id: user.id,
       job_listing_id: job_card.job_id,
+      conversation_id: conversation_id,
       search_query: search_query,
-      match_score: success_probability_to_score(job_card.success_probability)
+      summary: job_card.summary,
+      pros: job_card.pros,
+      cons: job_card.cons,
+      keywords:
+        Enum.map(job_card.keywords || [], fn
+          %_{} = keyword -> Map.from_struct(keyword) |> Map.drop([:__meta__])
+          other -> other
+        end),
+      match_quality: job_card.match_quality,
+      hiring_probability: job_card.success_probability,
+      missing_info: job_card.missing_info
     })
     |> Ash.create()
   end
@@ -807,7 +838,9 @@ defmodule CurriclickWeb.ChatLive do
     job_card = Enum.find(socket.assigns.job_cards, &(&1.job_id == job_id))
 
     if job_card do
-      case create_job_application(socket.assigns.current_user, job_card, "Chat job search") do
+      conversation_id = if socket.assigns.conversation, do: socket.assigns.conversation.id, else: nil
+
+      case create_job_application(socket.assigns.current_user, job_card, "Chat job search", conversation_id) do
         {:ok, _} ->
           {:noreply, put_flash(socket, :info, "Candidatura enviada para #{job_card.title}!")}
 
@@ -824,9 +857,11 @@ defmodule CurriclickWeb.ChatLive do
       socket.assigns.job_cards
       |> Enum.filter(&MapSet.member?(socket.assigns.selected_job_ids, &1.job_id))
 
+    conversation_id = if socket.assigns.conversation, do: socket.assigns.conversation.id, else: nil
+
     results =
       Enum.map(selected_jobs, fn job_card ->
-        create_job_application(socket.assigns.current_user, job_card, "Chat job search (batch)")
+        create_job_application(socket.assigns.current_user, job_card, "Chat job search (batch)", conversation_id)
       end)
 
     success_count = Enum.count(results, &match?({:ok, _}, &1))

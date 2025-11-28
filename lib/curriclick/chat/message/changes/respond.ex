@@ -75,9 +75,13 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
         1. Filter to 3–10 best matches based on user profile and stated preferences.
         2. For EACH job, generate personalized enrichment:
            - match_quality: one of "bad_match", "moderate_match", "good_match", "very_good_match" based on overall fit.
-           - pros: 2–4 bullet points explaining why this job fits the user (connect to their skills, experience, goals, location/remote preference).
-           - cons: 1–3 bullet points on potential gaps or mismatches (missing skills, location constraints, seniority mismatch, etc.).
+           - pros: a comprehensive list of bullet points explaining why this job fits the user. Do not limit the number of points; include EVERYTHING relevant to help the user make a decision without reading the full description.
+           - cons: a comprehensive list of bullet points on potential gaps or mismatches. Do not limit the number of points; be thorough.
            - success_probability: float 0.0–1.0 estimating likelihood of getting hired given the user's profile vs. job requirements.
+           - keywords: array of objects, each containing:
+              - term: string (the keyword itself)
+              - explanation: string (brief explanation of why this keyword is relevant to the user)
+             Generate as many keywords as necessary to highlight key technologies, skills, or benefits.
            - missing_info: brief note if profile gaps prevent accurate assessment (e.g., "Seniority level unclear").
            - summary: 1–2 sentence pitch the user can review before applying.
            - description: the full job description text so the user can see all details.

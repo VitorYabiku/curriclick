@@ -41,7 +41,7 @@ defmodule CurriclickWeb.JobsLive do
     end
   end
 
-  def handle_event("apply_to_job", %{"job_id" => job_id, "match" => match_score}, socket) do
+  def handle_event("apply_to_job", %{"job_id" => job_id}, socket) do
     case socket.assigns[:current_user] do
       nil ->
         desc = socket.assigns.ideal_job_description
@@ -49,18 +49,11 @@ defmodule CurriclickWeb.JobsLive do
         {:noreply, redirect(socket, to: ~p"/sign-in?#{[return_to: return_to]}")}
 
       user ->
-        match_score =
-          case Float.parse(match_score) do
-            {val, _} -> val
-            :error -> nil
-          end
-
         case JobApplication
              |> Ash.Changeset.for_create(:create, %{
                user_id: user.id,
                job_listing_id: job_id,
-               search_query: socket.assigns.ideal_job_description,
-               match_score: match_score
+               search_query: socket.assigns.ideal_job_description
              })
              |> Ash.create() do
           {:ok, _} ->
@@ -89,8 +82,7 @@ defmodule CurriclickWeb.JobsLive do
                  |> Ash.Changeset.for_create(:create, %{
                    user_id: user.id,
                    job_listing_id: job.id,
-                   search_query: socket.assigns.ideal_job_description,
-                   match_score: job.match
+                   search_query: socket.assigns.ideal_job_description
                  })
                  |> Ash.create() do
               {:ok, _} -> acc + 1
@@ -258,7 +250,6 @@ defmodule CurriclickWeb.JobsLive do
                             class="btn btn-sm btn-primary"
                             phx-click="apply_to_job"
                             phx-value-job_id={job.id}
-                            phx-value-match={job.match}
                           >
                             Candidatar-se
                           </button>
