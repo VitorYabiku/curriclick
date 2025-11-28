@@ -72,7 +72,7 @@ defmodule CurriclickWeb.UserDashboardLive do
             <div class="card-body p-5">
               <div class="flex justify-between items-start">
                 <div>
-                  <h2 class="card-title text-xl">{app.job_listing.job_role_name}</h2>
+                  <h2 class="card-title text-xl">{app.job_listing.title}</h2>
                   <p class="text-base font-medium opacity-70 flex items-center gap-1 mt-1">
                     <.icon name="hero-building-office-2" class="w-4 h-4" />
                     {app.job_listing.company.name}

@@ -10,14 +10,176 @@ defmodule CurriclickWeb.ChatLive do
     <div class="drawer md:drawer-open h-full bg-base-100">
       <input id="ash-ai-drawer" type="checkbox" class="drawer-toggle" />
       
-    <!-- Main Content Area (Chat + Jobs Panel) -->
+      <!-- Main Content Area (Chat + Jobs Panel) -->
       <div class="drawer-content flex h-full overflow-hidden relative">
-        <!-- Chat Section -->
+        <!-- Job Details Section (Replaces Chat) -->
         <div class={[
-          "flex flex-col h-full overflow-hidden transition-all duration-300",
+          "flex-col h-full overflow-hidden transition-all duration-300 bg-base-100",
+          @expanded_job_id && "flex",
+          !@expanded_job_id && "hidden",
           @show_jobs_panel && @job_cards != [] && "flex-1 lg:max-w-[60%] xl:max-w-[65%]",
           !(@show_jobs_panel && @job_cards != []) && "flex-1"
         ]}>
+            <!-- Header -->
+            <div class="navbar bg-base-100 w-full border-b border-base-200 min-h-12 flex-none shadow-sm z-10">
+              <div class="flex-none">
+                <button 
+                  type="button" 
+                  class="btn btn-ghost btn-sm gap-2" 
+                  phx-click="collapse_job_detail"
+                >
+                  <.icon name="hero-arrow-left" class="w-5 h-5" />
+                  <span class="font-normal">Voltar ao Chat</span>
+                </button>
+              </div>
+              <div class="flex-1"></div>
+              <%= if @job_cards != [] do %>
+                <div class="flex-none lg:hidden">
+                  <button
+                    type="button"
+                    class="btn btn-square btn-ghost btn-sm"
+                    phx-click="toggle_jobs_panel"
+                    aria-label={if @show_jobs_panel, do: "Esconder vagas", else: "Mostrar vagas"}
+                  >
+                    <.icon name="hero-briefcase" class="w-5 h-5" />
+                    <span class="badge badge-primary badge-xs absolute -top-1 -right-1">
+                      {length(@job_cards)}
+                    </span>
+                  </button>
+                </div>
+              <% end %>
+            </div>
+
+            <!-- Job Details Content -->
+            <div class="flex-1 overflow-y-auto p-4 lg:p-8 scroll-smooth">
+              <% expanded_job = Enum.find(@job_cards, & &1.job_id == @expanded_job_id) %>
+              <%= if expanded_job do %>
+                <div class="max-w-4xl mx-auto space-y-6">
+                  <!-- Main Card -->
+                  <div class="card bg-base-100">
+                    <div class="space-y-6">
+                      <!-- Header -->
+                      <div class="flex flex-col md:flex-row md:items-start justify-between gap-4 border-b border-base-200 pb-6">
+                        <div class="flex-1">
+                          <h1 class="font-bold text-2xl md:text-3xl mb-2">{expanded_job.title}</h1>
+                          <div class="flex items-center gap-2 text-lg text-base-content/80 font-medium">
+                            <.icon name="hero-building-office-2" class="w-5 h-5" />
+                            {expanded_job.company_name}
+                          </div>
+                          <%= if expanded_job.location do %>
+                            <p class="text-base text-base-content/60 flex items-center gap-2 mt-2">
+                              <.icon name="hero-map-pin" class="w-4 h-4" />
+                              {expanded_job.location}
+                            </p>
+                          <% end %>
+                        </div>
+                        <div class="flex flex-col items-end gap-3">
+                          <.match_quality_badge quality={expanded_job.match_quality} />
+                          <button
+                            type="button"
+                            class="btn btn-primary rounded-xl shadow-md w-full md:w-auto"
+                            phx-click="apply_to_job"
+                            phx-value-job_id={expanded_job.job_id}
+                          >
+                            <.icon name="hero-paper-airplane" class="w-4 h-4" />
+                            Candidatar-se
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <!-- Meta info -->
+                      <div class="flex flex-wrap gap-3">
+                        <%= if expanded_job.remote_allowed do %>
+                          <span class="badge badge-lg badge-outline gap-2 p-3">
+                            <.icon name="hero-home" class="w-4 h-4" /> Remoto
+                          </span>
+                        <% end %>
+                        <%= if expanded_job.work_type do %>
+                          <span class="badge badge-lg badge-outline p-3">
+                            {format_work_type(expanded_job.work_type)}
+                          </span>
+                        <% end %>
+                        <%= if expanded_job.salary_range do %>
+                          <span class="badge badge-lg badge-outline gap-2 p-3">
+                            <.icon name="hero-currency-dollar" class="w-4 h-4" />
+                            {expanded_job.salary_range}
+                          </span>
+                        <% end %>
+                      </div>
+                      
+                      <!-- Summary -->
+                      <div class="bg-primary/5 rounded-2xl p-6 border border-primary/10">
+                        <h3 class="font-semibold text-primary mb-2">Resumo</h3>
+                        <p class="text-base leading-relaxed">{expanded_job.summary}</p>
+                      </div>
+                      
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Pros -->
+                        <%= if expanded_job.pros && expanded_job.pros != [] do %>
+                          <div class="bg-base-200/30 rounded-2xl p-6">
+                            <h4 class="font-semibold text-success flex items-center gap-2 mb-4">
+                              <.icon name="hero-check-circle" class="w-5 h-5" /> Pontos Positivos
+                            </h4>
+                            <ul class="space-y-3">
+                              <%= for pro <- expanded_job.pros do %>
+                                <li class="text-base-content/80 flex items-start gap-3">
+                                  <span class="text-success mt-1">•</span>
+                                  <span>{pro}</span>
+                                </li>
+                              <% end %>
+                            </ul>
+                          </div>
+                        <% end %>
+                        
+                        <!-- Cons -->
+                        <%= if expanded_job.cons && expanded_job.cons != [] do %>
+                          <div class="bg-base-200/30 rounded-2xl p-6">
+                            <h4 class="font-semibold text-warning flex items-center gap-2 mb-4">
+                              <.icon name="hero-exclamation-triangle" class="w-5 h-5" /> Pontos de Atenção
+                            </h4>
+                            <ul class="space-y-3">
+                              <%= for con <- expanded_job.cons do %>
+                                <li class="text-base-content/80 flex items-start gap-3">
+                                  <span class="text-warning mt-1">•</span>
+                                  <span>{con}</span>
+                                </li>
+                              <% end %>
+                            </ul>
+                          </div>
+                        <% end %>
+                      </div>
+                      
+                      <!-- Missing Info -->
+                      <%= if expanded_job.missing_info do %>
+                        <div class="alert alert-info bg-info/10 border-info/20 text-xs">
+                          <.icon name="hero-information-circle" class="w-5 h-5" />
+                          <span>{expanded_job.missing_info}</span>
+                        </div>
+                      <% end %>
+                      
+                      <!-- Full Description -->
+                      <%= if expanded_job.description do %>
+                        <div class="border-t border-base-200 pt-8 mt-8">
+                          <h4 class="font-bold text-lg mb-4">Descrição Completa da Vaga</h4>
+                          <div class="prose prose-base max-w-none text-base-content/80">
+                            {expanded_job.description}
+                          </div>
+                        </div>
+                      <% end %>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+          <!-- Chat Section -->
+          <div class={[
+            "flex-col h-full overflow-hidden transition-all duration-300",
+            !@expanded_job_id && "flex",
+            @expanded_job_id && "hidden",
+            @show_jobs_panel && @job_cards != [] && "flex-1 lg:max-w-[60%] xl:max-w-[65%]",
+            !(@show_jobs_panel && @job_cards != []) && "flex-1"
+          ]}>
           <!-- Mobile Header -->
           <div class="navbar bg-base-100 w-full md:hidden border-b border-base-200 min-h-12">
             <div class="flex-none">
@@ -221,157 +383,33 @@ defmodule CurriclickWeb.ChatLive do
             
         <!-- Panel Content -->
             <div class="flex-1 overflow-y-auto p-4">
-              <%= if @expanded_job_id do %>
-                <!-- Expanded Job Detail View -->
-                <% expanded_job = Enum.find(@job_cards, & &1.job_id == @expanded_job_id) %>
-                <%= if expanded_job do %>
-                  <div class="space-y-4">
-                    <button
-                      type="button"
-                      class="btn btn-ghost btn-sm gap-2"
-                      phx-click="collapse_job_detail"
-                    >
-                      <.icon name="hero-arrow-left" class="w-4 h-4" />
-                      Voltar às vagas
-                    </button>
-                    
+              <!-- Job Cards List -->
+              <div class="space-y-3" id="job-cards-stream" phx-update="stream">
+                  <%= for {dom_id, job_card} <- @streams.job_cards do %>
                     <div
-                      class="card bg-base-100 shadow-lg border border-base-300 rounded-2xl cursor-pointer hover:border-primary/30 transition-colors"
-                      phx-click="collapse_job_detail"
-                    >
-                      <div class="card-body p-5 space-y-4">
-                        <!-- Header -->
-                        <div class="flex items-start justify-between gap-3">
-                          <div class="flex-1">
-                            <h3 class="font-bold text-lg">{expanded_job.title}</h3>
-                            <p class="text-sm text-base-content/70">{expanded_job.company_name}</p>
-                            <%= if expanded_job.location do %>
-                              <p class="text-xs text-base-content/50 flex items-center gap-1 mt-1">
-                                <.icon name="hero-map-pin" class="w-3 h-3" />
-                                {expanded_job.location}
-                              </p>
-                            <% end %>
-                          </div>
-                          <.match_quality_badge quality={expanded_job.match_quality} />
-                        </div>
-                        
-                        <!-- Meta info -->
-                        <div class="flex flex-wrap gap-2">
-                          <%= if expanded_job.remote_allowed do %>
-                            <span class="badge badge-outline badge-sm gap-1">
-                              <.icon name="hero-home" class="w-3 h-3" /> Remoto
-                            </span>
-                          <% end %>
-                          <%= if expanded_job.work_type do %>
-                            <span class="badge badge-outline badge-sm">
-                              {format_work_type(expanded_job.work_type)}
-                            </span>
-                          <% end %>
-                          <%= if expanded_job.salary_range do %>
-                            <span class="badge badge-outline badge-sm gap-1">
-                              <.icon name="hero-currency-dollar" class="w-3 h-3" />
-                              {expanded_job.salary_range}
-                            </span>
-                          <% end %>
-                        </div>
-                        
-                        <!-- Summary -->
-                        <div class="bg-primary/5 rounded-xl p-3 border border-primary/20">
-                          <p class="text-sm">{expanded_job.summary}</p>
-                        </div>
-                        
-                        <!-- Pros -->
-                        <%= if expanded_job.pros && expanded_job.pros != [] do %>
-                          <div>
-                            <h4 class="font-semibold text-sm text-success flex items-center gap-2 mb-2">
-                              <.icon name="hero-check-circle" class="w-4 h-4" /> Pontos Positivos
-                            </h4>
-                            <ul class="space-y-1">
-                              <%= for pro <- expanded_job.pros do %>
-                                <li class="text-sm text-base-content/80 flex items-start gap-2">
-                                  <span class="text-success mt-0.5">•</span>
-                                  {pro}
-                                </li>
-                              <% end %>
-                            </ul>
-                          </div>
-                        <% end %>
-                        
-                        <!-- Cons -->
-                        <%= if expanded_job.cons && expanded_job.cons != [] do %>
-                          <div>
-                            <h4 class="font-semibold text-sm text-warning flex items-center gap-2 mb-2">
-                              <.icon name="hero-exclamation-triangle" class="w-4 h-4" /> Pontos de Atenção
-                            </h4>
-                            <ul class="space-y-1">
-                              <%= for con <- expanded_job.cons do %>
-                                <li class="text-sm text-base-content/80 flex items-start gap-2">
-                                  <span class="text-warning mt-0.5">•</span>
-                                  {con}
-                                </li>
-                              <% end %>
-                            </ul>
-                          </div>
-                        <% end %>
-                        
-                        <!-- Missing Info -->
-                        <%= if expanded_job.missing_info do %>
-                          <div class="bg-info/10 rounded-xl p-3 border border-info/20">
-                            <p class="text-xs text-info flex items-start gap-2">
-                              <.icon name="hero-information-circle" class="w-4 h-4 flex-shrink-0 mt-0.5" />
-                              {expanded_job.missing_info}
-                            </p>
-                          </div>
-                        <% end %>
-                        
-                        <!-- Full Description -->
-                        <%= if expanded_job.description do %>
-                          <div class="border-t border-base-200 pt-4">
-                            <h4 class="font-semibold text-sm mb-2">Descrição Completa</h4>
-                            <div class="text-sm text-base-content/80 prose prose-sm max-w-none">
-                              {expanded_job.description}
-                            </div>
-                          </div>
-                        <% end %>
-                        
-                        <!-- Apply Button -->
-                        <button
-                          type="button"
-                          class="btn btn-primary btn-block rounded-xl shadow-md"
-                          phx-click="apply_to_job"
-                          phx-value-job_id={expanded_job.job_id}
-                          phx-click-stop
-                        >
-                          <.icon name="hero-paper-airplane" class="w-4 h-4" />
-                          Candidatar-se a esta vaga
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                <% end %>
-              <% else %>
-                <!-- Job Cards List -->
-                <div class="space-y-3">
-                  <%= for job_card <- @job_cards do %>
-                    <div
+                      id={dom_id}
                       class={[
-                        "card bg-base-100 shadow-md border rounded-2xl transition-all duration-200 hover:shadow-lg hover:border-primary/30 cursor-pointer",
-                        MapSet.member?(@selected_job_ids, job_card.job_id) && "border-primary ring-2 ring-primary/20",
-                        !MapSet.member?(@selected_job_ids, job_card.job_id) && "border-base-300"
+                        "card shadow-md border rounded-2xl transition-all duration-200 hover:shadow-lg hover:border-primary/30 cursor-pointer",
+                        @expanded_job_id == job_card.job_id && "bg-gradient-to-r from-primary/15 to-base-100 border-primary shadow-lg shadow-primary/10 ring-2 ring-primary",
+                        @expanded_job_id != job_card.job_id && "bg-base-100 border-base-300"
                       ]}
                       phx-click="expand_job_detail"
                       phx-value-job_id={job_card.job_id}
+                      onclick={"if (window.innerWidth < 1024) { window.dispatchEvent(new CustomEvent('close_panel')); }"}
                     >
                       <div class="card-body p-4 gap-3">
                         <!-- Header with checkbox -->
-                        <div class="flex items-start gap-3">
-                          <label class="cursor-pointer flex items-center" phx-click-stop>
+                        <div
+                          class="flex items-start gap-3 cursor-pointer hover:bg-base-200/50 -m-2 p-2 rounded-xl transition-colors"
+                          phx-click="toggle_job_selection"
+                          phx-value-job_id={job_card.job_id}
+                          phx-click-stop
+                        >
+                          <label class="cursor-pointer flex items-center">
                             <input
                               type="checkbox"
-                              class="checkbox checkbox-primary checkbox-sm rounded-lg"
+                              class="checkbox checkbox-primary checkbox-sm rounded-lg pointer-events-none"
                               checked={MapSet.member?(@selected_job_ids, job_card.job_id)}
-                              phx-click="toggle_job_selection"
-                              phx-value-job_id={job_card.job_id}
                             />
                           </label>
                           <div class="flex-1 min-w-0">
@@ -421,11 +459,10 @@ defmodule CurriclickWeb.ChatLive do
                     </div>
                   <% end %>
                 </div>
-              <% end %>
             </div>
             
         <!-- Panel Footer (batch selection actions) -->
-            <%= if MapSet.size(@selected_job_ids) > 0 && !@expanded_job_id do %>
+            <%= if MapSet.size(@selected_job_ids) > 0 do %>
               <div class="p-4 border-t-2 border-base-300 bg-base-100 shadow-inner">
                 <button
                   type="button"
@@ -433,7 +470,7 @@ defmodule CurriclickWeb.ChatLive do
                   phx-click="apply_to_selected"
                 >
                   <.icon name="hero-paper-airplane" class="w-4 h-4" />
-                  Candidatar-se às {MapSet.size(@selected_job_ids)} vagas selecionadas
+                  Candidatar-se <%= if MapSet.size(@selected_job_ids) == 1, do: "à vaga selecionada", else: "às #{MapSet.size(@selected_job_ids)} vagas selecionadas" %>
                 </button>
               </div>
             <% end %>
@@ -444,6 +481,7 @@ defmodule CurriclickWeb.ChatLive do
             <div
               class="fixed inset-0 bg-black/50 z-20 lg:hidden"
               phx-click="toggle_jobs_panel"
+              phx-window-close_panel="toggle_jobs_panel"
             >
             </div>
           <% end %>
@@ -601,6 +639,7 @@ defmodule CurriclickWeb.ChatLive do
       |> assign(:messages, [])
       |> assign(:loading_response, false)
       |> assign(:job_cards, [])
+      |> stream(:job_cards, [], dom_id: &"job-#{&1.job_id}")
       |> assign(:selected_job_ids, MapSet.new())
       |> assign(:show_jobs_panel, false)
       |> assign(:expanded_job_id, nil)
@@ -642,6 +681,7 @@ defmodule CurriclickWeb.ChatLive do
       Curriclick.Chat.message_history!(conversation.id, query: [sort: [inserted_at: :asc]])
     )
     |> assign(:job_cards, job_cards)
+    |> stream(:job_cards, job_cards, reset: true)
     |> assign(:selected_job_ids, selected_ids)
     |> assign(:show_jobs_panel, job_cards != [])
     |> assign(:expanded_job_id, nil)
@@ -659,6 +699,7 @@ defmodule CurriclickWeb.ChatLive do
     |> assign(:conversation, nil)
     |> stream(:messages, [])
     |> assign(:job_cards, [])
+    |> stream(:job_cards, [], reset: true)
     |> assign(:selected_job_ids, MapSet.new())
     |> assign(:show_jobs_panel, false)
     |> assign(:expanded_job_id, nil)
@@ -722,18 +763,44 @@ defmodule CurriclickWeb.ChatLive do
       |> Ash.update!(actor: socket.assigns.current_user)
     end
 
+    updated_card = Enum.find(updated_job_cards, & &1.job_id == job_id)
+
     {:noreply,
      socket
      |> assign(:job_cards, updated_job_cards)
-     |> assign(:selected_job_ids, selected_job_ids)}
+     |> assign(:selected_job_ids, selected_job_ids)
+     |> stream_insert(:job_cards, updated_card)}
   end
 
   def handle_event("expand_job_detail", %{"job_id" => job_id}, socket) do
-    {:noreply, assign(socket, :expanded_job_id, job_id)}
+    previous_job_id = socket.assigns.expanded_job_id
+    socket = assign(socket, :expanded_job_id, job_id)
+
+    socket =
+      socket.assigns.job_cards
+      |> Enum.filter(fn card -> card.job_id == job_id || card.job_id == previous_job_id end)
+      |> Enum.reduce(socket, fn card, acc ->
+        stream_insert(acc, :job_cards, card)
+      end)
+
+    {:noreply, socket}
   end
 
   def handle_event("collapse_job_detail", _, socket) do
-    {:noreply, assign(socket, :expanded_job_id, nil)}
+    previous_job_id = socket.assigns.expanded_job_id
+    socket = assign(socket, :expanded_job_id, nil)
+
+    socket =
+      if previous_job_id do
+        case Enum.find(socket.assigns.job_cards, &(&1.job_id == previous_job_id)) do
+          nil -> socket
+          card -> stream_insert(socket, :job_cards, card)
+        end
+      else
+        socket
+      end
+
+    {:noreply, socket}
   end
 
   def handle_event("apply_to_job", %{"job_id" => job_id}, socket) do
@@ -853,7 +920,50 @@ defmodule CurriclickWeb.ChatLive do
        socket
        |> assign(:job_cards, job_cards)
        |> assign(:selected_job_ids, selected_ids)
-       |> assign(:show_jobs_panel, job_cards != [])}
+       |> assign(:show_jobs_panel, job_cards != [])
+       |> stream(:job_cards, job_cards, reset: true)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info(
+        {:job_cards_reset, %{conversation_id: conversation_id}},
+        socket
+      ) do
+    if socket.assigns.conversation && socket.assigns.conversation.id == conversation_id do
+      {:noreply,
+       socket
+       |> assign(:job_cards, [])
+       |> assign(:selected_job_ids, MapSet.new())
+       |> assign(:show_jobs_panel, true) # Keep panel open or open it
+       |> stream(:job_cards, [], reset: true)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info(
+        {:job_card_added, %{job_card: job_card, conversation_id: conversation_id}},
+        socket
+      ) do
+    if socket.assigns.conversation && socket.assigns.conversation.id == conversation_id do
+      # Handle pre-selection for this card
+      selected_ids =
+        if job_card.selected do
+          MapSet.put(socket.assigns.selected_job_ids, job_card.job_id)
+        else
+          socket.assigns.selected_job_ids
+        end
+
+      new_job_cards = socket.assigns.job_cards ++ [job_card]
+
+      {:noreply,
+       socket
+       |> assign(:job_cards, new_job_cards)
+       |> assign(:selected_job_ids, selected_ids)
+       |> assign(:show_jobs_panel, true)
+       |> stream_insert(:job_cards, job_card)}
     else
       {:noreply, socket}
     end
@@ -888,6 +998,7 @@ defmodule CurriclickWeb.ChatLive do
       |> assign(:conversation, nil)
       |> stream(:messages, [], reset: true)
       |> assign(:job_cards, [])
+      |> stream(:job_cards, [], reset: true)
       |> assign(:selected_job_ids, MapSet.new())
       |> assign_message_form()
       |> push_patch(to: ~p"/chat")

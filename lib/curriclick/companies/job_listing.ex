@@ -109,11 +109,29 @@ defmodule Curriclick.Companies.JobListing do
         |> Ash.Changeset.for_update(:update_job_cards, %{job_cards: job_cards})
         |> Ash.update!(authorize?: false)
 
-        Phoenix.PubSub.broadcast(
-          Curriclick.PubSub,
-          "chat:job_cards:#{conversation_id}",
-          {:job_cards_updated, %{job_cards: job_cards, conversation_id: conversation_id}}
-        )
+        # Spawn a task to simulate streaming of job cards
+        Task.start(fn ->
+          # First, clear the current list
+          Phoenix.PubSub.broadcast(
+            Curriclick.PubSub,
+            "chat:job_cards:#{conversation_id}",
+            {:job_cards_reset, %{conversation_id: conversation_id}}
+          )
+
+          # Small initial delay
+          Process.sleep(300)
+
+          # Broadcast each card one by one
+          Enum.each(job_cards, fn card ->
+            Phoenix.PubSub.broadcast(
+              Curriclick.PubSub,
+              "chat:job_cards:#{conversation_id}",
+              {:job_card_added, %{job_card: card, conversation_id: conversation_id}}
+            )
+            # Delay between cards to create the streaming effect
+            Process.sleep(500)
+          end)
+        end)
 
         {:ok, true}
       end
