@@ -161,6 +161,16 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
           deltas
           |> List.wrap()
           |> Enum.each(fn delta ->
+            tool_calls = Map.get(delta, :tool_calls)
+
+            if tool_calls && tool_calls != [] do
+              Phoenix.PubSub.broadcast(
+                Curriclick.PubSub,
+                "chat:messages:#{message.conversation_id}",
+                {:tool_call_delta, %{conversation_id: message.conversation_id, tool_calls: tool_calls}}
+              )
+            end
+
             content = delta.content
             Logger.debug("Delta content: #{inspect(content)}")
 

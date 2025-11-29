@@ -710,7 +710,7 @@ defmodule CurriclickWeb.ChatLive do
   end
 
 
-  defp create_job_application(user, job_card, search_query, conversation_id \\ nil) do
+  defp create_job_application(user, job_card, search_query, conversation_id) do
     Curriclick.Companies.JobApplication
     |> Ash.Changeset.for_create(:create, %{
       user_id: user.id,
@@ -722,8 +722,19 @@ defmodule CurriclickWeb.ChatLive do
       cons: job_card.cons,
       keywords:
         Enum.map(job_card.keywords || [], fn
-          %_{} = keyword -> Map.from_struct(keyword) |> Map.drop([:__meta__])
-          other -> other
+          %_{} = keyword ->
+            Map.from_struct(keyword)
+            |> Map.drop([
+              :__meta__,
+              :__metadata__,
+              :__order__,
+              :__lateral_join_source__,
+              :aggregates,
+              :calculations
+            ])
+
+          other ->
+            other
         end),
       work_type_score: sanitize_score(job_card.work_type_score),
       location_score: sanitize_score(job_card.location_score),
@@ -751,6 +762,9 @@ defmodule CurriclickWeb.ChatLive do
       )
       |> assign(:messages, [])
       |> assign(:loading_response, false)
+      |> assign(:streamed_job_card_ids, MapSet.new())
+      |> assign(:parsing_state, :finding_start)
+      |> assign(:pending_tool_args, "")
       |> assign(:job_cards, [])
       |> stream(:job_cards, [], dom_id: &"job-#{&1.job_id}")
       |> assign(:selected_job_ids, MapSet.new())
@@ -798,6 +812,9 @@ defmodule CurriclickWeb.ChatLive do
       :messages,
       Curriclick.Chat.message_history!(conversation.id, query: [sort: [inserted_at: :asc]])
     )
+    |> assign(:parsing_state, :finding_start)
+    |> assign(:pending_tool_args, "")
+    |> assign(:streamed_job_card_ids, MapSet.new())
     |> assign(:job_cards, sorted_cards)
     |> stream(:job_cards, sorted_cards, reset: true)
     |> assign(:selected_job_ids, selected_ids)
@@ -816,6 +833,9 @@ defmodule CurriclickWeb.ChatLive do
     socket
     |> assign(:conversation, nil)
     |> stream(:messages, [])
+    |> assign(:parsing_state, :finding_start)
+    |> assign(:pending_tool_args, "")
+    |> assign(:streamed_job_card_ids, MapSet.new())
     |> assign(:job_cards, [])
     |> stream(:job_cards, [], reset: true)
     |> assign(:selected_job_ids, MapSet.new())
@@ -1061,8 +1081,7 @@ defmodule CurriclickWeb.ChatLive do
     if socket.assigns.conversation && socket.assigns.conversation.id == conversation_id do
       socket =
         if message.source != :user do
-          has_text = message.text && message.text != ""
-          assign(socket, :loading_response, !message.complete && !has_text)
+          assign(socket, :loading_response, !message.complete)
         else
           socket
         end
@@ -1089,6 +1108,96 @@ defmodule CurriclickWeb.ChatLive do
 
     opts = if event_type == :create, do: [at: 0], else: []
     {:noreply, stream_insert(socket, :conversations, conversation, opts)}
+  end
+
+  def handle_info(
+        {:tool_call_delta, %{conversation_id: conversation_id, tool_calls: tool_calls}},
+        socket
+      ) do
+    if socket.assigns.conversation && socket.assigns.conversation.id == conversation_id do
+      # Accumulate arguments from delta
+      new_args_chunk =
+        Enum.reduce(tool_calls, "", fn call, acc ->
+          args =
+            Map.get(call, :arguments) ||
+              Map.get(call, "arguments") ||
+              (
+                func = Map.get(call, :function)
+                if is_map(func), do: Map.get(func, :arguments)
+              ) ||
+              (
+                func = Map.get(call, "function")
+                if is_map(func), do: Map.get(func, "arguments")
+              )
+
+          acc <> (args || "")
+        end)
+
+      current_buffer = socket.assigns.pending_tool_args <> new_args_chunk
+
+      {new_buffer, new_cards} =
+        case socket.assigns.parsing_state do
+          :finding_start ->
+            case :binary.match(current_buffer, ["\"job_cards\":", "\"job_cards\" :"]) do
+              {pos, len} ->
+                # Found start of job_cards key
+                after_key = binary_part(current_buffer, pos + len, byte_size(current_buffer) - (pos + len))
+                case :binary.match(after_key, "[") do
+                  {start_pos, 1} ->
+                     # Found start of array
+                     array_content = binary_part(after_key, start_pos + 1, byte_size(after_key) - (start_pos + 1))
+                     {cards, remainder} = parse_json_objects(array_content)
+                     {remainder, cards}
+                  :nomatch ->
+                     # Key found but array start not yet
+                     {current_buffer, []}
+                end
+              :nomatch ->
+                {current_buffer, []}
+            end
+
+          :inside_array ->
+             {cards, remainder} = parse_json_objects(current_buffer)
+             {remainder, cards}
+        end
+
+      new_state =
+        if socket.assigns.parsing_state == :finding_start && new_buffer != current_buffer do
+          :inside_array
+        else
+          socket.assigns.parsing_state
+        end
+
+      socket =
+        Enum.reduce(new_cards, socket, fn card_map, s ->
+          # Convert to struct-like map with atom keys
+          card_atom = keys_to_atoms(card_map)
+          # Ensure job_id is present (it should be)
+          if card_atom[:job_id] && !MapSet.member?(s.assigns.streamed_job_card_ids, card_atom.job_id) do
+             # Add defaults if missing
+             card_struct = struct(Curriclick.Companies.JobCardPresentation, card_atom)
+             
+             new_list = s.assigns.job_cards ++ [card_struct]
+             sorted = sort_job_cards(new_list, s.assigns.sort_by, s.assigns.sort_order)
+
+             s
+             |> assign(:job_cards, sorted)
+             |> stream(:job_cards, sorted, reset: true)
+             |> assign(:streamed_job_card_ids, MapSet.put(s.assigns.streamed_job_card_ids, card_struct.job_id))
+             |> assign(:show_jobs_panel, true)
+          else
+             s
+          end
+        end)
+
+      {:noreply,
+       socket
+       |> assign(:pending_tool_args, new_buffer)
+       |> assign(:parsing_state, new_state)
+       |> assign(:loading_response, true)} # Keep loading dots
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_info(
@@ -1124,7 +1233,9 @@ defmodule CurriclickWeb.ChatLive do
       {:noreply,
        socket
        |> assign(:job_cards, [])
-       |> assign(:selected_job_ids, MapSet.new())
+       |> assign(:streamed_job_card_ids, MapSet.new())
+       |> assign(:parsing_state, :finding_start)
+       |> assign(:pending_tool_args, "")
        |> assign(:show_jobs_panel, true) # Keep panel open or open it
        |> stream(:job_cards, [], reset: true)}
     else
@@ -1189,7 +1300,9 @@ defmodule CurriclickWeb.ChatLive do
       |> stream(:messages, [], reset: true)
       |> assign(:job_cards, [])
       |> stream(:job_cards, [], reset: true)
-      |> assign(:selected_job_ids, MapSet.new())
+      |> assign(:streamed_job_card_ids, MapSet.new())
+      |> assign(:parsing_state, :finding_start)
+      |> assign(:pending_tool_args, "")
       |> assign_message_form()
       |> push_patch(to: ~p"/chat")
     else
@@ -1230,6 +1343,75 @@ defmodule CurriclickWeb.ChatLive do
         text
     end
   end
+  defp parse_json_objects(binary, acc \\ []) do
+    # Skip whitespace/commas
+    binary = String.trim_leading(binary, ", \n\r\t")
+
+    if String.starts_with?(binary, "{") do
+      case find_matching_brace(binary) do
+        {:ok, object_str, rest} ->
+          case Jason.decode(object_str) do
+            {:ok, object} ->
+              parse_json_objects(rest, acc ++ [object])
+            _ ->
+              # Decode failed, maybe incomplete? Should not happen if braces matched correctly
+              # unless JSON inside is invalid.
+              # If invalid, we stop parsing this chunk.
+              {acc, binary}
+          end
+        :incomplete ->
+          {acc, binary}
+      end
+    else
+      # If we don't see '{', maybe we are at ']' or end of buffer or just whitespace
+      if String.starts_with?(binary, "]") do
+         # End of array.
+         {acc, ""}
+      else
+         # Incomplete or garbage. Keep buffer.
+         {acc, binary}
+      end
+    end
+  end
+
+  defp find_matching_brace(binary) do
+     case do_scan_braces(binary, 0, 0) do
+       {:match, length} ->
+         <<object::binary-size(length), rest::binary>> = binary
+         {:ok, object, rest}
+       :incomplete ->
+         :incomplete
+     end
+  end
+
+  defp do_scan_braces(<<?{, rest::binary>>, index, 0) do
+    do_scan_braces(rest, index + 1, 1)
+  end
+
+  defp do_scan_braces(<<?{, rest::binary>>, index, count) do
+    do_scan_braces(rest, index + 1, count + 1)
+  end
+
+  defp do_scan_braces(<<?}, rest::binary>>, index, count) do
+    if count == 1 do
+      {:match, index + 1}
+    else
+      do_scan_braces(rest, index + 1, count - 1)
+    end
+  end
+
+  defp do_scan_braces(<<_, rest::binary>>, index, count) do
+    do_scan_braces(rest, index + 1, count)
+  end
+
+  defp do_scan_braces("", _index, _count), do: :incomplete
+
+  defp keys_to_atoms(map) when is_map(map) do
+    Map.new(map, fn {k, v} -> {String.to_atom(k), keys_to_atoms(v)} end)
+  end
+  defp keys_to_atoms(list) when is_list(list), do: Enum.map(list, &keys_to_atoms/1)
+  defp keys_to_atoms(v), do: v
+
   defp list_applied_job_ids(user) do
     Curriclick.Companies.JobApplication
     |> Ash.Query.filter(user_id == ^user.id)
@@ -1261,6 +1443,18 @@ defmodule CurriclickWeb.ChatLive do
   defp match_quality_score(_), do: 0
 
   defp sanitize_score(nil), do: nil
-  defp sanitize_score(%_{} = score), do: Map.from_struct(score) |> Map.drop([:__meta__])
+
+  defp sanitize_score(%_{} = score) do
+    Map.from_struct(score)
+    |> Map.drop([
+      :__meta__,
+      :__metadata__,
+      :__order__,
+      :__lateral_join_source__,
+      :aggregates,
+      :calculations
+    ])
+  end
+
   defp sanitize_score(other), do: other
 end

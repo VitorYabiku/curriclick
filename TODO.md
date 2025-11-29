@@ -2,7 +2,6 @@
 - Make the job listing details in chat page match the ones in the dashboard page
 - Change the detailed view of job cards in the chat page so that the user can immediately notice they are looking at a job card rather than the AI chat
 - Change the default route to the user dashboard page
-- Revamp the user profile page to show an overview of the user's
 - Add a base curriculum to the user profile page which the user can create with the help of an LLM (add a chat to the profile page)
 - Add a chat to the dashboard page so the user can ask the LLM questions about their job applications
 
