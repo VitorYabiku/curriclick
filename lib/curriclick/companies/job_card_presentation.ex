@@ -23,10 +23,9 @@ defmodule Curriclick.Companies.JobCardPresentation do
       public? true
     end
 
-    attribute :match_quality, :atom do
+    attribute :match_quality, Curriclick.Companies.LLMEvaluation do
       public? true
       allow_nil? false
-      constraints one_of: [:bad_match, :moderate_match, :good_match, :very_good_match]
       description "Subjective match quality assessment by LLM"
     end
 
@@ -45,9 +44,9 @@ defmodule Curriclick.Companies.JobCardPresentation do
       default []
     end
 
-    attribute :success_probability, :float do
+    attribute :hiring_probability, Curriclick.Companies.LLMEvaluation do
       public? true
-      description "Probability (0-1) that the user would be successful in this role"
+      description "Estimated likelihood of getting hired: low, medium, or high"
     end
 
     attribute :missing_info, :string do
@@ -75,13 +74,33 @@ defmodule Curriclick.Companies.JobCardPresentation do
       public? true
     end
 
-    attribute :work_type, :atom do
+    attribute :work_type, :string do
       public? true
     end
 
     attribute :salary_range, :string do
       public? true
       description "Formatted salary range string (e.g., '$80k-$120k USD/year')"
+    end
+
+    attribute :work_type_score, Curriclick.Companies.LLMEvaluation do
+      public? true
+    end
+
+    attribute :location_score, Curriclick.Companies.LLMEvaluation do
+      public? true
+    end
+
+    attribute :salary_score, Curriclick.Companies.LLMEvaluation do
+      public? true
+    end
+
+    attribute :remote_score, Curriclick.Companies.LLMEvaluation do
+      public? true
+    end
+
+    attribute :skills_score, Curriclick.Companies.LLMEvaluation do
+      public? true
     end
   end
 end

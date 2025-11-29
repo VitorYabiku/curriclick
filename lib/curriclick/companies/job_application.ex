@@ -15,7 +15,7 @@ defmodule Curriclick.Companies.JobApplication do
 
     create :create do
       primary? true
-      accept [:user_id, :job_listing_id, :conversation_id, :search_query, :summary, :pros, :cons, :keywords, :match_quality, :hiring_probability, :missing_info]
+      accept [:user_id, :job_listing_id, :conversation_id, :search_query, :summary, :pros, :cons, :keywords, :match_quality, :hiring_probability, :missing_info, :work_type_score, :location_score, :salary_score, :remote_score, :skills_score]
     end
   end
 
@@ -65,12 +65,11 @@ defmodule Curriclick.Companies.JobApplication do
       default []
     end
 
-    attribute :match_quality, :atom do
+    attribute :match_quality, Curriclick.Companies.LLMEvaluation do
       public? true
-      constraints one_of: [:bad_match, :moderate_match, :good_match, :very_good_match]
     end
 
-    attribute :hiring_probability, :float do
+    attribute :hiring_probability, Curriclick.Companies.LLMEvaluation do
       public? true
       allow_nil? true
     end
@@ -78,6 +77,26 @@ defmodule Curriclick.Companies.JobApplication do
     attribute :missing_info, :string do
       public? true
       allow_nil? true
+    end
+
+    attribute :work_type_score, Curriclick.Companies.LLMEvaluation do
+      public? true
+    end
+
+    attribute :location_score, Curriclick.Companies.LLMEvaluation do
+      public? true
+    end
+
+    attribute :salary_score, Curriclick.Companies.LLMEvaluation do
+      public? true
+    end
+
+    attribute :remote_score, Curriclick.Companies.LLMEvaluation do
+      public? true
+    end
+
+    attribute :skills_score, Curriclick.Companies.LLMEvaluation do
+      public? true
     end
 
     create_timestamp :inserted_at

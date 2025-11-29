@@ -74,16 +74,38 @@ defmodule CurriclickWeb.ChatLive do
                           <% end %>
                         </div>
                         <div class="flex flex-col items-end gap-3">
-                          <.match_quality_badge quality={expanded_job.match_quality} />
-                          <button
-                            type="button"
-                            class="btn btn-primary rounded-xl shadow-md w-full md:w-auto"
-                            phx-click="apply_to_job"
-                            phx-value-job_id={expanded_job.job_id}
-                          >
-                            <.icon name="hero-paper-airplane" class="w-4 h-4" />
-                            Candidatar-se
-                          </button>
+                          <.match_quality_badge quality={expanded_job.match_quality.score} explanation={expanded_job.match_quality.explanation} />
+                          <% is_applied = MapSet.member?(@applied_job_ids, expanded_job.job_id) %>
+                          <% is_failed = MapSet.member?(@failed_job_ids, expanded_job.job_id) %>
+                          
+                          <%= if is_applied do %>
+                            <button
+                              type="button"
+                              disabled
+                              class="btn btn-disabled rounded-xl shadow-none w-full md:w-auto bg-base-200 text-base-content/50 border-base-300"
+                            >
+                              <.icon name="hero-check-circle" class="w-4 h-4" />
+                              Já candidatado
+                            </button>
+                          <% else %>
+                            <button
+                              type="button"
+                              class={["btn rounded-xl shadow-md w-full md:w-auto", is_failed && "btn-error", !is_failed && "btn-primary"]}
+                              phx-click="apply_to_job"
+                              phx-value-job_id={expanded_job.job_id}
+                            >
+                              <%= if is_failed do %>
+                                <.icon name="hero-arrow-path" class="w-4 h-4" />
+                                Tentar novamente
+                              <% else %>
+                                <.icon name="hero-paper-airplane" class="w-4 h-4" />
+                                Candidatar-se
+                              <% end %>
+                            </button>
+                            <%= if is_failed do %>
+                              <span class="text-xs text-error font-medium">Falha ao enviar. Tente novamente.</span>
+                            <% end %>
+                          <% end %>
                         </div>
                       </div>
                       
@@ -371,116 +393,163 @@ defmodule CurriclickWeb.ChatLive do
             !@show_jobs_panel && "translate-x-full lg:translate-x-0 lg:hidden"
           ]}>
             <!-- Panel Header -->
-            <div class="flex items-center justify-between p-4 border-b border-base-300 bg-base-100 shadow-sm">
-              <div class="flex items-center gap-3">
-                <div class="p-2 bg-primary/10 rounded-xl">
-                  <.icon name="hero-briefcase" class="w-5 h-5 text-primary" />
+            <div class="flex flex-col border-b border-base-300 bg-base-100 shadow-sm">
+              <div class="flex items-center justify-between p-4 pb-2">
+                <div class="flex items-center gap-3">
+                  <div class="p-2 bg-primary/10 rounded-xl">
+                    <.icon name="hero-briefcase" class="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h2 class="font-bold text-base">Vagas Encontradas</h2>
+                    <p class="text-xs text-base-content/60">{length(@job_cards)} resultados</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 class="font-bold text-base">Vagas Encontradas</h2>
-                  <p class="text-xs text-base-content/60">{length(@job_cards)} resultados</p>
-                </div>
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-sm btn-circle lg:hidden"
+                  phx-click="toggle_jobs_panel"
+                  aria-label="Fechar painel"
+                >
+                  <.icon name="hero-x-mark" class="w-5 h-5" />
+                </button>
               </div>
-              <button
-                type="button"
-                class="btn btn-ghost btn-sm btn-circle lg:hidden"
-                phx-click="toggle_jobs_panel"
-                aria-label="Fechar painel"
-              >
-                <.icon name="hero-x-mark" class="w-5 h-5" />
-              </button>
+              
+              <div class="flex items-center justify-between px-4 pb-3 gap-2">
+                  <div class="flex items-center gap-2">
+                    <label class="cursor-pointer flex items-center gap-2 text-xs font-medium text-base-content/70 hover:text-base-content select-none">
+                      <input 
+                        type="checkbox" 
+                        class="checkbox checkbox-xs checkbox-primary rounded"
+                        checked={@job_cards != [] && MapSet.size(@selected_job_ids) == length(Enum.reject(@job_cards, &MapSet.member?(@applied_job_ids, &1.job_id)))}
+                        phx-click="toggle_select_all" 
+                      />
+                      Selecionar todos
+                    </label>
+                  </div>
+                  
+                  <div class="dropdown dropdown-end">
+                    <div tabindex="0" role="button" class="btn btn-ghost btn-xs gap-1 font-normal text-base-content/70">
+                      <.icon name="hero-arrows-up-down" class="w-3 h-3" />
+                      {if @sort_by == :match, do: "Relevância", else: "Probabilidade"}
+                    </div>
+                    <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-40 border border-base-200 text-xs">
+                      <li><button type="button" class={@sort_by == :match && "active"} phx-click="sort" phx-value-sort_by="match">Relevância</button></li>
+                      <li><button type="button" class={@sort_by == :probability && "active"} phx-click="sort" phx-value-sort_by="probability">Probabilidade</button></li>
+                    </ul>
+                  </div>
+              </div>
             </div>
             
         <!-- Panel Content -->
             <div class="flex-1 overflow-y-auto p-4">
               <!-- Job Cards List -->
               <div class="space-y-3" id="job-cards-stream" phx-update="stream">
-                  <%= for {dom_id, job_card} <- @streams.job_cards do %>
+              <%= for {dom_id, job_card} <- @streams.job_cards do %>
+                <% is_applied = MapSet.member?(@applied_job_ids, job_card.job_id) %>
+                <% is_failed = MapSet.member?(@failed_job_ids, job_card.job_id) %>
+                <div
+                  id={dom_id}
+                  class={[
+                    "card shadow-md border rounded-2xl transition-all duration-200 hover:shadow-lg hover:border-primary/30 cursor-pointer group",
+                    @expanded_job_id == job_card.job_id && "bg-gradient-to-r from-primary/15 to-base-100 border-primary shadow-lg shadow-primary/10 ring-2 ring-primary",
+                    @expanded_job_id != job_card.job_id && "bg-base-100 border-base-300",
+                    is_applied && "opacity-75 bg-base-200/50"
+                  ]}
+                  phx-click="expand_job_detail"
+                  phx-value-job_id={job_card.job_id}
+                  onclick={"if (window.innerWidth < 1024) { window.dispatchEvent(new CustomEvent('close_panel')); }"}
+                >
+                  <div class="card-body p-4 gap-3">
+                    <!-- Header with checkbox -->
                     <div
-                      id={dom_id}
-                      class={[
-                        "card shadow-md border rounded-2xl transition-all duration-200 hover:shadow-lg hover:border-primary/30 cursor-pointer",
-                        @expanded_job_id == job_card.job_id && "bg-gradient-to-r from-primary/15 to-base-100 border-primary shadow-lg shadow-primary/10 ring-2 ring-primary",
-                        @expanded_job_id != job_card.job_id && "bg-base-100 border-base-300"
-                      ]}
-                      phx-click="expand_job_detail"
+                      class={["flex items-start gap-3 -m-2 p-2 rounded-xl transition-colors", !is_applied && "cursor-pointer hover:bg-base-200/50"]}
+                      phx-click={if !is_applied, do: "toggle_job_selection"}
                       phx-value-job_id={job_card.job_id}
-                      onclick={"if (window.innerWidth < 1024) { window.dispatchEvent(new CustomEvent('close_panel')); }"}
+                      phx-click-stop
                     >
-                      <div class="card-body p-4 gap-3">
-                        <!-- Header with checkbox -->
-                        <div
-                          class="flex items-start gap-3 cursor-pointer hover:bg-base-200/50 -m-2 p-2 rounded-xl transition-colors"
-                          phx-click="toggle_job_selection"
+                      <label class={["cursor-pointer flex items-center", is_applied && "cursor-not-allowed opacity-50"]}>
+                        <input
+                          type="checkbox"
+                          class="checkbox checkbox-primary checkbox-sm rounded-lg pointer-events-none"
+                          checked={MapSet.member?(@selected_job_ids, job_card.job_id)}
+                          disabled={is_applied}
+                        />
+                      </label>
+                      <div class="flex-1 min-w-0">
+                        <h3 class="font-bold text-sm leading-tight">{job_card.title}</h3>
+                        <p class="text-xs text-base-content/60 mt-0.5">{job_card.company_name}</p>
+                        <%= if job_card.location do %>
+                          <p class="text-xs text-base-content/50 flex items-center gap-1 mt-1">
+                            <.icon name="hero-map-pin" class="w-3 h-3" />
+                            {job_card.location}
+                          </p>
+                        <% end %>
+                    </div>
+                      <.match_quality_badge quality={job_card.match_quality.score} explanation={job_card.match_quality.explanation} />
+                    </div>
+                    
+                    <!-- Summary -->
+                    <p class="text-xs text-base-content/70 line-clamp-2">
+                      {job_card.summary}
+                    </p>
+
+                    <%= if job_card.keywords && job_card.keywords != [] do %>
+                      <div class="flex flex-wrap gap-1 mt-2 mb-1">
+                         <%= for keyword <- Enum.take(job_card.keywords, 3) do %>
+                           <div class="tooltip" data-tip={keyword.explanation}>
+                             <span class="badge badge-ghost badge-xs text-base-content/60 cursor-help">{keyword.term}</span>
+                           </div>
+                         <% end %>
+                         <%= if length(job_card.keywords) > 3 do %>
+                           <span class="badge badge-ghost badge-xs text-base-content/60">+{length(job_card.keywords) - 3}</span>
+                         <% end %>
+                      </div>
+                    <% end %>
+                    
+                    <!-- Quick info badges -->
+                    <div class="flex flex-wrap gap-1.5">
+                      <%= if job_card.remote_allowed do %>
+                        <span class="badge badge-ghost badge-xs gap-1">
+                          <.icon name="hero-home" class="w-2.5 h-2.5" /> Remoto
+                        </span>
+                      <% end %>
+                      <%= if job_card.salary_range do %>
+                        <span class="badge badge-ghost badge-xs">{job_card.salary_range}</span>
+                      <% end %>
+                    </div>
+                    
+                    <!-- Actions -->
+                    <div class="flex gap-2 mt-1">
+                      <%= if is_applied do %>
+                        <button
+                          type="button"
+                          disabled
+                          class="btn btn-disabled btn-xs flex-1 rounded-lg bg-base-200 text-base-content/50 border-base-300"
+                        >
+                          <.icon name="hero-check-circle" class="w-3.5 h-3.5" />
+                          Candidatado
+                        </button>
+                      <% else %>
+                        <button
+                          type="button"
+                          class={["btn btn-xs flex-1 rounded-lg", is_failed && "btn-error", !is_failed && "btn-primary"]}
+                          phx-click="apply_to_job"
                           phx-value-job_id={job_card.job_id}
                           phx-click-stop
                         >
-                          <label class="cursor-pointer flex items-center">
-                            <input
-                              type="checkbox"
-                              class="checkbox checkbox-primary checkbox-sm rounded-lg pointer-events-none"
-                              checked={MapSet.member?(@selected_job_ids, job_card.job_id)}
-                            />
-                          </label>
-                          <div class="flex-1 min-w-0">
-                            <h3 class="font-bold text-sm leading-tight">{job_card.title}</h3>
-                            <p class="text-xs text-base-content/60 mt-0.5">{job_card.company_name}</p>
-                            <%= if job_card.location do %>
-                              <p class="text-xs text-base-content/50 flex items-center gap-1 mt-1">
-                                <.icon name="hero-map-pin" class="w-3 h-3" />
-                                {job_card.location}
-                              </p>
-                            <% end %>
-                          </div>
-                          <.match_quality_badge quality={job_card.match_quality} />
-                        </div>
-                        
-                        <!-- Summary -->
-                        <p class="text-xs text-base-content/70 line-clamp-2">
-                          {job_card.summary}
-                        </p>
-
-                        <%= if job_card.keywords && job_card.keywords != [] do %>
-                          <div class="flex flex-wrap gap-1 mt-2 mb-1">
-                             <%= for keyword <- Enum.take(job_card.keywords, 3) do %>
-                               <div class="tooltip" data-tip={keyword.explanation}>
-                                 <span class="badge badge-ghost badge-xs text-base-content/60 cursor-help">{keyword.term}</span>
-                               </div>
-                             <% end %>
-                             <%= if length(job_card.keywords) > 3 do %>
-                               <span class="badge badge-ghost badge-xs text-base-content/60">+{length(job_card.keywords) - 3}</span>
-                             <% end %>
-                          </div>
-                        <% end %>
-                        
-                        <!-- Quick info badges -->
-                        <div class="flex flex-wrap gap-1.5">
-                          <%= if job_card.remote_allowed do %>
-                            <span class="badge badge-ghost badge-xs gap-1">
-                              <.icon name="hero-home" class="w-2.5 h-2.5" /> Remoto
-                            </span>
+                          <%= if is_failed do %>
+                             <.icon name="hero-arrow-path" class="w-3.5 h-3.5" />
+                             Tentar novamente
+                          <% else %>
+                             <.icon name="hero-paper-airplane" class="w-3.5 h-3.5" />
+                             Candidatar
                           <% end %>
-                          <%= if job_card.salary_range do %>
-                            <span class="badge badge-ghost badge-xs">{job_card.salary_range}</span>
-                          <% end %>
-                        </div>
-                        
-                        <!-- Actions -->
-                        <div class="flex gap-2 mt-1">
-                          <button
-                            type="button"
-                            class="btn btn-primary btn-xs flex-1 rounded-lg"
-                            phx-click="apply_to_job"
-                            phx-value-job_id={job_card.job_id}
-                            phx-click-stop
-                          >
-                            <.icon name="hero-paper-airplane" class="w-3.5 h-3.5" />
-                            Candidatar
-                          </button>
-                        </div>
-                      </div>
+                        </button>
+                      <% end %>
                     </div>
-                  <% end %>
+                  </div>
+                </div>
+              <% end %>
                 </div>
             </div>
             
@@ -519,9 +588,9 @@ defmodule CurriclickWeb.ChatLive do
           <div class="mb-5">
             <.link
               navigate={~p"/chat"}
-              class="btn btn-ghost btn-block justify-start gap-3 normal-case font-medium shadow-sm border border-base-300 bg-base-100 hover:bg-base-200 hover:shadow transition-all duration-200"
+              class="btn btn-ghost btn-block relative normal-case font-medium shadow-sm border border-base-300 bg-primary hover:bg-base-200 hover:shadow transition-all duration-200"
             >
-              <.icon name="hero-plus" class="w-5 h-5 text-primary" />
+              <.icon name="hero-plus" class="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2" />
               Novo chat
             </.link>
           </div>
@@ -601,11 +670,11 @@ defmodule CurriclickWeb.ChatLive do
 
   # Match quality badge component
   attr :quality, :atom, required: true
+  attr :explanation, :string, default: nil
 
   def match_quality_badge(assigns) do
     {label, badge_class} =
       case assigns.quality do
-        :very_good_match -> {"Excelente", "badge-success"}
         :good_match -> {"Bom", "badge-info"}
         :moderate_match -> {"Moderado", "badge-warning"}
         :bad_match -> {"Baixo", "badge-ghost"}
@@ -615,20 +684,28 @@ defmodule CurriclickWeb.ChatLive do
     assigns = assign(assigns, label: label, badge_class: badge_class)
 
     ~H"""
-    <span class={["badge badge-sm font-medium", @badge_class]}>
-      {@label}
-    </span>
+    <%= if @explanation do %>
+      <div class="tooltip" data-tip={@explanation}>
+        <span class={["badge badge-sm font-medium cursor-help", @badge_class]}>
+          {@label}
+        </span>
+      </div>
+    <% else %>
+      <span class={["badge badge-sm font-medium", @badge_class]}>
+        {@label}
+      </span>
+    <% end %>
     """
   end
 
   defp format_work_type(work_type) do
-    case work_type do
-      :FULL_TIME -> "Tempo integral"
-      :PART_TIME -> "Meio período"
-      :CONTRACT -> "Contrato"
-      :INTERNSHIP -> "Estágio"
-      :TEMPORARY -> "Temporário"
-      _ -> to_string(work_type)
+    case to_string(work_type) do
+      "FULL_TIME" -> "Tempo integral"
+      "PART_TIME" -> "Meio período"
+      "CONTRACT" -> "Contrato"
+      "INTERNSHIP" -> "Estágio"
+      "TEMPORARY" -> "Temporário"
+      other -> other
     end
   end
 
@@ -648,8 +725,13 @@ defmodule CurriclickWeb.ChatLive do
           %_{} = keyword -> Map.from_struct(keyword) |> Map.drop([:__meta__])
           other -> other
         end),
-      match_quality: job_card.match_quality,
-      hiring_probability: job_card.success_probability,
+      work_type_score: sanitize_score(job_card.work_type_score),
+      location_score: sanitize_score(job_card.location_score),
+      salary_score: sanitize_score(job_card.salary_score),
+      remote_score: sanitize_score(job_card.remote_score),
+      skills_score: sanitize_score(job_card.skills_score),
+      match_quality: sanitize_score(job_card.match_quality),
+      hiring_probability: sanitize_score(job_card.hiring_probability),
       missing_info: job_card.missing_info
     })
     |> Ash.create()
@@ -672,6 +754,10 @@ defmodule CurriclickWeb.ChatLive do
       |> assign(:job_cards, [])
       |> stream(:job_cards, [], dom_id: &"job-#{&1.job_id}")
       |> assign(:selected_job_ids, MapSet.new())
+      |> assign(:applied_job_ids, list_applied_job_ids(socket.assigns.current_user))
+      |> assign(:failed_job_ids, MapSet.new())
+      |> assign(:sort_by, :match)
+      |> assign(:sort_order, :desc)
       |> assign(:show_jobs_panel, false)
       |> assign(:expanded_job_id, nil)
 
@@ -698,6 +784,7 @@ defmodule CurriclickWeb.ChatLive do
     end
 
     job_cards = conversation.job_cards || []
+    sorted_cards = sort_job_cards(job_cards, socket.assigns.sort_by, socket.assigns.sort_order)
 
     selected_ids =
       job_cards
@@ -711,8 +798,8 @@ defmodule CurriclickWeb.ChatLive do
       :messages,
       Curriclick.Chat.message_history!(conversation.id, query: [sort: [inserted_at: :asc]])
     )
-    |> assign(:job_cards, job_cards)
-    |> stream(:job_cards, job_cards, reset: true)
+    |> assign(:job_cards, sorted_cards)
+    |> stream(:job_cards, sorted_cards, reset: true)
     |> assign(:selected_job_ids, selected_ids)
     |> assign(:show_jobs_panel, job_cards != [])
     |> assign(:expanded_job_id, nil)
@@ -842,10 +929,20 @@ defmodule CurriclickWeb.ChatLive do
 
       case create_job_application(socket.assigns.current_user, job_card, "Chat job search", conversation_id) do
         {:ok, _} ->
-          {:noreply, put_flash(socket, :info, "Candidatura enviada para #{job_card.title}!")}
+          socket =
+            socket
+            |> assign(:applied_job_ids, MapSet.put(socket.assigns.applied_job_ids, job_id))
+            |> put_flash(:info, "Candidatura enviada para #{job_card.title}!")
+
+          {:noreply, socket}
 
         {:error, _} ->
-          {:noreply, put_flash(socket, :error, "Erro ao enviar candidatura. Talvez você já tenha se candidatado.")}
+          socket =
+            socket
+            |> assign(:failed_job_ids, MapSet.put(socket.assigns.failed_job_ids, job_id))
+            |> put_flash(:error, "Erro ao enviar candidatura. Talvez você já tenha se candidatado.")
+
+          {:noreply, socket}
       end
     else
       {:noreply, socket}
@@ -861,11 +958,20 @@ defmodule CurriclickWeb.ChatLive do
 
     results =
       Enum.map(selected_jobs, fn job_card ->
-        create_job_application(socket.assigns.current_user, job_card, "Chat job search (batch)", conversation_id)
+        {job_card.job_id,
+         create_job_application(socket.assigns.current_user, job_card, "Chat job search (batch)", conversation_id)}
       end)
 
-    success_count = Enum.count(results, &match?({:ok, _}, &1))
-    error_count = Enum.count(results, &match?({:error, _}, &1))
+    success_ids =
+      Enum.filter(results, fn {_, res} -> match?({:ok, _}, res) end)
+      |> Enum.map(fn {id, _} -> id end)
+
+    failed_ids =
+      Enum.filter(results, fn {_, res} -> match?({:error, _}, res) end)
+      |> Enum.map(fn {id, _} -> id end)
+
+    success_count = length(success_ids)
+    error_count = length(failed_ids)
 
     socket =
       cond do
@@ -873,12 +979,58 @@ defmodule CurriclickWeb.ChatLive do
           put_flash(socket, :info, "#{success_count} candidatura(s) enviada(s) com sucesso!")
 
         success_count > 0 && error_count > 0 ->
-          put_flash(socket, :warning, "#{success_count} enviada(s), #{error_count} já existente(s).")
+          put_flash(socket, :warning, "#{success_count} enviada(s), #{error_count} falharam.")
 
         true ->
-          put_flash(socket, :error, "Nenhuma candidatura nova enviada. Você já se candidatou.")
+          put_flash(socket, :error, "Nenhuma candidatura nova enviada. Verifique se já se candidatou.")
       end
 
+    new_applied_ids = MapSet.union(socket.assigns.applied_job_ids, MapSet.new(success_ids))
+    new_failed_ids = MapSet.union(socket.assigns.failed_job_ids, MapSet.new(failed_ids))
+    
+    # Remove successful ones from selected, keep failed ones
+    new_selected_ids =
+      socket.assigns.selected_job_ids
+      |> MapSet.difference(MapSet.new(success_ids))
+
+    {:noreply,
+     socket
+     |> assign(:applied_job_ids, new_applied_ids)
+     |> assign(:failed_job_ids, new_failed_ids)
+     |> assign(:selected_job_ids, new_selected_ids)}
+  end
+
+  def handle_event("sort", %{"sort_by" => sort_by}, socket) do
+    sort_by = String.to_existing_atom(sort_by)
+    sort_order = socket.assigns.sort_order
+    
+    # Toggle order if clicking same sort key? Or just set it.
+    # Current plan says "New Assigns: @sort_by (default :match), @sort_order (default :desc)".
+    # I'll assume the UI passes the desired sort or we toggle.
+    # For now let's support setting sort_by and defaulting to desc.
+    
+    sorted_cards = sort_job_cards(socket.assigns.job_cards, sort_by, sort_order)
+    
+    {:noreply,
+     socket
+     |> assign(:sort_by, sort_by)
+     |> assign(:job_cards, sorted_cards)
+     |> stream(:job_cards, sorted_cards, reset: true)}
+  end
+
+  def handle_event("toggle_select_all", %{"value" => "on"}, socket) do
+    # Select all unapplied jobs
+    all_selectable_ids =
+      socket.assigns.job_cards
+      |> Enum.filter(fn card -> !MapSet.member?(socket.assigns.applied_job_ids, card.job_id) end)
+      |> Enum.map(& &1.job_id)
+      |> MapSet.new()
+
+    {:noreply, assign(socket, :selected_job_ids, all_selectable_ids)}
+  end
+
+  def handle_event("toggle_select_all", _params, socket) do
+    # Deselect all
     {:noreply, assign(socket, :selected_job_ids, MapSet.new())}
   end
 
@@ -951,12 +1103,14 @@ defmodule CurriclickWeb.ChatLive do
         |> Enum.map(& &1.job_id)
         |> MapSet.new()
 
+      sorted_cards = sort_job_cards(job_cards, socket.assigns.sort_by, socket.assigns.sort_order)
+
       {:noreply,
        socket
-       |> assign(:job_cards, job_cards)
+       |> assign(:job_cards, sorted_cards)
        |> assign(:selected_job_ids, selected_ids)
        |> assign(:show_jobs_panel, job_cards != [])
-       |> stream(:job_cards, job_cards, reset: true)}
+       |> stream(:job_cards, sorted_cards, reset: true)}
     else
       {:noreply, socket}
     end
@@ -992,13 +1146,14 @@ defmodule CurriclickWeb.ChatLive do
         end
 
       new_job_cards = socket.assigns.job_cards ++ [job_card]
+      sorted_cards = sort_job_cards(new_job_cards, socket.assigns.sort_by, socket.assigns.sort_order)
 
       {:noreply,
        socket
-       |> assign(:job_cards, new_job_cards)
+       |> assign(:job_cards, sorted_cards)
        |> assign(:selected_job_ids, selected_ids)
        |> assign(:show_jobs_panel, true)
-       |> stream_insert(:job_cards, job_card)}
+       |> stream(:job_cards, sorted_cards, reset: true)}
     else
       {:noreply, socket}
     end
@@ -1075,4 +1230,37 @@ defmodule CurriclickWeb.ChatLive do
         text
     end
   end
+  defp list_applied_job_ids(user) do
+    Curriclick.Companies.JobApplication
+    |> Ash.Query.filter(user_id == ^user.id)
+    |> Ash.Query.select([:job_listing_id])
+    |> Ash.read!(actor: user)
+    |> Enum.map(& &1.job_listing_id)
+    |> MapSet.new()
+  end
+
+  defp sort_job_cards(cards, sort_by, sort_order) do
+    Enum.sort_by(cards, fn card ->
+      case sort_by do
+        :match ->
+          {match_quality_score(card.match_quality), probability_score(card.hiring_probability)}
+        :probability ->
+          probability_score(card.hiring_probability)
+      end
+    end, sort_order)
+  end
+
+  defp probability_score(%{score: :high}), do: 3
+  defp probability_score(%{score: :medium}), do: 2
+  defp probability_score(%{score: :low}), do: 1
+  defp probability_score(_), do: 0
+
+  defp match_quality_score(%{score: :good_match}), do: 3
+  defp match_quality_score(%{score: :moderate_match}), do: 2
+  defp match_quality_score(%{score: :bad_match}), do: 1
+  defp match_quality_score(_), do: 0
+
+  defp sanitize_score(nil), do: nil
+  defp sanitize_score(%_{} = score), do: Map.from_struct(score) |> Map.drop([:__meta__])
+  defp sanitize_score(other), do: other
 end

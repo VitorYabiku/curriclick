@@ -74,18 +74,25 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
         After receiving results from find_suitable_job_postings_for_user:
         1. Filter to 3–10 best matches based on user profile and stated preferences.
         2. For EACH job, generate personalized enrichment:
-           - match_quality: one of "bad_match", "moderate_match", "good_match", "very_good_match" based on overall fit.
+           - match_quality: object {score: "bad_match"|"moderate_match"|"good_match", explanation: string}
+             - explanation: brief explanation (1 sentence) of why this match quality was assigned.
            - pros: a comprehensive list of bullet points explaining why this job fits the user. Do not limit the number of points; include EVERYTHING relevant to help the user make a decision without reading the full description.
            - cons: a comprehensive list of bullet points on potential gaps or mismatches. Do not limit the number of points; be thorough.
-           - success_probability: float 0.0–1.0 estimating likelihood of getting hired given the user's profile vs. job requirements.
+           - hiring_probability: object {score: "low"|"medium"|"high", explanation: string}
+             - explanation: brief explanation (1 sentence) of why this probability was assigned.
            - keywords: array of objects, each containing:
               - term: string (the keyword itself)
               - explanation: string (brief explanation of why this keyword is relevant to the user)
              Generate as many keywords as necessary to highlight key technologies, skills, or benefits.
+           - work_type_score: object {score: "bad_match"|"moderate_match"|"good_match", explanation: string} or null if not informed.
+           - location_score: object {score: "bad_match"|"moderate_match"|"good_match", explanation: string} or null if not informed.
+           - salary_score: object {score: "bad_match"|"moderate_match"|"good_match", explanation: string} or null if not informed.
+           - remote_score: object {score: "bad_match"|"moderate_match"|"good_match", explanation: string} or null if not informed.
+           - skills_score: object {score: "bad_match"|"moderate_match"|"good_match", explanation: string} or null if not informed.
            - missing_info: brief note if profile gaps prevent accurate assessment (e.g., "Seniority level unclear").
            - summary: 1–2 sentence pitch the user can review before applying.
            - description: the full job description text so the user can see all details.
-           - selected: set true ONLY for very_good_match jobs where the user's profile aligns almost perfectly.
+           - selected: set true ONLY for "good_match" jobs where the user's profile aligns almost perfectly.
         3. Call set_chat_job_cards with conversation_id "#{message.conversation_id}" and the enriched job_cards array.
         4. In your chat response, briefly summarize highlights; the detailed cards appear in the panel.
         </job_cards_workflow>

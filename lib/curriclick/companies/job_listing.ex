@@ -76,8 +76,8 @@ defmodule Curriclick.Companies.JobListing do
 
       <instructions>
         - After calling find_suitable_job_postings_for_user and filtering to best 3-10 matches, call this tool.
-        - For each job, provide enriched data: pros, cons, success_probability, missing_info, summary.
-        - Set `selected: true` for jobs with very high match scores where you're confident the user would be interested.
+        - For each job, provide enriched data: pros, cons, success_probability (low/medium/high), missing_info, summary.
+        - Set `selected: true` for jobs with "good_match" scores where you're confident the user would be interested.
         - The summary should be suitable for application confirmation (why this job fits the user).
         - Pros/cons should be specific to the user's profile, not generic.
       </instructions>
@@ -165,7 +165,7 @@ defmodule Curriclick.Companies.JobListing do
           - **Critical Filtering**: Filter the 20-30 results down to the best 3-10 matches based on the user's constraints (especially negative constraints like "no Java").
           - **Presentation Format**:
             - Provide a **summary** of the best job postings.
-            - Include **Pros & Cons**, **Success Probability**, and **Missing Info** for each.
+            - Include **Pros & Cons**, **Success Probability** (low/medium/high), and **Missing Info** for each.
         </instruction_group>
       </instructions>
 

@@ -27,7 +27,7 @@ defmodule CurriclickWeb.UserDashboardLive do
 
   def handle_event("sort", %{"sort_by" => sort_by}, socket) do
     sort_by = String.to_existing_atom(sort_by)
-    
+
     # Toggle order if clicking the same sort
     sort_order =
       if socket.assigns.sort_by == sort_by && socket.assigns.sort_order == :desc do
@@ -60,23 +60,25 @@ defmodule CurriclickWeb.UserDashboardLive do
 
   def handle_event("batch_unapply", _, socket) do
     selected_ids = socket.assigns.selected_ids
-    
+
     if MapSet.size(selected_ids) == 0 do
       {:noreply, socket}
     else
       # We do this one by one for now, but could be a bulk delete
-      results = 
+      results =
         Enum.map(selected_ids, fn id ->
-           case Ash.get(JobApplication, id) do
-             {:ok, app} -> Ash.destroy(app)
-             _ -> {:error, :not_found}
-           end
+          case Ash.get(JobApplication, id) do
+            {:ok, app} -> Ash.destroy(app)
+            _ -> {:error, :not_found}
+          end
         end)
-      
+
       success_count = Enum.count(results, &match?(:ok, &1))
-      
-      remaining_applications = 
-        Enum.reject(socket.assigns.applications, fn app -> MapSet.member?(selected_ids, app.id) end)
+
+      remaining_applications =
+        Enum.reject(socket.assigns.applications, fn app ->
+          MapSet.member?(selected_ids, app.id)
+        end)
 
       {:noreply,
        socket
@@ -126,30 +128,59 @@ defmodule CurriclickWeb.UserDashboardLive do
     <div class="max-w-5xl mx-auto p-4">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <h1 class="text-3xl font-bold">Minhas Candidaturas</h1>
-        
+
         <div class="flex items-center gap-3">
           <!-- Sort Dropdown -->
           <div class="dropdown dropdown-end">
             <div tabindex="0" role="button" class="btn btn-ghost btn-sm gap-2">
-              <.icon name={if @sort_order == :asc, do: "hero-bars-arrow-up", else: "hero-bars-arrow-down"} class="w-4 h-4" />
-              Ordenar por: {format_sort_label(@sort_by)}
+              <.icon
+                name={if @sort_order == :asc, do: "hero-bars-arrow-up", else: "hero-bars-arrow-down"}
+                class="w-4 h-4"
+              /> Ordenar por: {format_sort_label(@sort_by)}
             </div>
-            <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
-              <li><button phx-click="sort" phx-value-sort_by="date" class={if @sort_by == :date, do: "active"}>Data de aplicação</button></li>
-              <li><button phx-click="sort" phx-value-sort_by="match" class={if @sort_by == :match, do: "active"}>Compatibilidade</button></li>
-              <li><button phx-click="sort" phx-value-sort_by="probability" class={if @sort_by == :probability, do: "active"}>Probabilidade de contratação</button></li>
+            <ul
+              tabindex="0"
+              class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52"
+            >
+              <li>
+                <button
+                  phx-click="sort"
+                  phx-value-sort_by="date"
+                  class={if @sort_by == :date, do: "active"}
+                >
+                  Data de candidatura
+                </button>
+              </li>
+              <li>
+                <button
+                  phx-click="sort"
+                  phx-value-sort_by="match"
+                  class={if @sort_by == :match, do: "active"}
+                >
+                  Compatibilidade
+                </button>
+              </li>
+              <li>
+                <button
+                  phx-click="sort"
+                  phx-value-sort_by="probability"
+                  class={if @sort_by == :probability, do: "active"}
+                >
+                  Probabilidade de contratação
+                </button>
+              </li>
             </ul>
           </div>
         </div>
       </div>
-
-      <!-- Batch Actions -->
+      
+    <!-- Batch Actions -->
       <%= if MapSet.size(@selected_ids) > 0 do %>
         <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-fade-in-up">
           <div class="bg-base-100 shadow-lg border border-base-300 rounded-full px-6 py-3 flex items-center gap-4">
             <span class="font-medium text-sm">{MapSet.size(@selected_ids)} selecionadas</span>
             <div class="h-4 w-px bg-base-300"></div>
-            <button 
+            <button
               class="btn btn-sm btn-error btn-ghost text-error"
               phx-click="batch_unapply"
               data-confirm={"Tem certeza que deseja cancelar #{MapSet.size(@selected_ids)} candidaturas?"}
@@ -162,89 +193,111 @@ defmodule CurriclickWeb.UserDashboardLive do
 
       <div class="grid gap-4">
         <%= for app <- @applications do %>
-          <div
-            class={["card bg-base-100 shadow-md border border-base-200 transition-all duration-200", 
-                   MapSet.member?(@selected_ids, app.id) && "border-primary ring-1 ring-primary bg-primary/5"]}
-          >
-            <div 
+          <div class={[
+            "card bg-base-100 shadow-md border border-base-200 transition-colors transition-shadow duration-200",
+            MapSet.member?(@selected_ids, app.id) && "border-primary ring-1 ring-primary bg-primary/5"
+          ]}>
+            <div
               class="card-body p-5 cursor-pointer"
               phx-click="toggle_expand"
               phx-value-id={app.id}
             >
-              <div class="flex justify-between items-start gap-4">
+              <!-- Header Section (Selects) -->
+              <div
+                class="flex justify-between items-start gap-4 -m-2 p-2 rounded-xl hover:bg-base-200/50 transition-colors mb-2"
+                phx-click="toggle_selection"
+                phx-value-id={app.id}
+                phx-click-stop
+              >
                 <!-- Checkbox -->
-                <div class="pt-1" phx-click-stop>
-                  <input 
-                    type="checkbox" 
-                    class="checkbox checkbox-primary checkbox-sm rounded-md" 
+                <div class="pt-1">
+                  <input
+                    type="checkbox"
+                    class="checkbox checkbox-primary checkbox-sm rounded-md pointer-events-none"
                     checked={MapSet.member?(@selected_ids, app.id)}
-                    phx-click="toggle_selection"
-                    phx-value-id={app.id}
                   />
                 </div>
 
                 <div class="flex-1 min-w-0">
                   <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mb-1">
                     <h2 class="card-title text-xl">{app.job_listing.title}</h2>
-                    <%= if !MapSet.member?(@expanded_ids, app.id) do %>
-                       <div class="flex items-center gap-2">
-                         <.match_quality_badge quality={app.match_quality} />
-                         <%= if app.hiring_probability do %>
-                           <span class={["badge badge-sm font-medium gap-1", probability_color(app.hiring_probability)]}>
-                             {round(app.hiring_probability * 100)}% chance
-                           </span>
-                         <% end %>
-                       </div>
-                    <% end %>
+                  <div class="flex items-center gap-2">
+                    <.match_quality_badge
+                      quality={app.match_quality && app.match_quality.score}
+                      explanation={app.match_quality && app.match_quality.explanation}
+                    />
+                    <%= if app.hiring_probability do %>
+                        <div class="tooltip" data-tip={app.hiring_probability.explanation}>
+                          <span class={[
+                            "badge badge-lg font-medium gap-1 cursor-help",
+                            probability_color(app.hiring_probability.score)
+                          ]}>
+                            Chance {format_probability(app.hiring_probability.score)}
+                          </span>
+                        </div>
+                      <% end %>
+                    </div>
                   </div>
                   <p class="text-base font-medium opacity-70 flex items-center gap-1 mt-1">
                     <.icon name="hero-building-office-2" class="w-4 h-4" />
                     {app.job_listing.company.name}
                   </p>
-                  
-                  <%= if !MapSet.member?(@expanded_ids, app.id) do %>
-                    <div class="mt-3">
-                       <!-- Keywords Badges -->
-                       <%= if app.keywords && app.keywords != [] do %>
-                         <div class="flex flex-wrap gap-1 mb-2">
-                           <%= for keyword <- Enum.take(app.keywords, 5) do %>
-                             <div class="tooltip" data-tip={keyword["explanation"]}>
-                               <span class="badge badge-ghost badge-xs text-base-content/60 cursor-help">{keyword["term"]}</span>
-                             </div>
-                           <% end %>
-                           <%= if length(app.keywords) > 5 do %>
-                             <span class="badge badge-ghost badge-xs text-base-content/60">+{length(app.keywords) - 5}</span>
-                           <% end %>
-                         </div>
-                       <% end %>
+                </div>
+                
+    <!-- Right Side Actions (Collapsed) -->
+                <div class="flex flex-col items-end gap-2">
+                  <div class="text-xs opacity-50 whitespace-nowrap">
+                    {Calendar.strftime(app.inserted_at, "%d/%m/%Y")}
+                  </div>
+                </div>
+              </div>
+              
+    <!-- Summary Section (Expands via parent) -->
+              <div class="pl-9">
+                <div class="mt-1">
+                  <!-- Keywords Badges -->
+                  <%= if app.keywords && app.keywords != [] do %>
+                    <div class="flex flex-wrap gap-1 mb-2">
+                      <% keywords_to_show =
+                        if MapSet.member?(@expanded_ids, app.id),
+                          do: app.keywords,
+                          else: Enum.take(app.keywords, 5) %>
+                      <%= for keyword <- keywords_to_show do %>
+                        <div class="tooltip" data-tip={keyword["explanation"]}>
+                          <span class="badge badge-ghost badge-md cursor-help">
+                            {keyword["term"]}
+                          </span>
+                        </div>
+                      <% end %>
+                      <%= if !MapSet.member?(@expanded_ids, app.id) && length(app.keywords) > 5 do %>
+                        <span class="badge badge-ghost badge-xs text-base-content/60">
+                          +{length(app.keywords) - 5}
+                        </span>
+                      <% end %>
+                    </div>
+                  <% end %>
 
-                       <!-- Summary (truncated) instead of Description -->
-                       <p class="text-sm text-base-content/70 line-clamp-2">
-                         {app.summary || app.job_listing.description}
-                       </p>
-                    </div>
-                    <div class="mt-2 text-xs text-center opacity-40 flex items-center justify-center gap-1">
-                       Ver mais detalhes <.icon name="hero-chevron-down" class="w-3 h-3" />
-                    </div>
+                  <%= if !MapSet.member?(@expanded_ids, app.id) do %>
+                    <!-- Summary (truncated) instead of Description -->
+                    <p class="text-sm text-base-content/70 line-clamp-2">
+                      {app.summary || app.job_listing.description}
+                    </p>
                   <% end %>
                 </div>
 
-                <!-- Right Side Actions (Collapsed) -->
                 <%= if !MapSet.member?(@expanded_ids, app.id) do %>
-                  <div class="flex flex-col items-end gap-2">
-                    <div class="text-xs opacity-50 whitespace-nowrap">
-                      {Calendar.strftime(app.inserted_at, "%d/%m/%Y")}
-                    </div>
+                  <div class="mt-2 text-xs text-center opacity-40 flex items-center justify-center gap-1">
+                    Ver mais detalhes <.icon name="hero-chevron-down" class="w-3 h-3" />
                   </div>
                 <% end %>
               </div>
-
-              <!-- Expanded Content -->
-              <%= if MapSet.member?(@expanded_ids, app.id) do %>
-                <div class="mt-6 animate-fade-in space-y-6 cursor-auto" phx-click-stop>
-                  <div class="divider my-2"></div>
-
-                  <!-- Conversation Link -->
+              
+    <!-- Expanded Content -->
+          <%= if MapSet.member?(@expanded_ids, app.id) do %>
+            <div class="animate-fade-in space-y-6 cursor-auto" phx-click-stop>
+              <div class="divider my-2"></div>
+                  
+    <!-- Conversation Link -->
                   <%= if app.conversation do %>
                     <.link
                       href={~p"/chat/#{app.conversation.id}"}
@@ -253,10 +306,14 @@ defmodule CurriclickWeb.UserDashboardLive do
                     >
                       <div class="flex items-center gap-2">
                         <.icon name="hero-chat-bubble-left-right" class="w-5 h-5 text-info" />
-                        <span>Vaga encontrada na conversa <strong>{app.conversation.title || "Conversa sem título"}</strong></span>
+                        <span>
+                          Vaga encontrada na conversa
+                          <strong>{app.conversation.title || "Conversa sem título"}</strong>
+                        </span>
                       </div>
                       <span class="btn btn-xs btn-info btn-outline group-hover:btn-active">
-                        Ver conversa <.icon name="hero-arrow-top-right-on-square" class="w-3 h-3 ml-1" />
+                        Ver conversa
+                        <.icon name="hero-arrow-top-right-on-square" class="w-3 h-3 ml-1" />
                       </span>
                     </.link>
                   <% else %>
@@ -265,47 +322,18 @@ defmodule CurriclickWeb.UserDashboardLive do
                       <span>A conversa original foi excluída.</span>
                     </div>
                   <% end %>
+                  
+    <!-- Meta Info & Badges -->
 
-
-                  <!-- Meta Info & Badges -->
-                  <div class="flex flex-wrap items-center gap-3">
-                    <.match_quality_badge quality={app.match_quality} />
-                    
-                    <%= if app.hiring_probability do %>
-                       <span class={["badge badge-lg gap-1 p-3", probability_color(app.hiring_probability)]}>
-                         <.icon name="hero-chart-bar" class="w-4 h-4" />
-                         {round(app.hiring_probability * 100)}% de chance
-                       </span>
-                    <% end %>
-
-                    <%= if app.job_listing.remote_allowed do %>
-                      <span class="badge badge-lg badge-outline gap-2 p-3">
-                        <.icon name="hero-home" class="w-4 h-4" /> Remoto
-                      </span>
-                    <% end %>
-                    <%= if app.job_listing.work_type do %>
-                      <span class="badge badge-lg badge-outline p-3">
-                        {format_work_type(app.job_listing.work_type)}
-                      </span>
-                    <% end %>
-                    <% salary = format_salary(app.job_listing) %>
-                    <%= if salary do %>
-                      <span class="badge badge-lg badge-outline gap-2 p-3">
-                        <.icon name="hero-currency-dollar" class="w-4 h-4" />
-                        {salary}
-                      </span>
-                    <% end %>
-                  </div>
-
-                  <!-- Summary -->
+    <!-- Summary -->
                   <%= if app.summary do %>
                     <div class="bg-primary/5 rounded-2xl p-6 border border-primary/10">
                       <h3 class="font-semibold text-primary mb-2">Resumo</h3>
                       <p class="text-base leading-relaxed">{app.summary}</p>
                     </div>
                   <% end %>
-
-                  <!-- Pros & Cons -->
+                  
+    <!-- Pros & Cons -->
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <%= if app.pros && app.pros != [] do %>
                       <div class="bg-base-200/30 rounded-2xl p-6">
@@ -339,36 +367,103 @@ defmodule CurriclickWeb.UserDashboardLive do
                       </div>
                     <% end %>
                   </div>
-
-                  <!-- Missing Info -->
-                  <%= if app.missing_info do %>
-                    <div class="alert alert-info bg-info/10 border-info/20 text-xs">
-                      <.icon name="hero-information-circle" class="w-5 h-5" />
-                      <span>{app.missing_info}</span>
-                    </div>
-                  <% end %>
                   
-                  <!-- Full Description Card -->
-                  <div class="card bg-base-200/30 border border-base-200">
-                    <div class="card-body p-6">
-                      <%= if app.job_listing.skills_desc do %>
-                         <div class="mb-6">
-                           <h3 class="font-bold text-sm mb-2 flex items-center gap-2">
-                             <.icon name="hero-sparkles" class="w-4 h-4" /> Habilidades Necessárias
-                           </h3>
-                           <p class="text-sm text-base-content/80">{app.job_listing.skills_desc}</p>
-                         </div>
-                         <div class="divider opacity-50"></div>
-                      <% end %>
+              <!-- Full Description Card -->
+              <div class="card bg-base-200/30 border border-base-200">
+                <div class="card-body p-6">
+                  <h3 class="card-title text-lg mb-4 flex items-center gap-2">
+                    <.icon name="hero-information-circle" class="w-5 h-5" />
+                    Detalhes da Vaga
+                  </h3>
 
-                      <h3 class="font-bold text-sm mb-4 flex items-center gap-2">
-                        <.icon name="hero-document-text" class="w-4 h-4" /> Descrição Completa
-                      </h3>
-                      <div class="markdown-content text-sm opacity-90">
-                        {to_markdown(app.job_listing.description)}
-                      </div>
+                  <!-- Job Details List -->
+                  <div class="mb-6 bg-base-100/50 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm border border-base-200/50">
+                    <!-- Remote/On-site -->
+                    <div class="flex items-center gap-2">
+                      <.icon name="hero-home" class="w-4 h-4 opacity-70" />
+                      <%= cond do %>
+                        <% app.job_listing.remote_allowed == true -> %>
+                          <span>Remoto</span>
+                        <% app.job_listing.remote_allowed == false -> %>
+                          <span>Presencial</span>
+                        <% true -> %>
+                          <span class="text-base-content/40 italic">Modalidade não informada</span>
+                      <% end %>
+                      <%= if app.remote_score do %>
+                        <.match_quality_badge quality={app.remote_score.score} explanation={app.remote_score.explanation} styling="badge badge-sm font-normal" />
+                      <% end %>
+                    </div>
+
+                    <!-- Work Type -->
+                    <div class="flex items-center gap-2">
+                      <.icon name="hero-briefcase" class="w-4 h-4 opacity-70" />
+                      <%= if app.job_listing.work_type do %>
+                        <span>{format_work_type(app.job_listing.work_type)}</span>
+                      <% else %>
+                        <span class="text-base-content/40 italic">Tipo de contrato não informado</span>
+                      <% end %>
+                      <%= if app.work_type_score do %>
+                        <.match_quality_badge quality={app.work_type_score.score} explanation={app.work_type_score.explanation} styling="badge badge-sm font-normal" />
+                      <% end %>
+                    </div>
+
+                    <!-- Salary -->
+                    <div class="flex items-center gap-2">
+                      <.icon name="hero-currency-dollar" class="w-4 h-4 opacity-70" />
+                      <%= if format_salary(app.job_listing) do %>
+                        <span>{format_salary(app.job_listing)}</span>
+                      <% else %>
+                        <span class="text-base-content/40 italic">Salário não informado</span>
+                      <% end %>
+                      <%= if app.salary_score do %>
+                        <.match_quality_badge quality={app.salary_score.score} explanation={app.salary_score.explanation} styling="badge badge-sm font-normal" />
+                      <% end %>
+                    </div>
+
+                    <!-- Location -->
+                    <div class="flex items-center gap-2">
+                      <.icon name="hero-map-pin" class="w-4 h-4 opacity-70" />
+                      <%= if app.job_listing.location do %>
+                        <span>{app.job_listing.location}</span>
+                      <% else %>
+                        <span class="text-base-content/40 italic">Localização não informada</span>
+                      <% end %>
+                      <%= if app.location_score do %>
+                        <.match_quality_badge quality={app.location_score.score} explanation={app.location_score.explanation} styling="badge badge-sm font-normal" />
+                      <% end %>
                     </div>
                   </div>
+
+                  <!-- Skills -->
+                  <div class="mb-6">
+                    <h3 class="font-bold text-sm mb-2 flex items-center gap-2">
+                      <.icon name="hero-sparkles" class="w-4 h-4" /> Habilidades Necessárias
+                      <%= if app.skills_score do %>
+                        <.match_quality_badge quality={app.skills_score.score} explanation={app.skills_score.explanation} styling="badge badge-sm font-normal" />
+                      <% end %>
+                    </h3>
+                    <%= if app.job_listing.skills_desc do %>
+                      <p class="text-sm text-base-content/80">{app.job_listing.skills_desc}</p>
+                    <% else %>
+                      <p class="text-sm text-base-content/40 italic">Habilidades não informadas</p>
+                    <% end %>
+                  </div>
+                  
+                  <div class="divider opacity-50"></div>
+
+                  <!-- Description -->
+                  <h3 class="font-bold text-sm mb-4 flex items-center gap-2">
+                    <.icon name="hero-document-text" class="w-4 h-4" /> Descrição Completa
+                  </h3>
+                  <%= if app.job_listing.description do %>
+                    <div class="markdown-content text-sm opacity-90">
+                      {to_markdown(app.job_listing.description)}
+                    </div>
+                  <% else %>
+                    <p class="text-sm text-base-content/40 italic">Descrição não informada</p>
+                  <% end %>
+                </div>
+              </div>
 
                   <div class="flex justify-end pt-2">
                     <button
@@ -409,34 +504,59 @@ defmodule CurriclickWeb.UserDashboardLive do
 
   # Match quality badge component
   attr :quality, :atom, required: true
+  attr :styling, :string, default: "badge badge-lg font-medium"
+  attr :explanation, :string, default: nil
 
   def match_quality_badge(assigns) do
     {label, badge_class} =
       case assigns.quality do
-        :very_good_match -> {"Excelente", "badge-success"}
-        :good_match -> {"Bom", "badge-info"}
-        :moderate_match -> {"Moderado", "badge-warning"}
-        :bad_match -> {"Baixo", "badge-ghost"}
+        :good_match -> {"Boa compatibilidade", "badge-info"}
+        :moderate_match -> {"Média compatibilidade", "badge-warning"}
+        :bad_match -> {"Baixa compatibilidade", "badge-ghost"}
         _ -> {"--", "badge-ghost"}
       end
 
-    assigns = assign(assigns, label: label, badge_class: badge_class)
+    assigns =
+      assign(assigns,
+        label: label,
+        badge_class: badge_class,
+        explanation: assigns.explanation,
+        styling: assigns.styling
+      )
 
     ~H"""
-    <span class={["badge badge-sm font-medium", @badge_class]}>
-      {@label}
-    </span>
+    <%= if @explanation do %>
+      <div class="tooltip" data-tip={@explanation}>
+        <span class={[@styling, @badge_class, "cursor-help"]}>
+          {@label}
+        </span>
+      </div>
+    <% else %>
+      <span class={[@styling, @badge_class]}>
+        {@label}
+      </span>
+    <% end %>
     """
   end
 
   defp probability_color(prob) do
-    cond do
-      prob >= 0.7 -> "badge-success"
-      prob >= 0.4 -> "badge-warning"
-      true -> "badge-error"
+    case prob do
+      :high -> "badge-success"
+      :medium -> "badge-warning"
+      :low -> "badge-error"
+      _ -> "badge-ghost"
     end
   end
-  
+
+  defp format_probability(prob) do
+    case prob do
+      :high -> "Alta"
+      :medium -> "Moderada"
+      :low -> "Baixa"
+      _ -> "--"
+    end
+  end
+
   defp format_sort_label(sort_by) do
     case sort_by do
       :date -> "Data"
@@ -445,20 +565,30 @@ defmodule CurriclickWeb.UserDashboardLive do
     end
   end
 
-  defp sort_applications(applications, :date, :asc), do: Enum.sort_by(applications, & &1.inserted_at, {:asc, DateTime})
-  defp sort_applications(applications, :date, :desc), do: Enum.sort_by(applications, & &1.inserted_at, {:desc, DateTime})
-  
-  defp sort_applications(applications, :probability, :asc), do: Enum.sort_by(applications, &(&1.hiring_probability || 0.0), :asc)
-  defp sort_applications(applications, :probability, :desc), do: Enum.sort_by(applications, &(&1.hiring_probability || 0.0), :desc)
+  defp sort_applications(applications, :date, :asc),
+    do: Enum.sort_by(applications, & &1.inserted_at, {:asc, DateTime})
+
+  defp sort_applications(applications, :date, :desc),
+    do: Enum.sort_by(applications, & &1.inserted_at, {:desc, DateTime})
+
+  defp sort_applications(applications, :probability, :asc),
+    do: Enum.sort_by(applications, &probability_score(&1.hiring_probability), :asc)
+
+  defp sort_applications(applications, :probability, :desc),
+    do: Enum.sort_by(applications, &probability_score(&1.hiring_probability), :desc)
 
   defp sort_applications(applications, :match, order) do
-     Enum.sort_by(applications, fn app -> match_quality_score(app.match_quality) end, order)
+    Enum.sort_by(applications, fn app -> match_quality_score(app.match_quality) end, order)
   end
 
-  defp match_quality_score(:very_good_match), do: 4
-  defp match_quality_score(:good_match), do: 3
-  defp match_quality_score(:moderate_match), do: 2
-  defp match_quality_score(:bad_match), do: 1
+  defp probability_score(%{score: :high}), do: 3
+  defp probability_score(%{score: :medium}), do: 2
+  defp probability_score(%{score: :low}), do: 1
+  defp probability_score(_), do: 0
+
+  defp match_quality_score(%{score: :good_match}), do: 3
+  defp match_quality_score(%{score: :moderate_match}), do: 2
+  defp match_quality_score(%{score: :bad_match}), do: 1
   defp match_quality_score(_), do: 0
 
   defp format_work_type(work_type) do
