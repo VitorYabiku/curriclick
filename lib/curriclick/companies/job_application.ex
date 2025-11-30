@@ -6,7 +6,8 @@ defmodule Curriclick.Companies.JobApplication do
     otp_app: :curriclick,
     domain: Curriclick.Companies,
     data_layer: AshPostgres.DataLayer,
-    authorizers: [Ash.Policy.Authorizer]
+    authorizers: [Ash.Policy.Authorizer],
+    extensions: [AshAi]
 
   postgres do
     table "job_applications"
@@ -18,7 +19,24 @@ defmodule Curriclick.Companies.JobApplication do
 
     create :create do
       primary? true
-      accept [:user_id, :job_listing_id, :conversation_id, :search_query, :summary, :pros, :cons, :keywords, :match_quality, :hiring_probability, :missing_info, :work_type_score, :location_score, :salary_score, :remote_score, :skills_score]
+      accept [
+        :user_id,
+        :job_listing_id,
+        :conversation_id,
+        :search_query,
+        :summary,
+        :pros,
+        :cons,
+        :keywords,
+        :match_quality,
+        :hiring_probability,
+        :missing_info,
+        :work_type_score,
+        :location_score,
+        :salary_score,
+        :remote_score,
+        :skills_score
+      ]
       
       argument :answers, {:array, :map} do
         allow_nil? true
@@ -27,23 +45,18 @@ defmodule Curriclick.Companies.JobApplication do
       manage_relationship :answers, :answers, type: :create
     end
 
-    action :generate_draft, :map do
+    action :generate_draft, {:array, Curriclick.Companies.JobApplication.DraftAnswer} do
       argument :job_listing_id, :uuid, allow_nil?: false
       argument :user_id, :uuid, allow_nil?: false
+      argument :conversation_id, :uuid, allow_nil?: true
 
-      run fn input, _context ->
-        job_listing_id = input.arguments.job_listing_id
-        user_id = input.arguments.user_id
-
-        user = Curriclick.Accounts.User |> Ash.get!(user_id, authorize?: false)
-        job_listing = Curriclick.Companies.JobListing |> Ash.Query.load(:requirements) |> Ash.get!(job_listing_id, authorize?: false)
-
-        if Enum.empty?(job_listing.requirements) do
-          {:ok, %{}}
-        else
-          Curriclick.Companies.JobApplication.Generator.generate(user, job_listing)
-        end
-      end
+      run prompt(
+            fn _, _ ->
+              LangChain.ChatModels.ChatOpenAI.new!(%{model: "gpt-5-mini"})
+            end,
+            prompt: &Curriclick.Companies.JobApplication.Prompt.generate_messages/2,
+            tools: false
+          )
     end
 
     update :nilify_conversation do
@@ -54,7 +67,7 @@ defmodule Curriclick.Companies.JobApplication do
 
   code_interface do
     define :create
-    define :generate_draft, args: [:job_listing_id, :user_id]
+    define :generate_draft, args: [:job_listing_id, :user_id, :conversation_id]
   end
 
   policies do

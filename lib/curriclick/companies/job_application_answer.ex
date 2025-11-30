@@ -1,4 +1,7 @@
 defmodule Curriclick.Companies.JobApplicationAnswer do
+  @moduledoc """
+  Represents a single answer to a job application requirement.
+  """
   use Ash.Resource,
     otp_app: :curriclick,
     domain: Curriclick.Companies,

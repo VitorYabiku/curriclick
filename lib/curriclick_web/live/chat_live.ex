@@ -4,6 +4,7 @@ defmodule CurriclickWeb.ChatLive do
   """
   use Elixir.CurriclickWeb, :live_view
   require Ash.Query
+  alias Curriclick.Companies.JobApplication
   on_mount {CurriclickWeb.LiveUserAuth, :live_user_required}
 
   @max_conversation_title_length 25
@@ -908,7 +909,7 @@ defmodule CurriclickWeb.ChatLive do
           list()
         ) :: {:ok, Curriclick.Companies.JobApplication.t()} | {:error, any()}
   defp create_job_application(user, job_card, search_query, conversation_id, answers \\ []) do
-    Curriclick.Companies.JobApplication
+    JobApplication
     |> Ash.Changeset.for_create(:create, %{
       user_id: user.id,
       job_listing_id: job_card.job_id,
@@ -1149,11 +1150,27 @@ defmodule CurriclickWeb.ChatLive do
     if job_card do
       if job_card.requirements && job_card.requirements != [] do
         # Generate draft answers
-        case Curriclick.Companies.JobApplication.generate_draft(
+        conversation_id =
+          if socket.assigns.conversation, do: socket.assigns.conversation.id, else: nil
+
+        case JobApplication.generate_draft(
                job_id,
-               socket.assigns.current_user.id
+               socket.assigns.current_user.id,
+               conversation_id
              ) do
-          {:ok, draft_answers} ->
+          {:ok, draft_answers_list} ->
+            # Convert list of structs to map keyed by requirement_id
+            draft_answers =
+              Map.new(draft_answers_list, fn answer ->
+                {answer.requirement_id,
+                 %{
+                   answer: answer.answer,
+                   confidence_score: answer.confidence_score,
+                   confidence_explanation: answer.confidence_explanation,
+                   missing_info: answer.missing_info
+                 }}
+              end)
+
             socket =
               assign(socket, :application_draft, %{
                 job_id: job_id,
@@ -1662,7 +1679,7 @@ defmodule CurriclickWeb.ChatLive do
 
   @spec list_applied_job_ids(Curriclick.Accounts.User.t()) :: MapSet.t()
   defp list_applied_job_ids(user) do
-    Curriclick.Companies.JobApplication
+    JobApplication
     |> Ash.Query.filter(user_id == ^user.id)
     |> Ash.Query.select([:job_listing_id])
     |> Ash.read!(actor: user)
