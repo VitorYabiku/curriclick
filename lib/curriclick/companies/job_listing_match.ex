@@ -1,4 +1,7 @@
 defmodule Curriclick.Companies.JobListingMatch do
+  @moduledoc """
+  Represents a match result for a job listing search.
+  """
   use Ash.Resource,
     data_layer: :embedded,
     domain: Curriclick.Companies

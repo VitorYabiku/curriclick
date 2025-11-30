@@ -1,4 +1,7 @@
 defmodule Curriclick.Accounts.Token do
+  @moduledoc """
+  Represents an authentication token.
+  """
   use Ash.Resource,
     otp_app: :curriclick,
     domain: Curriclick.Accounts,

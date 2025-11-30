@@ -98,6 +98,137 @@ topbar.config({ barColors: { 0: "#29d" }, shadowColor: "rgba(0, 0, 0, .3)" });
 window.addEventListener("phx:page-loading-start", (_info) => topbar.show(300));
 window.addEventListener("phx:page-loading-stop", (_info) => topbar.hide());
 
+/**
+ * Smart Tooltip Manager
+ * Solves overflow/clipping issues by rendering tooltips at the body level with fixed positioning.
+ * Usage: Add `data-smart-tooltip="Your text"` to any element.
+ */
+const TooltipManager = {
+  tooltip: null,
+  _timer: null,
+
+  init() {
+    // Mouse enter/leave delegation
+    document.addEventListener("mouseover", (e) => {
+      const target = e.target.closest("[data-smart-tooltip]");
+      if (target) {
+        this.scheduleShow(target);
+      }
+    });
+
+    document.addEventListener("mouseout", (e) => {
+      const target = e.target.closest("[data-smart-tooltip]");
+      // If moving to the tooltip itself, don't hide (optional, but standard behavior usually hides)
+      // For simple text tooltips, usually hiding immediately is fine.
+      if (target) {
+        this.scheduleHide();
+      }
+    });
+
+    // Hide on scroll to prevent detached tooltips floating on screen
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (this.tooltip) this.hide();
+      },
+      true
+    );
+  },
+
+  scheduleShow(target) {
+    this.clearTimer();
+    // Small delay to prevent flickering
+    this._timer = setTimeout(() => this.show(target), 50);
+  },
+
+  scheduleHide() {
+    this.clearTimer();
+    this._timer = setTimeout(() => this.hide(), 50);
+  },
+
+  clearTimer() {
+    if (this._timer) {
+      clearTimeout(this._timer);
+      this._timer = null;
+    }
+  },
+
+  show(target) {
+    const text = target.getAttribute("data-smart-tooltip");
+    if (!text) return;
+
+    // If tooltip exists but is for a different target, remove it first
+    if (this.tooltip && this.tooltip._target !== target) {
+      this.hide();
+    }
+
+    // Create tooltip if not exists
+    if (!this.tooltip) {
+      this.tooltip = document.createElement("div");
+      this.tooltip.className =
+        "fixed z-[9999] px-2 py-1 text-sm leading-tight text-neutral-content bg-neutral rounded shadow-sm max-w-[20rem] break-words pointer-events-none transition-opacity duration-200 opacity-0";
+      document.body.appendChild(this.tooltip);
+    }
+
+    this.tooltip._target = target;
+    this.tooltip.textContent = text;
+    this.updatePosition(target);
+
+    // Fade in
+    requestAnimationFrame(() => {
+      if (this.tooltip) this.tooltip.classList.remove("opacity-0");
+    });
+  },
+
+  hide() {
+    if (this.tooltip) {
+      this.tooltip.remove();
+      this.tooltip = null;
+    }
+  },
+
+  updatePosition(target) {
+    if (!this.tooltip) return;
+
+    const targetRect = target.getBoundingClientRect();
+    const tooltipRect = this.tooltip.getBoundingClientRect();
+    const gap = 8; // Space between element and tooltip
+
+    // Default position: Top Center
+    let top = targetRect.top - tooltipRect.height - gap;
+    let left = targetRect.left + (targetRect.width - tooltipRect.width) / 2;
+
+    // 1. Vertical flipping logic
+    // If top is cut off, try bottom
+    if (top < gap) {
+      top = targetRect.bottom + gap;
+      
+      // If bottom is also cut off (very tall element or small screen), pick the side with more space
+      if (top + tooltipRect.height > window.innerHeight - gap) {
+        if (targetRect.top > window.innerHeight / 2) {
+           // More space above
+           top = targetRect.top - tooltipRect.height - gap;
+        } else {
+           // More space below
+           top = targetRect.bottom + gap;
+        }
+      }
+    }
+
+    // 2. Horizontal clamping logic (prevent left/right overflow)
+    if (left < gap) {
+      left = gap;
+    } else if (left + tooltipRect.width > window.innerWidth - gap) {
+      left = window.innerWidth - tooltipRect.width - gap;
+    }
+
+    this.tooltip.style.top = `${top}px`;
+    this.tooltip.style.left = `${left}px`;
+  },
+};
+
+TooltipManager.init();
+
 // connect if there are any LiveViews on the page
 liveSocket.connect();
 

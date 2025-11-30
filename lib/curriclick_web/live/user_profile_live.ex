@@ -1,10 +1,14 @@
 defmodule CurriclickWeb.UserProfileLive do
+  @moduledoc """
+  LiveView for editing the user's profile.
+  """
   use CurriclickWeb, :live_view
 
   alias Curriclick.Accounts
 
   on_mount {CurriclickWeb.LiveUserAuth, :live_user_required}
 
+  @spec mount(map(), map(), Phoenix.LiveView.Socket.t()) :: {:ok, Phoenix.LiveView.Socket.t()}
   def mount(_params, _session, socket) do
     form =
       Accounts.form_to_update_profile(socket.assigns.current_user,
@@ -20,6 +24,7 @@ defmodule CurriclickWeb.UserProfileLive do
      |> assign(:remote_flags, remote_flags)}
   end
 
+  @spec handle_event(String.t(), map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_event("validate", %{"form" => params}, socket) do
     {normalized_params, remote_flags} =
       normalize_remote_params(params, socket.assigns.remote_flags)
@@ -57,6 +62,7 @@ defmodule CurriclickWeb.UserProfileLive do
     end
   end
 
+  @spec render(map()) :: Phoenix.LiveView.Rendered.t()
   def render(assigns) do
     ~H"""
     <div class="min-h-screen w-full">
@@ -371,6 +377,7 @@ defmodule CurriclickWeb.UserProfileLive do
     """
   end
 
+  @spec normalize_remote_params(map(), map()) :: {map(), map()}
   defp normalize_remote_params(params, current_flags) do
     flags = %{
       remote: truthy?(Map.get(params, "remote_remote", current_flags.remote)),
@@ -388,6 +395,7 @@ defmodule CurriclickWeb.UserProfileLive do
     {normalized_params, flags}
   end
 
+  @spec truthy?(any()) :: boolean()
   defp truthy?(value) do
     case value do
       true -> true
@@ -398,6 +406,7 @@ defmodule CurriclickWeb.UserProfileLive do
     end
   end
 
+  @spec preference_from_flags(map()) :: atom()
   defp preference_from_flags(%{remote: true, hybrid: true, on_site: true}), do: :no_preference
   defp preference_from_flags(%{remote: true, hybrid: true, on_site: false}), do: :remote_friendly
   defp preference_from_flags(%{remote: true, hybrid: false, on_site: false}), do: :remote_only
@@ -407,6 +416,7 @@ defmodule CurriclickWeb.UserProfileLive do
   defp preference_from_flags(%{remote: false, hybrid: true, on_site: true}), do: :hybrid
   defp preference_from_flags(_), do: :no_preference
 
+  @spec remote_flags(atom() | nil) :: map()
   defp remote_flags(current_value) do
     case current_value do
       :remote_only -> %{remote: true, hybrid: false, on_site: false}

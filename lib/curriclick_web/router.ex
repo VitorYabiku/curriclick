@@ -1,4 +1,7 @@
 defmodule CurriclickWeb.Router do
+  @moduledoc """
+  The application router.
+  """
   use CurriclickWeb, :router
 
   import Oban.Web.Router

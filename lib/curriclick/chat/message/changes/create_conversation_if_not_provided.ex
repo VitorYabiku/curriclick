@@ -1,4 +1,7 @@
 defmodule Curriclick.Chat.Message.Changes.CreateConversationIfNotProvided do
+  @moduledoc """
+  Automatically creates a conversation if a message is sent without a `conversation_id`.
+  """
   use Ash.Resource.Change
 
   @impl true

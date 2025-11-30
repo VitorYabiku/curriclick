@@ -1,4 +1,7 @@
 defmodule Curriclick.Chat do
+  @moduledoc """
+  The Chat domain, managing conversations and messages between users and the AI agent.
+  """
   use Ash.Domain, otp_app: :curriclick, extensions: [AshAi, AshPhoenix]
 
   tools do

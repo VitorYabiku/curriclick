@@ -22,6 +22,9 @@
 # end
 
 defmodule Curriclick.Companies.JobListing do
+  @moduledoc """
+  Represents a job listing posted by a company.
+  """
   use Ash.Resource,
     otp_app: :curriclick,
     domain: Curriclick.Companies,
@@ -96,44 +99,67 @@ defmodule Curriclick.Companies.JobListing do
       end
 
       run fn input, _context ->
-        conversation_id = input.arguments.conversation_id
-        job_cards = input.arguments.job_cards
+        require Logger
 
-        # Persist job cards to conversation
-        # We use authorize?: false because this is a system-level tool execution
-        # and we want to ensure the update happens regardless of specific policy states
-        # (though we could also pass the actor from input.context if needed)
-        Curriclick.Chat.Conversation
-        |> Ash.Query.filter(id == ^conversation_id)
-        |> Ash.read_one!(authorize?: false)
-        |> Ash.Changeset.for_update(:update_job_cards, %{job_cards: job_cards})
-        |> Ash.update!(authorize?: false)
+        try do
+          conversation_id = input.arguments.conversation_id
+          job_cards = input.arguments.job_cards
 
-        # Spawn a task to simulate streaming of job cards
-        Task.start(fn ->
-          # First, clear the current list
-          Phoenix.PubSub.broadcast(
-            Curriclick.PubSub,
-            "chat:job_cards:#{conversation_id}",
-            {:job_cards_reset, %{conversation_id: conversation_id}}
-          )
+          # Hydrate requirements from database
+          job_ids = Enum.map(job_cards, & &1.job_id)
 
-          # Small initial delay
-          Process.sleep(300)
+          requirements_map =
+            Curriclick.Companies.JobListingRequirement
+            |> Ash.Query.filter(job_listing_id in ^job_ids)
+            |> Ash.read!(authorize?: false)
+            |> Enum.group_by(& &1.job_listing_id)
 
-          # Broadcast each card one by one
-          Enum.each(job_cards, fn card ->
+          job_cards =
+            Enum.map(job_cards, fn card ->
+              reqs = Map.get(requirements_map, card.job_id, [])
+              # Map to simple map or keep as struct? JobCardPresentation.requirements is {:array, :map}
+              # Let's map to a map with id and question
+              reqs_data = Enum.map(reqs, fn r -> %{id: r.id, question: r.question} end)
+              %{card | requirements: reqs_data}
+            end)
+
+          # Persist job cards to conversation
+          Curriclick.Chat.Conversation
+          |> Ash.Query.filter(id == ^conversation_id)
+          |> Ash.read_one!(authorize?: false)
+          |> Ash.Changeset.for_update(:update_job_cards, %{job_cards: job_cards})
+          |> Ash.update!(authorize?: false)
+
+          # Spawn a task to simulate streaming of job cards
+          Task.start(fn ->
+            # First, clear the current list
             Phoenix.PubSub.broadcast(
               Curriclick.PubSub,
               "chat:job_cards:#{conversation_id}",
-              {:job_card_added, %{job_card: card, conversation_id: conversation_id}}
+              {:job_cards_reset, %{conversation_id: conversation_id}}
             )
-            # Delay between cards to create the streaming effect
-            Process.sleep(500)
-          end)
-        end)
 
-        {:ok, true}
+            # Small initial delay
+            Process.sleep(300)
+
+            # Broadcast each card one by one
+            Enum.each(job_cards, fn card ->
+              Phoenix.PubSub.broadcast(
+                Curriclick.PubSub,
+                "chat:job_cards:#{conversation_id}",
+                {:job_card_added, %{job_card: card, conversation_id: conversation_id}}
+              )
+              # Delay between cards to create the streaming effect
+              Process.sleep(500)
+            end)
+          end)
+
+          {:ok, true}
+        rescue
+          e ->
+            Logger.error("Error in set_chat_job_cards: #{inspect(e)}")
+            reraise e, __STACKTRACE__
+        end
       end
     end
 
@@ -740,5 +766,7 @@ defmodule Curriclick.Companies.JobListing do
     end
 
     has_many :applications, Curriclick.Companies.JobApplication
+
+    has_many :requirements, Curriclick.Companies.JobListingRequirement
   end
 end

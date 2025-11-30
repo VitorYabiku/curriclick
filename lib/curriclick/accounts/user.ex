@@ -1,4 +1,7 @@
 defmodule Curriclick.Accounts.User do
+  @moduledoc """
+  Represents a user in the system, including their profile and authentication data.
+  """
   use Ash.Resource,
     otp_app: :curriclick,
     domain: Curriclick.Accounts,
@@ -437,6 +440,7 @@ defmodule Curriclick.Accounts.User do
     identity :unique_email, [:email]
   end
 
+  @spec normalize_profile_fields(Ash.Changeset.t()) :: Ash.Changeset.t()
   defp normalize_profile_fields(changeset) do
     Enum.reduce(@profile_fields, changeset, fn field, cs ->
       case Ash.Changeset.fetch_change(cs, field) do
@@ -447,5 +451,6 @@ defmodule Curriclick.Accounts.User do
     end)
   end
 
+  @spec is_nil_or_blank(any()) :: boolean()
   defp is_nil_or_blank(value), do: is_nil(value) or value == ""
 end

@@ -1,4 +1,7 @@
 defmodule Curriclick.Chat.Conversation do
+  @moduledoc """
+  Represents a chat conversation.
+  """
   use Ash.Resource,
     otp_app: :curriclick,
     domain: Curriclick.Chat,
@@ -59,6 +62,19 @@ defmodule Curriclick.Chat.Conversation do
 
     destroy :destroy do
       require_atomic? false
+
+      # Unlink job applications before removing the conversation
+      change fn changeset, _context ->
+        Ash.Changeset.before_action(changeset, fn changeset ->
+          conversation_id = changeset.data.id
+
+          Curriclick.Companies.JobApplication
+          |> Ash.Query.filter(conversation_id == ^conversation_id)
+          |> Ash.bulk_update!(:nilify_conversation, %{}, authorize?: false)
+
+          changeset
+        end)
+      end
 
       # Delete dependent messages before removing the conversation to satisfy FK constraints.
       change cascade_destroy(:messages, after_action?: false)

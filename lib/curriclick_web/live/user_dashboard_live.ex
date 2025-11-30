@@ -1,4 +1,7 @@
 defmodule CurriclickWeb.UserDashboardLive do
+  @moduledoc """
+  LiveView for the user's dashboard (viewing applications).
+  """
   use CurriclickWeb, :live_view
 
   alias Curriclick.Companies.JobApplication
@@ -6,6 +9,7 @@ defmodule CurriclickWeb.UserDashboardLive do
 
   on_mount {CurriclickWeb.LiveUserAuth, :live_user_required}
 
+  @spec mount(map(), map(), Phoenix.LiveView.Socket.t()) :: {:ok, Phoenix.LiveView.Socket.t()}
   def mount(_params, _session, socket) do
     user = socket.assigns.current_user
 
@@ -25,6 +29,7 @@ defmodule CurriclickWeb.UserDashboardLive do
      |> assign(:sort_order, :desc)}
   end
 
+  @spec handle_event(String.t(), map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_event("sort", %{"sort_by" => sort_by}, socket) do
     sort_by = String.to_existing_atom(sort_by)
 
@@ -123,6 +128,7 @@ defmodule CurriclickWeb.UserDashboardLive do
     end
   end
 
+  @spec render(map()) :: Phoenix.LiveView.Rendered.t()
   def render(assigns) do
     ~H"""
     <div class="max-w-5xl mx-auto p-4">
@@ -227,14 +233,14 @@ defmodule CurriclickWeb.UserDashboardLive do
                       explanation={app.match_quality && app.match_quality.explanation}
                     />
                     <%= if app.hiring_probability do %>
-                        <div class="tooltip" data-tip={app.hiring_probability.explanation}>
-                          <span class={[
+                        <span class={[
                             "badge badge-lg font-medium gap-1 cursor-help",
                             probability_color(app.hiring_probability.score)
-                          ]}>
-                            Chance {format_probability(app.hiring_probability.score)}
-                          </span>
-                        </div>
+                          ]}
+                          data-smart-tooltip={app.hiring_probability.explanation}
+                        >
+                          Chance {format_probability(app.hiring_probability.score)}
+                        </span>
                       <% end %>
                     </div>
                   </div>
@@ -263,11 +269,9 @@ defmodule CurriclickWeb.UserDashboardLive do
                           do: app.keywords,
                           else: Enum.take(app.keywords, 5) %>
                       <%= for keyword <- keywords_to_show do %>
-                        <div class="tooltip" data-tip={keyword["explanation"]}>
-                          <span class="badge badge-ghost badge-md cursor-help">
-                            {keyword["term"]}
-                          </span>
-                        </div>
+                        <span class="badge badge-ghost badge-md cursor-help" data-smart-tooltip={keyword["explanation"]}>
+                          {keyword["term"]}
+                        </span>
                       <% end %>
                       <%= if !MapSet.member?(@expanded_ids, app.id) && length(app.keywords) > 5 do %>
                         <span class="badge badge-ghost badge-xs text-base-content/60">
@@ -507,6 +511,7 @@ defmodule CurriclickWeb.UserDashboardLive do
   attr :styling, :string, default: "badge badge-lg font-medium"
   attr :explanation, :string, default: nil
 
+  @spec match_quality_badge(map()) :: Phoenix.LiveView.Rendered.t()
   def match_quality_badge(assigns) do
     {label, badge_class} =
       case assigns.quality do
@@ -526,11 +531,9 @@ defmodule CurriclickWeb.UserDashboardLive do
 
     ~H"""
     <%= if @explanation do %>
-      <div class="tooltip" data-tip={@explanation}>
-        <span class={[@styling, @badge_class, "cursor-help"]}>
-          {@label}
-        </span>
-      </div>
+      <span class={[@styling, @badge_class, "cursor-help"]} data-smart-tooltip={@explanation}>
+        {@label}
+      </span>
     <% else %>
       <span class={[@styling, @badge_class]}>
         {@label}
@@ -539,6 +542,7 @@ defmodule CurriclickWeb.UserDashboardLive do
     """
   end
 
+  @spec probability_color(atom()) :: String.t()
   defp probability_color(prob) do
     case prob do
       :high -> "badge-success"
@@ -548,6 +552,7 @@ defmodule CurriclickWeb.UserDashboardLive do
     end
   end
 
+  @spec format_probability(atom()) :: String.t()
   defp format_probability(prob) do
     case prob do
       :high -> "Alta"
@@ -557,6 +562,7 @@ defmodule CurriclickWeb.UserDashboardLive do
     end
   end
 
+  @spec format_sort_label(atom()) :: String.t()
   defp format_sort_label(sort_by) do
     case sort_by do
       :date -> "Data"
@@ -565,6 +571,7 @@ defmodule CurriclickWeb.UserDashboardLive do
     end
   end
 
+  @spec sort_applications([map()], atom(), atom()) :: [map()]
   defp sort_applications(applications, :date, :asc),
     do: Enum.sort_by(applications, & &1.inserted_at, {:asc, DateTime})
 
@@ -581,16 +588,19 @@ defmodule CurriclickWeb.UserDashboardLive do
     Enum.sort_by(applications, fn app -> match_quality_score(app.match_quality) end, order)
   end
 
+  @spec probability_score(map() | nil) :: integer()
   defp probability_score(%{score: :high}), do: 3
   defp probability_score(%{score: :medium}), do: 2
   defp probability_score(%{score: :low}), do: 1
   defp probability_score(_), do: 0
 
+  @spec match_quality_score(map() | nil) :: integer()
   defp match_quality_score(%{score: :good_match}), do: 3
   defp match_quality_score(%{score: :moderate_match}), do: 2
   defp match_quality_score(%{score: :bad_match}), do: 1
   defp match_quality_score(_), do: 0
 
+  @spec format_work_type(atom()) :: String.t()
   defp format_work_type(work_type) do
     case work_type do
       :FULL_TIME -> "Tempo integral"
@@ -602,6 +612,7 @@ defmodule CurriclickWeb.UserDashboardLive do
     end
   end
 
+  @spec format_salary(Curriclick.Companies.JobListing.t()) :: String.t() | nil
   defp format_salary(listing) do
     if listing.min_salary do
       currency = listing.currency || "USD"
@@ -619,6 +630,7 @@ defmodule CurriclickWeb.UserDashboardLive do
     end
   end
 
+  @spec to_markdown(String.t()) :: Phoenix.HTML.Safe.t() | String.t()
   defp to_markdown(text) do
     # Note that you must pass the "unsafe: true" option to first generate the raw HTML
     # in order to sanitize it. https://hexdocs.pm/mdex/MDEx.html#module-sanitize

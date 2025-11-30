@@ -1,4 +1,7 @@
 defmodule Curriclick.Companies do
+  @moduledoc """
+  The Companies domain, managing job listings, applications, and companies.
+  """
   use Ash.Domain, otp_app: :curriclick, extensions: [AshAi, AshAdmin.Domain, AshTypescript.Rpc]
 
   tools do
@@ -35,6 +38,8 @@ defmodule Curriclick.Companies do
     resource Curriclick.Companies.Company
     resource Curriclick.Companies.JobListing
     resource Curriclick.Companies.JobApplication
+    resource Curriclick.Companies.JobListingRequirement
+    resource Curriclick.Companies.JobApplicationAnswer
 
     resource Curriclick.Companies.JobListing do
       define :find_matching_jobs, action: :find_matching_jobs

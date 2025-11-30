@@ -1,4 +1,7 @@
 defmodule Curriclick.Accounts do
+  @moduledoc """
+  The Accounts domain, managing users, tokens, and authentication.
+  """
   use Ash.Domain, otp_app: :curriclick, extensions: [AshAi, AshAdmin.Domain, AshPhoenix]
 
   admin do

@@ -1,4 +1,7 @@
 defmodule Mix.Tasks.Curriclick.GenerateQueryProfiles do
+  @moduledoc """
+  Generates query profiles (hypothetical resumes) for job listings using OpenAI.
+  """
   use Mix.Task
   require Logger
   require Ash.Query

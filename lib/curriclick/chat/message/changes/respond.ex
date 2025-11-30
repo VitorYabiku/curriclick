@@ -1,4 +1,7 @@
 defmodule Curriclick.Chat.Message.Changes.Respond do
+  @moduledoc """
+  Generates an AI response to a user message using an LLM chain.
+  """
   use Ash.Resource.Change
   require Ash.Query
 
@@ -75,14 +78,14 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
         1. Filter to 3–10 best matches based on user profile and stated preferences.
         2. For EACH job, generate personalized enrichment:
            - match_quality: object {score: "bad_match"|"moderate_match"|"good_match", explanation: string}
-             - explanation: brief explanation (1 sentence) of why this match quality was assigned.
-           - pros: a comprehensive list of bullet points explaining why this job fits the user. Do not limit the number of points; include EVERYTHING relevant to help the user make a decision without reading the full description.
-           - cons: a comprehensive list of bullet points on potential gaps or mismatches. Do not limit the number of points; be thorough.
+             - explanation: brief explanation (1 sentence) of why this match quality was assigned. Address the user directly in their language (e.g., "you" or "você").
+           - pros: a comprehensive list of bullet points explaining why this job fits the user. Do not limit the number of points; include EVERYTHING relevant to help the user make a decision without reading the full description. Address the user directly (2nd person) in their language.
+           - cons: a comprehensive list of bullet points on potential gaps or mismatches. Do not limit the number of points; be thorough. Address the user directly (2nd person) in their language.
            - hiring_probability: object {score: "low"|"medium"|"high", explanation: string}
-             - explanation: brief explanation (1 sentence) of why this probability was assigned.
+             - explanation: brief explanation (1 sentence) of why this probability was assigned. Address the user directly (2nd person) in their language.
            - keywords: array of objects, each containing:
               - term: string (the keyword itself)
-              - explanation: string (brief explanation of why this keyword is relevant to the user)
+              - explanation: string (brief explanation of why this keyword is relevant to the user). Address the user directly (2nd person) in their language.
              Generate as many keywords as necessary to highlight key technologies, skills, or benefits.
            - work_type_score: object {score: "bad_match"|"moderate_match"|"good_match", explanation: string} or null if not informed.
            - location_score: object {score: "bad_match"|"moderate_match"|"good_match", explanation: string} or null if not informed.
@@ -90,7 +93,7 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
            - remote_score: object {score: "bad_match"|"moderate_match"|"good_match", explanation: string} or null if not informed.
            - skills_score: object {score: "bad_match"|"moderate_match"|"good_match", explanation: string} or null if not informed.
            - missing_info: brief note if profile gaps prevent accurate assessment (e.g., "Seniority level unclear").
-           - summary: 1–2 sentence pitch the user can review before applying.
+           - summary: 1–2 sentence pitch for the user to review before applying. Address the user directly (2nd person) in their language.
            - description: the full job description text so the user can see all details.
            - selected: set true ONLY for "good_match" jobs where the user's profile aligns almost perfectly.
         3. Call set_chat_job_cards with conversation_id "#{message.conversation_id}" and the enriched job_cards array.
@@ -102,17 +105,18 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
 
         For each recommended job, present:
         - Title, company, and location, clearly indicating if it is remote from Brazil, hybrid, or on-site when that is known.
-        - Why it fits: explicitly connect the job requirements and context to the user's skills, seniority, preferences, and constraints (including saved profile fields).
-        - Possible gaps: requirements the user might not fully meet, explained honestly but constructively.
+        - Why it fits: explicitly connect the job requirements and context to the user's skills, seniority, preferences, and constraints (including saved profile fields). Address the user directly (2nd person) in their language.
+        - Possible gaps: requirements the user might not fully meet, explained honestly but constructively. Address the user directly (2nd person) in their language.
         - Practical information when available: salary range and currency, type of employment, and how the user can apply or get more details.
 
         If there are no strong matches:
         - Be transparent that the search did not return many or any highly relevant jobs.
-        - Suggest concrete adjustments to the criteria (for example, expanding location, widening seniority range, or relaxing some technology constraints).
+        - Suggest concrete adjustments to the user's criteria (e.g., "Consider expanding your location preference..."). Address the user directly (2nd person) in their language.
         - Optionally, suggest skills or experiences that would likely improve future matches, keeping advice short and practical.
         </selecting_and_presenting_results>
 
         <conversation_style>
+        - Voice: Address the user directly (2nd person) in the user's language (e.g., "you" in English, "você" in Portuguese). Avoid 3rd person references (e.g., "the user", "the candidate").
         - Empathetic: acknowledge that job searching can be stressful, frustrating, or time-consuming.
         - Direct and concise: quickly move towards recommendations, next steps, or precise clarifying questions.
         - Collaborative: invite the user to react to the suggestions (for example, whether the jobs make sense or if they prefer a different direction).
@@ -137,7 +141,7 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
       new_message_id = Ash.UUIDv7.generate()
 
       %{
-        llm: ChatOpenAI.new!(%{model: "gpt-5-mini", stream: true}),
+        llm: ChatOpenAI.new!(%{model: "gpt-5.1", stream: true}),
         # llm: ChatGoogleAI.new!(%{model: "gemini-3-pro-preview", stream: true}),
         custom_context:
           Map.new(Ash.Context.to_opts(context))
@@ -390,16 +394,17 @@ defmodule Curriclick.Chat.Message.Changes.Respond do
     :set_chat_job_cards
   ]
 
+  @auth_tools [
+        :message_history_for_conversation,
+        :get_user_profile,
+        :update_user_profile
+  ]
+
   defp tool_list(nil) do
     @no_auth_tools
   end
 
   defp tool_list(_actor) do
-    @no_auth_tools ++
-      [
-        :message_history_for_conversation,
-        :get_user_profile,
-        :update_user_profile
-      ]
+    @no_auth_tools ++ @auth_tools
   end
 end

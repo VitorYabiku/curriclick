@@ -1,4 +1,7 @@
 defmodule Mix.Tasks.Curriclick.ResetIndex do
+  @moduledoc """
+  Deletes and recreates the Elasticsearch index with the correct mapping.
+  """
   use Mix.Task
 
   require Logger

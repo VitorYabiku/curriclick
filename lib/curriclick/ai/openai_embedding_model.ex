@@ -1,4 +1,7 @@
 defmodule Curriclick.Ai.OpenAiEmbeddingModel do
+  @moduledoc """
+  AshAi embedding model implementation using OpenAI's API.
+  """
   use AshAi.EmbeddingModel
 
   @impl true

@@ -1,4 +1,7 @@
 defmodule CurriclickWeb.JobsLive do
+  @moduledoc """
+  Unused and abandoned LiveView for searching and viewing job listings. Replaced by CurriclickWeb.ChatLive.
+  """
   use CurriclickWeb, :live_view
 
   alias Curriclick.Companies.JobApplication
@@ -8,6 +11,7 @@ defmodule CurriclickWeb.JobsLive do
 
   @page_size 20
 
+  @spec mount(map(), map(), Phoenix.LiveView.Socket.t()) :: {:ok, Phoenix.LiveView.Socket.t()}
   def mount(_params, _session, socket) do
     {:ok,
      socket
@@ -18,6 +22,7 @@ defmodule CurriclickWeb.JobsLive do
      |> assign(:submitted?, false)}
   end
 
+  @spec handle_params(map(), String.t(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_params(params, _url, socket) do
     case params["q"] do
       nil -> {:noreply, socket}
@@ -26,6 +31,7 @@ defmodule CurriclickWeb.JobsLive do
     end
   end
 
+  @spec handle_event(String.t(), map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_event("submit_form", %{"ideal_job_description" => desc}, socket) do
     desc = String.trim(desc || "")
 
@@ -110,6 +116,7 @@ defmodule CurriclickWeb.JobsLive do
     {:noreply, assign(socket, :current_page, min(socket.assigns.current_page + 1, total_pages))}
   end
 
+  @spec search_jobs(Phoenix.LiveView.Socket.t(), String.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
   defp search_jobs(socket, desc) do
     input =
       Curriclick.Companies.JobListing
@@ -155,16 +162,19 @@ defmodule CurriclickWeb.JobsLive do
     end
   end
 
+  @spec total_pages([any()], integer()) :: integer()
   defp total_pages(results, page_size) do
     count = length(results)
     if count == 0, do: 1, else: div(count + page_size - 1, page_size)
   end
 
+  @spec page_slice([any()], integer(), integer()) :: [any()]
   defp page_slice(results, page, page_size) do
     start = (page - 1) * page_size
     Enum.slice(results, start, page_size)
   end
 
+  @spec render(map()) :: Phoenix.LiveView.Rendered.t()
   def render(assigns) do
     ~H"""
     <div class="h-[calc(100vh-10rem)] flex flex-col max-w-5xl mx-auto">

@@ -1,4 +1,7 @@
 defmodule Curriclick.Accounts.ApiKey do
+  @moduledoc """
+  Represents an API key for a user.
+  """
   use Ash.Resource,
     otp_app: :curriclick,
     domain: Curriclick.Accounts,

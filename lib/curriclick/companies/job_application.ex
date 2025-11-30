@@ -1,4 +1,7 @@
 defmodule Curriclick.Companies.JobApplication do
+  @moduledoc """
+  Represents a user's application to a job listing.
+  """
   use Ash.Resource,
     otp_app: :curriclick,
     domain: Curriclick.Companies,
@@ -16,7 +19,42 @@ defmodule Curriclick.Companies.JobApplication do
     create :create do
       primary? true
       accept [:user_id, :job_listing_id, :conversation_id, :search_query, :summary, :pros, :cons, :keywords, :match_quality, :hiring_probability, :missing_info, :work_type_score, :location_score, :salary_score, :remote_score, :skills_score]
+      
+      argument :answers, {:array, :map} do
+        allow_nil? true
+      end
+
+      manage_relationship :answers, :answers, type: :create
     end
+
+    action :generate_draft, :map do
+      argument :job_listing_id, :uuid, allow_nil?: false
+      argument :user_id, :uuid, allow_nil?: false
+
+      run fn input, _context ->
+        job_listing_id = input.arguments.job_listing_id
+        user_id = input.arguments.user_id
+
+        user = Curriclick.Accounts.User |> Ash.get!(user_id, authorize?: false)
+        job_listing = Curriclick.Companies.JobListing |> Ash.Query.load(:requirements) |> Ash.get!(job_listing_id, authorize?: false)
+
+        if Enum.empty?(job_listing.requirements) do
+          {:ok, %{}}
+        else
+          Curriclick.Companies.JobApplication.Generator.generate(user, job_listing)
+        end
+      end
+    end
+
+    update :nilify_conversation do
+      accept []
+      change set_attribute(:conversation_id, nil)
+    end
+  end
+
+  code_interface do
+    define :create
+    define :generate_draft, args: [:job_listing_id, :user_id]
   end
 
   policies do
@@ -115,6 +153,8 @@ defmodule Curriclick.Companies.JobApplication do
     belongs_to :job_listing, Curriclick.Companies.JobListing do
       allow_nil? false
     end
+
+    has_many :answers, Curriclick.Companies.JobApplicationAnswer
   end
 
   identities do

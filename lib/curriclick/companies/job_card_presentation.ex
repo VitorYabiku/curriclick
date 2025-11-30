@@ -1,4 +1,7 @@
 defmodule Curriclick.Companies.JobCardPresentation do
+  @moduledoc """
+  Structure for presenting job card data in the chat UI.
+  """
   use Ash.Resource,
     data_layer: :embedded,
     domain: Curriclick.Companies
@@ -101,6 +104,11 @@ defmodule Curriclick.Companies.JobCardPresentation do
 
     attribute :skills_score, Curriclick.Companies.LLMEvaluation do
       public? true
+    end
+
+    attribute :requirements, {:array, :map} do
+      public? true
+      description "List of requirements/questions for the job"
     end
   end
 end

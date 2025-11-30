@@ -21,6 +21,7 @@ defmodule CurriclickWeb.Layouts do
   attr :flash, :map, required: true, doc: "the map of flash messages"
   attr :id, :string, default: "flash-group", doc: "the optional id of flash container"
 
+  @spec flash_group(map()) :: Phoenix.LiveView.Rendered.t()
   def flash_group(assigns) do
     ~H"""
     <div id={@id} aria-live="polite">
@@ -59,6 +60,7 @@ defmodule CurriclickWeb.Layouts do
 
   See <head> in root.html.heex which applies the theme before page load.
   """
+  @spec theme_toggle(map()) :: Phoenix.LiveView.Rendered.t()
   def theme_toggle(assigns) do
     ~H"""
     <div class="card relative flex flex-row items-center border-2 border-base-300 bg-base-300 rounded-full">
@@ -96,6 +98,7 @@ defmodule CurriclickWeb.Layouts do
   """
   attr :current_user, :map, default: nil
 
+  @spec app_header(map()) :: Phoenix.LiveView.Rendered.t()
   def app_header(assigns) do
     ~H"""
     <header class="navbar sticky top-0 z-50 bg-base-200/90 backdrop-blur border-b border-base-200">
