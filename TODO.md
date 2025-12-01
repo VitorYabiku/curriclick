@@ -1,10 +1,11 @@
-- Avoid sidescrolling in the job listing details in chat page
-- Make the job listing details in chat page match the ones in the dashboard page
-- Change the detailed view of job cards in the chat page so that the user can immediately notice they are looking at a job card rather than the AI chat
-- Change the default route to the user dashboard page
-- Add a base curriculum to the user profile page which the user can create with the help of an LLM (add a chat to the profile page)
-- Add a chat to the dashboard page so the user can ask the LLM questions about their job applications
+- [ ] Make the job listing details in chat page match the ones in the dashboard page
+- [ ] Change the detailed view of job cards in the chat page so that the user can immediately notice they are looking at a job card rather than the AI chat
+- [ ] Change the default route to the user dashboard page
+- [ ] Add a base curriculum to the user profile page which the user can create with the help of an LLM (add a chat to the profile page)
+- [ ] Add a chat to the dashboard page so the user can ask the LLM questions about their job applications
+- [ ] Make the queue size indicator in the header change in real time
+- [ ] Improve the application queue forms and the generated answers quality
+- [ ] Make the job cards in the chat page update in real time when the user applies to a job
 
-- Add information that the user has to provide when applying to the job listings, with the LLM generating that automatically and indicating fields that it is not sure it filled correctly due to lack of information about the user and that the user should check.
-- Add a list of steps in the hiring process that are tracked by the app in the user dashboard page.
-- Add notifications to the user dashboard page when theere's a change for them in the hiring process, such as them passing or not a hiring process step.
+- [ ] Add a list of steps in the hiring process that are tracked by the app in the user dashboard page.
+- [ ] Add notifications to the user dashboard page when theere's a change for them in the hiring process, such as them passing or not a hiring process step.

@@ -97,6 +97,7 @@ defmodule CurriclickWeb.Layouts do
   Renders the application header.
   """
   attr :current_user, :map, default: nil
+  attr :draft_count, :integer, default: 0
 
   @spec app_header(map()) :: Phoenix.LiveView.Rendered.t()
   def app_header(assigns) do
@@ -112,7 +113,16 @@ defmodule CurriclickWeb.Layouts do
               <.link navigate={~p"/chat"}>Busca de empregos</.link>
             </li>
             <li>
-              <.link href={~p"/dashboard"}>Minhas candidaturas</.link>
+              <.link href={~p"/applications/queue"} class="p-2">
+                <div class="indicator">
+                  <%= if @draft_count > 0 do %>
+                    <span class="indicator-item badge badge-xs badge-primary">
+                      {@draft_count}
+                    </span>
+                  <% end %>
+                  <.icon name="hero-inbox-stack" class="w-6 h-6" />
+                </div>
+              </.link>
             </li>
             <li>
               <div class="dropdown dropdown-end">
@@ -134,7 +144,10 @@ defmodule CurriclickWeb.Layouts do
                     <.theme_toggle />
                   </li>
                   <li>
-                    <.link href={~p"/profile"} class="text-lg">Meu perfil</.link>
+                    <.link href={~p"/profile"} class="text-lg">Perfil</.link>
+                  </li>
+                  <li>
+                    <.link href={~p"/dashboard"} class="text-lg">Candidaturas</.link>
                   </li>
                   <li>
                     <.link

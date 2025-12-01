@@ -41,6 +41,8 @@ defmodule Curriclick.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      # Added because of incompatibility between langchain 0.4.1 and AshAi 0.4.0
+      {:langchain, "0.4.0"},
       {:nimble_csv, "~> 1.1"},
       {:mdex, "~> 0.7"},
       {:bcrypt_elixir, "~> 3.0"},
@@ -115,7 +117,7 @@ defmodule Curriclick.MixProject do
         "phx.digest"
       ],
       precommit: ["compile --warning-as-errors", "deps.unlock --unused", "format", "test"],
-      run_app: ["ash.codegen --dev", "ecto.migrate", "phx.server"]
+      run_app: ["ecto.migrate", "ash.codegen --dev", "ecto.migrate", "phx.server"]
     ]
   end
 end

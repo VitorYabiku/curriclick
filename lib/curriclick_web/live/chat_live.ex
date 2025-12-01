@@ -4,6 +4,7 @@ defmodule CurriclickWeb.ChatLive do
   """
   use Elixir.CurriclickWeb, :live_view
   require Ash.Query
+  require Logger
   alias Curriclick.Companies.JobApplication
   on_mount {CurriclickWeb.LiveUserAuth, :live_user_required}
 
@@ -901,16 +902,8 @@ defmodule CurriclickWeb.ChatLive do
     end
   end
 
-  @spec create_job_application(
-          Curriclick.Accounts.User.t(),
-          map(),
-          String.t(),
-          String.t() | nil,
-          list()
-        ) :: {:ok, Curriclick.Companies.JobApplication.t()} | {:error, any()}
-  defp create_job_application(user, job_card, search_query, conversation_id, answers \\ []) do
-    JobApplication
-    |> Ash.Changeset.for_create(:create, %{
+  defp prepare_application_params(user, job_card, search_query, conversation_id) do
+    %{
       user_id: user.id,
       job_listing_id: job_card.job_id,
       conversation_id: conversation_id,
@@ -941,11 +934,26 @@ defmodule CurriclickWeb.ChatLive do
       skills_score: sanitize_score(job_card.skills_score),
       match_quality: sanitize_score(job_card.match_quality),
       hiring_probability: sanitize_score(job_card.hiring_probability),
-      missing_info: job_card.missing_info,
-      answers: answers
-    })
+      missing_info: job_card.missing_info
+    }
+  end
+
+  @spec create_job_application(
+          Curriclick.Accounts.User.t(),
+          map(),
+          String.t(),
+          String.t() | nil,
+          list()
+        ) :: {:ok, Curriclick.Companies.JobApplication.t()} | {:error, any()}
+  defp create_job_application(user, job_card, search_query, conversation_id, answers) do
+    params = prepare_application_params(user, job_card, search_query, conversation_id)
+    params = Map.put(params, :answers, answers)
+
+    JobApplication
+    |> Ash.Changeset.for_create(:create, params)
     |> Ash.create()
   end
+
 
   @spec mount(map(), map(), Phoenix.LiveView.Socket.t()) :: {:ok, Phoenix.LiveView.Socket.t()}
   def mount(_params, _session, socket) do
@@ -1148,73 +1156,29 @@ defmodule CurriclickWeb.ChatLive do
     job_card = Enum.find(socket.assigns.job_cards, &(&1.job_id == job_id))
 
     if job_card do
-      if job_card.requirements && job_card.requirements != [] do
-        # Generate draft answers
-        conversation_id =
-          if socket.assigns.conversation, do: socket.assigns.conversation.id, else: nil
+      conversation_id =
+        if socket.assigns.conversation, do: socket.assigns.conversation.id, else: nil
 
-        case JobApplication.generate_draft(
-               job_id,
-               socket.assigns.current_user.id,
-               conversation_id
-             ) do
-          {:ok, draft_answers_list} ->
-            # Convert list of structs to map keyed by requirement_id
-            draft_answers =
-              Map.new(draft_answers_list, fn answer ->
-                {answer.requirement_id,
-                 %{
-                   answer: answer.answer,
-                   confidence_score: answer.confidence_score,
-                   confidence_explanation: answer.confidence_explanation,
-                   missing_info: answer.missing_info
-                 }}
-              end)
+      params = prepare_application_params(socket.assigns.current_user, job_card, "Chat job search", conversation_id)
 
-            socket =
-              assign(socket, :application_draft, %{
-                job_id: job_id,
-                job_title: job_card.title,
-                company_name: job_card.company_name,
-                requirements: job_card.requirements,
-                answers: draft_answers
-              })
+      case JobApplication.add_to_queue(params, conversation_id) do
+        {:ok, _} ->
+          socket =
+            socket
+            |> assign(:applied_job_ids, MapSet.put(socket.assigns.applied_job_ids, job_id))
+            |> put_flash(:info, "Vaga adicionada à fila de candidaturas. As respostas estão sendo geradas.")
 
-            {:noreply, socket}
+          {:noreply, socket}
 
-          {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, "Erro ao gerar respostas automáticas. Tente novamente.")}
-        end
-      else
-        conversation_id =
-          if socket.assigns.conversation, do: socket.assigns.conversation.id, else: nil
+        {:error, error} ->
+          Logger.error("Failed to add job to queue: #{inspect(error)}")
 
-        case create_job_application(
-               socket.assigns.current_user,
-               job_card,
-               "Chat job search",
-               conversation_id
-             ) do
-          {:ok, _} ->
-            socket =
-              socket
-              |> assign(:applied_job_ids, MapSet.put(socket.assigns.applied_job_ids, job_id))
-              |> put_flash(:info, "Candidatura enviada para #{job_card.title}!")
+          socket =
+            socket
+            |> assign(:failed_job_ids, MapSet.put(socket.assigns.failed_job_ids, job_id))
+            |> put_flash(:error, "Erro ao adicionar vaga à fila.")
 
-            {:noreply, socket}
-
-          {:error, _} ->
-            socket =
-              socket
-              |> assign(:failed_job_ids, MapSet.put(socket.assigns.failed_job_ids, job_id))
-              |> put_flash(
-                :error,
-                "Erro ao enviar candidatura. Talvez você já tenha se candidatado."
-              )
-
-            {:noreply, socket}
-        end
+          {:noreply, socket}
       end
     else
       {:noreply, socket}
@@ -1282,13 +1246,13 @@ defmodule CurriclickWeb.ChatLive do
 
     results =
       Enum.map(selected_jobs, fn job_card ->
-        {job_card.job_id,
-         create_job_application(
-           socket.assigns.current_user,
-           job_card,
-           "Chat job search (batch)",
-           conversation_id
-         )}
+        params = prepare_application_params(
+          socket.assigns.current_user,
+          job_card,
+          "Chat job search (batch)",
+          conversation_id
+        )
+        {job_card.job_id, JobApplication.add_to_queue(params, conversation_id)}
       end)
 
     success_ids =
@@ -1305,16 +1269,16 @@ defmodule CurriclickWeb.ChatLive do
     socket =
       cond do
         success_count > 0 && error_count == 0 ->
-          put_flash(socket, :info, "#{success_count} candidatura(s) enviada(s) com sucesso!")
+          put_flash(socket, :info, "#{success_count} vaga(s) adicionada(s) à fila!")
 
         success_count > 0 && error_count > 0 ->
-          put_flash(socket, :warning, "#{success_count} enviada(s), #{error_count} falharam.")
+          put_flash(socket, :warning, "#{success_count} adicionada(s), #{error_count} falharam.")
 
         true ->
           put_flash(
             socket,
             :error,
-            "Nenhuma candidatura nova enviada. Verifique se já se candidatou."
+            "Nenhuma vaga adicionada. Verifique se já se candidatou."
           )
       end
 
@@ -1385,6 +1349,54 @@ defmodule CurriclickWeb.ChatLive do
       _ ->
         {:noreply, put_flash(socket, :error, "Erro ao excluir a conversa.")}
     end
+  end
+
+  def handle_info(
+        %Phoenix.Socket.Broadcast{
+          topic: "user_applications:" <> _,
+          payload: %Ash.Notifier.Notification{
+            resource: JobApplication,
+            action: %{name: :create},
+            data: application
+          }
+        },
+        socket
+      ) do
+    {:noreply,
+     assign(
+       socket,
+       :applied_job_ids,
+       MapSet.put(socket.assigns.applied_job_ids, application.job_listing_id)
+     )}
+  end
+
+  def handle_info(
+        %Phoenix.Socket.Broadcast{
+          topic: "user_applications:" <> _,
+          payload: %Ash.Notifier.Notification{
+            resource: JobApplication,
+            action: %{name: :destroy},
+            data: application
+          }
+        },
+        socket
+      ) do
+    {:noreply,
+     assign(
+       socket,
+       :applied_job_ids,
+       MapSet.delete(socket.assigns.applied_job_ids, application.job_listing_id)
+     )}
+  end
+
+  def handle_info(
+        %Phoenix.Socket.Broadcast{
+          topic: "user_applications:" <> _,
+          payload: %Ash.Notifier.Notification{resource: JobApplication}
+        },
+        socket
+      ) do
+    {:noreply, socket}
   end
 
   @spec handle_info(any(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}

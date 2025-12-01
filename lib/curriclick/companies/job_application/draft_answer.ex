@@ -13,7 +13,7 @@ defmodule Curriclick.Companies.JobApplication.DraftAnswer do
 
     attribute :answer, :string do
       public? true
-      allow_nil? false
+      allow_nil? true
     end
 
     attribute :confidence_score, :atom do

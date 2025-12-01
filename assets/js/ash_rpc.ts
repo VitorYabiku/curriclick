@@ -1048,7 +1048,7 @@ export type FindMatchingJobsInput = {
   textSkillsBoost?: number;
   textQueryProfileBoost?: number;
   profileRemotePreference?: "remote_only" | "remote_friendly" | "hybrid" | "on_site" | "no_preference";
-  workTypes?: Array<string>;
+  workTypes?: Array<"CONTRACT" | "FULL_TIME" | "INTERNSHIP" | "OTHER" | "PART_TIME" | "TEMPORARY" | "VOLUNTEER">;
   remoteAllowed?: boolean;
 };
 

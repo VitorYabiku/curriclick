@@ -15,7 +15,7 @@ defmodule CurriclickWeb.UserDashboardLive do
 
     applications =
       JobApplication
-      |> Ash.Query.filter(user_id == ^user.id)
+      |> Ash.Query.filter(user_id == ^user.id and status == :applied)
       |> Ash.Query.load([:conversation, job_listing: :company])
       |> Ash.Query.sort(inserted_at: :desc)
       |> Ash.read!()

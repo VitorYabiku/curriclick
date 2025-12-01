@@ -7,7 +7,27 @@ defmodule Curriclick.Companies.JobApplication do
     domain: Curriclick.Companies,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshAi]
+    extensions: [AshAi, AshStateMachine],
+    notifiers: [Ash.Notifier.PubSub]
+
+  pub_sub do
+    module CurriclickWeb.Endpoint
+    prefix "user_applications"
+
+    publish :create, [:user_id]
+    publish :update, [:user_id]
+    publish :destroy, [:user_id]
+  end
+
+  state_machine do
+    state_attribute :status
+    initial_states [:draft]
+    default_initial_state :draft
+
+    transitions do
+      transition :submit, from: :draft, to: :applied
+    end
+  end
 
   postgres do
     table "job_applications"
@@ -15,7 +35,12 @@ defmodule Curriclick.Companies.JobApplication do
   end
 
   actions do
-    defaults [:read, :destroy]
+    defaults [:read, :update]
+
+    destroy :destroy do
+      primary? true
+      change cascade_destroy(:answers)
+    end
 
     create :create do
       primary? true
@@ -35,7 +60,8 @@ defmodule Curriclick.Companies.JobApplication do
         :location_score,
         :salary_score,
         :remote_score,
-        :skills_score
+        :skills_score,
+        :status
       ]
       
       argument :answers, {:array, :map} do
@@ -63,10 +89,35 @@ defmodule Curriclick.Companies.JobApplication do
       accept []
       change set_attribute(:conversation_id, nil)
     end
+    update :submit do
+      change transition_state(:applied)
+    end
+
+    action :add_to_queue, :struct do
+      argument :params, :map, allow_nil?: false
+      argument :conversation_id, :uuid, allow_nil?: true
+
+      run fn input, _context ->
+        # Pattern match to guarantee necessary keys are present
+        %{user_id: _, job_listing_id: _} = input.arguments.params
+
+        params = Map.put(input.arguments.params, :status, :draft)
+
+        with {:ok, application} <- Curriclick.Companies.JobApplication.create(params) do
+          Task.start(fn ->
+            Curriclick.Companies.JobApplication.process_queue_item(application, input.arguments.conversation_id)
+          end)
+
+          {:ok, application}
+        end
+      end
+    end
   end
 
   code_interface do
     define :create
+    define :add_to_queue, args: [:params, :conversation_id]
+    define :submit
     define :generate_draft, args: [:job_listing_id, :user_id, :conversation_id]
   end
 
@@ -172,5 +223,45 @@ defmodule Curriclick.Companies.JobApplication do
 
   identities do
     identity :unique_application, [:user_id, :job_listing_id]
+  end
+
+  @doc false
+  def process_queue_item(application, conversation_id) do
+    require Logger
+
+    try do
+      # Generate answers using LLM
+      case Curriclick.Companies.JobApplication.generate_draft(
+             application.job_listing_id,
+             application.user_id,
+             conversation_id
+           ) do
+        {:ok, draft_answers} ->
+          # Persist answers
+          Enum.each(draft_answers, fn draft ->
+            Curriclick.Companies.JobApplicationAnswer.create!(%{
+              job_application_id: application.id,
+              requirement_id: draft.requirement_id,
+              answer: draft.answer,
+              confidence_score: draft.confidence_score,
+              confidence_explanation: draft.confidence_explanation,
+              missing_info: draft.missing_info
+            })
+          end)
+
+          # Broadcast update
+          Phoenix.PubSub.broadcast(
+            Curriclick.PubSub,
+            "job_applications",
+            {:application_updated, application.id}
+          )
+
+        {:error, error} ->
+          Logger.error("Failed to generate draft answers: #{inspect(error)}")
+      end
+    rescue
+      e ->
+        Logger.error("Error processing queue item: #{inspect(e)}")
+    end
   end
 end

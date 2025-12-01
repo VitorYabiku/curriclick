@@ -28,6 +28,7 @@ defmodule Curriclick.Companies.JobApplication.Prompt do
 
     # Load User
     user = Curriclick.Accounts.User |> Ash.get!(user_id, authorize?: false)
+
     user =
       if Ash.Resource.loaded?(user, @profile_fields) do
         user
@@ -36,7 +37,11 @@ defmodule Curriclick.Companies.JobApplication.Prompt do
       end
 
     # Load Job Listing
-    job_listing = Ash.get!(Curriclick.Companies.JobListing, job_listing_id, load: [:requirements], authorize?: false)
+    job_listing =
+      Ash.get!(Curriclick.Companies.JobListing, job_listing_id,
+        load: [:requirements],
+        authorize?: false
+      )
 
     # Load Conversation History
     history =
@@ -67,14 +72,16 @@ defmodule Curriclick.Companies.JobApplication.Prompt do
 
     Instructions:
     - For EACH question, provide:
-      1. An answer (in Portuguese, first person).
+      1. An answer.
+         - IMPORTANT: For objective questions asking for specific personal data (e.g., "E-mail", "CPF", "Telefone", "Nome completo", "LinkedIn", "Portfolio"), provide ONLY the data itself, without any introductory text or punctuation (e.g., just "name@example.com", NOT "Meu email é name@example.com.").
+         - For subjective or open-ended questions (e.g., "Por que você quer esta vaga?", "Descreva sua experiência"), answer in Portuguese.
       2. A confidence score (:low, :medium, :high).
       3. A brief explanation for the confidence score.
       4. Notes on any missing information from the profile that would improve the answer.
       5. The 'requirement_id' MUST match the ID provided in the Application Questions list.
 
     - If the information is missing from the profile or conversation:
-      - State "Informação não disponível no perfil" in the answer or give a generic placeholder.
+      - Return `null` (nil) for the answer field. DO NOT generate placeholder text like "Informação não disponível".
       - Set confidence to :low.
       - Explicitly state what is missing in the 'missing_info' field.
 
@@ -97,7 +104,7 @@ defmodule Curriclick.Companies.JobApplication.Prompt do
       |> Enum.reject(&is_nil/1)
 
     # Add a final user prompt to trigger generation
-    final_prompt = Message.new_user!("Please generate the application draft answers now.")
+    final_prompt = Message.new_user!("Generate the application draft answers now.")
 
     messages ++ history_messages ++ [final_prompt]
   end

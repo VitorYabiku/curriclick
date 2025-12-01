@@ -54,6 +54,7 @@ defmodule CurriclickWeb.Router do
 
       live "/dashboard", UserDashboardLive
       live "/profile", UserProfileLive
+      live "/applications/queue", ApplicationQueueLive
     end
 
     post "/rpc/run", AshTypescriptRpcController, :run

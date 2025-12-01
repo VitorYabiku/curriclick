@@ -7,7 +7,7 @@ in {
 
   # https://devenv.sh/packages/
   packages =
-    [ beam_pkgs.elixir-ls pkgs.inotify-tools pkgs.prettierd pkgs.watchman ];
+    [ beam_pkgs.elixir-ls pkgs.inotify-tools pkgs.prettierd ];
 
   # https://devenv.sh/languages/
   languages = {
