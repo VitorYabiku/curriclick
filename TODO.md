@@ -6,6 +6,9 @@
 - [ ] Make the queue size indicator in the header change in real time
 - [ ] Improve the application queue forms and the generated answers quality
 - [ ] Make the job cards in the chat page update in real time when the user applies to a job
+- [ ] Allow the user to see a job listing's detailed view in the chat page whenever, even if they've already applied to the job listing
+- [ ] Allow answers to be approved by the user in the job application queue
+- [ ] Show a special approved indication alongside the latest generated answer confidence score when the user approves a generated answer or provide an answer themselves
 
 - [ ] Add a list of steps in the hiring process that are tracked by the app in the user dashboard page.
 - [ ] Add notifications to the user dashboard page when theere's a change for them in the hiring process, such as them passing or not a hiring process step.
