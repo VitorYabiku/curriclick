@@ -1,14 +1,19 @@
 - [ ] Make the job listing details in chat page match the ones in the dashboard page
-- [ ] Change the detailed view of job cards in the chat page so that the user can immediately notice they are looking at a job card rather than the AI chat
+<!-- - [x] Change the detailed view of job cards in the chat page so that the user can immediately notice they are looking at a job card rather than the AI chat -->
 - [ ] Change the default route to the user dashboard page
-- [ ] Add a base curriculum to the user profile page which the user can create with the help of an LLM (add a chat to the profile page)
+- [ ] Add a chat and a base curriculum to the user profile page which the user can create with the help of an LLM
 - [ ] Add a chat to the dashboard page so the user can ask the LLM questions about their job applications
 - [ ] Make the queue size indicator in the header change in real time
-- [ ] Improve the application queue forms and the generated answers quality
+<!-- - [x] Improve the application queue forms and the generated answers quality -->
 - [ ] Make the job cards in the chat page update in real time when the user applies to a job
-- [ ] Allow the user to see a job listing's detailed view in the chat page whenever, even if they've already applied to the job listing
+<!-- - [x] Allow the user to see a job listing's detailed view in the chat page whenever, even if they've already applied to the job listing -->
 - [ ] Allow answers to be approved by the user in the job application queue
 - [ ] Show a special approved indication alongside the latest generated answer confidence score when the user approves a generated answer or provide an answer themselves
+- [ ] Make the buttons in the non-detailed cards in the queue page the same height
+- [ ] Add a chat to the queue page so the user can ask the LLM questions about their job applications
+- [ ] Remove or fix the invisible button to toggle the list on the right in the queue page
+- [ ] Fix the indicator on the notification icon disappearing sometimes for some unknown reason
 
-- [ ] Add a list of steps in the hiring process that are tracked by the app in the user dashboard page.
-- [ ] Add notifications to the user dashboard page when theere's a change for them in the hiring process, such as them passing or not a hiring process step.
+<!-- Non-goals below: -->
+<!-- - [ ] Add a list of steps in the hiring process that are tracked by the app in the user dashboard page. -->
+<!-- - [ ] Add notifications to the user dashboard page when theere's a change for them in the hiring process, such as them passing or not a hiring process step. -->

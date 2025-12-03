@@ -22,9 +22,13 @@ defmodule CurriclickWeb.ApplicationQueueLive do
     socket =
       socket
       |> assign(:applications, applications)
-      |> assign(:selected_application_id, if(applications != [], do: hd(applications).id, else: nil))
+      |> assign(
+        :selected_application_id,
+        if(applications != [], do: hd(applications).id, else: nil)
+      )
+      |> assign(:show_list, true)
 
-    {:ok, socket}
+    {:ok, socket, layout: {CurriclickWeb.Layouts, :chat}}
   end
 
   def handle_info(%Phoenix.Socket.Broadcast{payload: %Ash.Notifier.Notification{}}, socket) do
@@ -37,7 +41,8 @@ defmodule CurriclickWeb.ApplicationQueueLive do
     applications = fetch_applications(user.id)
 
     # Preserve selection or default to first if previous selection is gone (rare for update)
-    selected_id = socket.assigns.selected_application_id || if(applications != [], do: hd(applications).id)
+    selected_id =
+      socket.assigns.selected_application_id || if(applications != [], do: hd(applications).id)
 
     {:noreply,
      socket
@@ -77,7 +82,7 @@ defmodule CurriclickWeb.ApplicationQueueLive do
           {:noreply,
            put_flash(socket, :error, "Por favor, preencha todas as respostas antes de enviar.")}
         else
-           case Curriclick.Companies.JobApplication.submit(app) do
+          case Curriclick.Companies.JobApplication.submit(app) do
             {:ok, _} ->
               applications = fetch_applications(socket.assigns.current_user.id)
               new_selected_id = if applications != [], do: hd(applications).id, else: nil
@@ -111,14 +116,23 @@ defmodule CurriclickWeb.ApplicationQueueLive do
     end
   end
 
+  def handle_event("toggle_list", _, socket) do
+    {:noreply, assign(socket, :show_list, !socket.assigns.show_list)}
+  end
+
   def handle_event("select_application", %{"id" => id}, socket) do
     {:noreply, assign(socket, :selected_application_id, id)}
   end
 
   defp fetch_applications(user_id) do
+    answers_query =
+      JobApplicationAnswer
+      |> Ash.Query.sort(inserted_at: :asc)
+      |> Ash.Query.load(:requirement)
+
     JobApplication
     |> Ash.Query.filter(user_id == ^user_id and status == :draft)
-    |> Ash.Query.load([:conversation, answers: [:requirement], job_listing: [:company]])
+    |> Ash.Query.load([:conversation, answers: answers_query, job_listing: [:company]])
     |> Ash.Query.sort(inserted_at: :desc)
     |> Ash.read!()
   end
@@ -137,147 +151,191 @@ defmodule CurriclickWeb.ApplicationQueueLive do
       |> Enum.map(fn a -> a.missing_info end)
 
     low_confidence_count =
-      Enum.count(answers, fn a -> a.confidence_score in [:low, :medium] end)
+      Enum.count(answers, fn a -> a.confidence_score == :low end)
+
+    medium_confidence_count =
+      Enum.count(answers, fn a -> a.confidence_score == :medium end)
 
     %{
       missing_answers_count: length(missing_questions),
       missing_questions: missing_questions,
       missing_info_count: length(missing_infos),
       missing_infos: missing_infos,
-      low_confidence_count: low_confidence_count
+      low_confidence_count: low_confidence_count,
+      medium_confidence_count: medium_confidence_count
     }
   end
 
   def render(assigns) do
     ~H"""
-    <div class="drawer md:drawer-open h-[calc(100vh-4rem)] bg-base-100">
-      <input id="app-queue-drawer" type="checkbox" class="drawer-toggle" />
-
-      <div class="drawer-content flex flex-col h-full overflow-hidden bg-base-100">
+    <% app =
+      @selected_application_id && Enum.find(@applications, &(&1.id == @selected_application_id)) %>
+    <div class="flex h-full overflow-hidden relative bg-base-100">
+      <!-- Detailed View (Left/Middle) -->
+      <div class={[
+        "flex flex-col h-full overflow-hidden transition-all duration-300 bg-base-100",
+        @show_list && "flex-1 lg:max-w-[60%] xl:max-w-[65%]",
+        !@show_list && "flex-1"
+      ]}>
         <!-- Mobile Header -->
         <div class="navbar bg-base-100 w-full md:hidden border-b border-base-200 min-h-12">
           <div class="flex-none">
-            <label for="app-queue-drawer" aria-label="open sidebar" class="btn btn-square btn-ghost btn-sm">
+            <button
+              type="button"
+              class="btn btn-square btn-ghost btn-sm"
+              phx-click="toggle_list"
+            >
               <.icon name="hero-bars-3" class="w-5 h-5" />
-            </label>
+            </button>
           </div>
           <div class="flex-1 px-2 mx-2 text-sm font-semibold">Candidaturas</div>
+          <div class="flex-none lg:hidden">
+            <button
+              type="button"
+              class="btn btn-square btn-ghost btn-sm"
+              phx-click="toggle_list"
+            >
+              <.icon name="hero-list-bullet" class="w-5 h-5" />
+              <span class="badge badge-primary badge-xs absolute -top-1 -right-1">
+                {length(@applications)}
+              </span>
+            </button>
+          </div>
         </div>
-
-        <!-- Main Content Area -->
-        <div class="flex-1 overflow-y-auto p-4 md:p-8">
-          <% app = @selected_application_id && Enum.find(@applications, &(&1.id == @selected_application_id)) %>
+        
+    <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
           <%= if app do %>
-            <div class="max-w-4xl mx-auto">
-              <div class="flex justify-between items-start mb-6">
-                <div>
-                  <h2 class="text-2xl font-bold mb-1">{app.job_listing.title}</h2>
-                  <p class="text-base-content/70">
-                    {app.job_listing.company.name} • Criado em {Calendar.strftime(app.inserted_at, "%d/%m/%Y às %H:%M")}
-                  </p>
-                </div>
-                <button
-                  class="btn btn-sm btn-ghost text-error"
-                  phx-click="remove"
-                  phx-value-id={app.id}
-                  data-confirm="Tem certeza que deseja remover esta candidatura da fila?"
-                >
-                  <.icon name="hero-trash" class="w-4 h-4" /> Remover
-                </button>
-              </div>
-
-              <%= if app.answers == [] do %>
-                <div class="flex items-center gap-3 py-12 justify-center text-base-content/60 bg-base-200/30 rounded-2xl">
-                  <span class="loading loading-spinner loading-md"></span>
-                  <span>Gerando respostas com IA...</span>
-                </div>
-              <% else %>
-                <% issues =
-                  Enum.filter(app.answers, fn a ->
-                    a.confidence_score == :low or not is_nil(a.missing_info) or is_nil(a.answer)
-                  end) %>
-
-                <%= if issues != [] do %>
-                  <div class="alert alert-warning mb-8 shadow-sm">
-                    <.icon name="hero-exclamation-triangle" class="w-5 h-5" />
+            <div class="flex-1 overflow-y-auto scroll-smooth">
+              <div class="max-w-4xl mx-auto min-h-full flex flex-col">
+                <div class="p-4 md:p-8 flex-1">
+                  <div class="flex justify-between items-start mb-6">
                     <div>
-                      <h3 class="font-bold">Atenção necessária</h3>
-                      <div class="text-sm">
-                        <p>Encontramos {length(issues)} ponto(s) que precisam da sua revisão:</p>
-                        <ul class="list-disc list-inside mt-1 opacity-80">
-                          <%= for issue <- issues do %>
-                            <li>
-                              {String.slice(issue.requirement.question, 0, 40)}{if String.length(
-                                                                                     issue.requirement.question
-                                                                                   ) > 40,
-                                                                                   do: "..."}
-                              <%= if issue.confidence_score == :low do %>
-                                <span class="badge badge-xs badge-error ml-1">Baixa confiança</span>
-                              <% end %>
-                              <%= if issue.missing_info do %>
-                                <span class="badge badge-xs badge-warning ml-1">Info faltante</span>
-                              <% end %>
-                            </li>
-                          <% end %>
-                        </ul>
-                      </div>
+                      <h2 class="text-2xl font-bold mb-1">{app.job_listing.title}</h2>
+                      <p class="text-base-content/70">
+                        {app.job_listing.company.name}
+                      </p>
                     </div>
+                    <p class="text-base-content/70">
+                      Adicionado à fila em {Calendar.strftime(
+                        app.inserted_at,
+                        "%d/%m/%Y às %H:%M"
+                      )}
+                    </p>
                   </div>
-                <% end %>
 
-                <div class="space-y-8">
-                  <%= for answer <- app.answers do %>
-                    <div class={[
-                      "form-control p-6 rounded-2xl transition-all shadow-sm bg-base-200/30 border",
-                      if(answer.confidence_score == :low,
-                        do: "border-error/50 bg-error/5",
-                        else:
-                          if(answer.confidence_score == :medium,
-                            do: "border-warning/50 bg-warning/5",
-                            else: "border-base-200"
-                          )
-                      )
-                    ]}>
-                      <div class="mb-4 flex justify-between items-start gap-4">
-                        <span class="font-semibold text-lg leading-relaxed block text-base-content break-words flex-1">
-                          {answer.requirement.question}
-                        </span>
-                        <.confidence_badge
-                          score={answer.confidence_score}
-                          explanation={answer.confidence_explanation}
-                        />
-                      </div>
+                  <%= if app.answers == [] do %>
+                    <div class="flex items-center gap-3 py-12 justify-center text-base-content/60 bg-base-200/30 rounded-2xl">
+                      <span class="loading loading-spinner loading-md"></span>
+                      <span>Gerando respostas com IA...</span>
+                    </div>
+                  <% else %>
+                    <% issues =
+                      Enum.filter(app.answers, fn a ->
+                        a.confidence_score == :low or not is_nil(a.missing_info) or is_nil(a.answer)
+                      end) %>
 
-                      <%= if answer.missing_info do %>
-                        <div class="alert alert-warning py-2 px-4 mb-4 text-sm">
-                          <.icon name="hero-exclamation-triangle" class="w-5 h-5" />
-                          <span>
-                            <strong>Informação faltante:</strong> {answer.missing_info}
-                          </span>
+                    <%= if issues != [] do %>
+                      <div class="alert alert-warning mb-8 shadow-sm">
+                        <.icon name="hero-exclamation-triangle" class="w-5 h-5" />
+                        <div>
+                          <h3 class="font-bold">Atenção necessária</h3>
+                          <div class="text-md">
+                            <p>Encontramos {length(issues)} ponto(s) que precisam da sua revisão:</p>
+                            <ul class="list-disc list-inside mt-1 opacity-80">
+                              <%= for issue <- issues do %>
+                                <li>
+                                  {String.slice(issue.requirement.question, 0, 40)}{if String.length(
+                                                                                         issue.requirement.question
+                                                                                       ) > 40,
+                                                                                       do: "..."}
+                                  <%= if issue.confidence_score == :low do %>
+                                    <span class="badge badge badge-error ml-1">
+                                      Baixa confiança
+                                    </span>
+                                  <% end %>
+                                  <%= if issue.confidence_score == :medium do %>
+                                    <span class="badge badge badge-warning ml-1">
+                                      Média confiança
+                                    </span>
+                                  <% end %>
+                                  <%= if issue.missing_info do %>
+                                    <span class="badge badge badge-warning ml-1">
+                                      Informações Faltantes
+                                    </span>
+                                  <% end %>
+                                </li>
+                              <% end %>
+                            </ul>
+                          </div>
                         </div>
-                      <% end %>
+                      </div>
+                    <% end %>
 
-                      <textarea
-                        class={["textarea textarea-bordered h-32 w-full text-base leading-relaxed focus:border-primary focus:ring-1 focus:ring-primary bg-base-100"]}
-                        placeholder={
-                          if is_nil(answer.answer),
-                            do: "Informação ausente. Por favor, preencha manualmente ou forneça as informações faltantes."
-                        }
-                        phx-blur="update_answer"
-                        phx-value-id={answer.id}
-                      >{answer.answer}</textarea>
+                    <div class="space-y-8">
+                      <%= for answer <- app.answers do %>
+                        <div class={[
+                          "form-control p-6 rounded-2xl transition-all shadow-sm bg-base-200/30 border",
+                          if(answer.confidence_score == :low,
+                            do: "border-error/50 bg-error/5",
+                            else:
+                              if(answer.confidence_score == :medium,
+                                do: "border-warning/50 bg-warning/5",
+                                else: "border-base-200"
+                              )
+                          )
+                        ]}>
+                          <div class="mb-4 flex justify-between items-start gap-4">
+                            <span class="font-semibold text-lg leading-relaxed block text-base-content break-words flex-1">
+                              {answer.requirement.question}
+                            </span>
+                            <.confidence_badge
+                              score={answer.confidence_score}
+                              explanation={answer.confidence_explanation}
+                            />
+                          </div>
 
-                      <%= if answer.confidence_explanation && answer.confidence_score != :high do %>
-                        <div class="mt-3 text-sm opacity-70 flex gap-2 items-start">
-                          <.icon name="hero-information-circle" class="w-5 h-5 mt-0.5 flex-shrink-0" />
-                          <span class="leading-relaxed">{answer.confidence_explanation}</span>
+                          <%= if answer.missing_info do %>
+                            <div class="py-2 px-4 mb-4 text-sm">
+                              <.icon name="hero-exclamation-triangle" class="w-5 h-5 text-warning" />
+                              <span>
+                                Informação Faltante: <strong>{answer.missing_info}</strong>
+                              </span>
+                            </div>
+                          <% end %>
+
+                          <textarea
+                            class={[
+                              "textarea textarea-bordered h-32 w-full text-base leading-relaxed focus:border-primary focus:ring-1 focus:ring-primary bg-base-100"
+                            ]}
+                            placeholder={
+                              if is_nil(answer.answer),
+                                do:
+                                  "Informação ausente. Por favor, preencha manualmente ou forneça as informações faltantes."
+                            }
+                            phx-blur="update_answer"
+                            phx-value-id={answer.id}
+                          >{answer.answer}</textarea>
                         </div>
                       <% end %>
                     </div>
                   <% end %>
                 </div>
+              </div>
+            </div>
 
-                <div class="card-actions justify-end mt-8 pt-6 border-t border-base-200 sticky bottom-0 bg-base-100 pb-4 z-10">
+            <%= if app.answers != [] do %>
+              <div class="flex-none p-4 border-t border-base-200 bg-base-100 z-10">
+                <div class="max-w-4xl mx-auto flex justify-between items-center">
+                  <button
+                    class="btn btn-ghost text-error"
+                    phx-click="remove"
+                    phx-value-id={app.id}
+                    data-confirm="Tem certeza que deseja remover esta candidatura da fila?"
+                  >
+                    <.icon name="hero-trash" class="w-5 h-5" /> Remover da Fila
+                  </button>
+
                   <% missing_questions =
                     app.answers
                     |> Enum.filter(fn a -> is_nil(a.answer) or String.trim(a.answer) == "" end)
@@ -287,9 +345,10 @@ defmodule CurriclickWeb.ApplicationQueueLive do
 
                   tooltip_msg =
                     if has_missing do
-                      "Perguntas pendentes:\n" <>
+                      "Perguntas Pendentes:\n" <>
                         Enum.map_join(missing_questions, "\n", fn q ->
-                          "• " <> String.slice(q, 0, 30) <> if(String.length(q) > 30, do: "...", else: "")
+                          "• " <>
+                            String.slice(q, 0, 30) <> if(String.length(q) > 30, do: "...", else: "")
                         end)
                     end %>
                   <div
@@ -302,70 +361,93 @@ defmodule CurriclickWeb.ApplicationQueueLive do
                       phx-click="submit"
                       phx-value-id={app.id}
                     >
-                      Confirmar a Candidatura <.icon name="hero-paper-airplane" class="w-5 h-5 ml-2" />
+                      Confirmar a Candidatura
+                      <.icon name="hero-paper-airplane" class="w-5 h-5 ml-2" />
                     </button>
                   </div>
                 </div>
-              <% end %>
-            </div>
-          <% else %>
-            <%= if @applications == [] do %>
-              <div class="text-center py-20">
-                <div class="bg-base-200 p-6 rounded-full inline-block mb-6">
-                  <.icon name="hero-inbox-stack" class="w-12 h-12 opacity-30" />
-                </div>
-                <h3 class="text-xl font-bold mb-2">Sua fila está vazia</h3>
-                <p class="text-base-content/60 max-w-md mx-auto mb-8">
-                  Adicione vagas à fila através da Busca de Empregos para revisar as respostas aqui antes de enviar.
-                </p>
-                <.link navigate={~p"/chat"} class="btn btn-primary">
-                  Buscar Vagas
-                </.link>
-              </div>
-            <% else %>
-              <div class="flex items-center justify-center h-full text-base-content/50">
-                Selecione uma candidatura para ver os detalhes
               </div>
             <% end %>
+          <% else %>
+            <div class="flex-1 overflow-y-auto w-full">
+              <%= if @applications == [] do %>
+                <div class="text-center py-20">
+                  <div class="bg-base-200 p-6 rounded-full inline-block mb-6">
+                    <.icon name="hero-inbox-stack" class="w-12 h-12 opacity-30" />
+                  </div>
+                  <h3 class="text-xl font-bold mb-2">Sua fila está vazia</h3>
+                  <p class="text-base-content/60 max-w-md mx-auto mb-8">
+                    Adicione vagas à fila através da Busca de Empregos para revisar as respostas aqui antes de enviar.
+                  </p>
+                  <.link navigate={~p"/chat"} class="btn btn-primary">
+                    Buscar Vagas
+                  </.link>
+                </div>
+              <% else %>
+                <div class="flex items-center justify-center h-full text-base-content/50">
+                  Selecione uma candidatura para ver os detalhes
+                </div>
+              <% end %>
+            </div>
           <% end %>
         </div>
       </div>
+      
+    <!-- List (Right) -->
+      <div class={[
+        "h-full border-l border-base-300 bg-base-100 flex flex-col transition-all duration-300",
+        "fixed inset-y-0 right-0 z-30 w-full sm:w-[420px] lg:relative lg:w-auto lg:flex-1 lg:max-w-[40%] xl:max-w-[35%]",
+        @show_list && "translate-x-0",
+        !@show_list && "translate-x-full lg:translate-x-0 lg:hidden"
+      ]}>
+        <!-- Mobile Close Button/Header -->
+        <div class="flex items-center justify-between p-4 border-b border-base-300 lg:hidden">
+          <h2 class="font-bold text-lg">Fila de Candidaturas</h2>
+          <button
+            type="button"
+            class="btn btn-ghost btn-sm btn-circle"
+            phx-click="toggle_list"
+          >
+            <.icon name="hero-x-mark" class="w-5 h-5" />
+          </button>
+        </div>
+        
+    <!-- Desktop Header -->
+        <div class="hidden lg:flex items-center justify-between p-4 border-b border-base-300 bg-base-200/30">
+          <h2 class="font-bold text-lg">Fila de Candidaturas</h2>
+          <span class="badge badge-primary">{length(@applications)}</span>
+        </div>
 
-      <div class="drawer-side h-full z-20 absolute md:relative">
-        <label for="app-queue-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
-        <div class="menu p-4 w-80 md:w-96 h-full bg-base-200/50 border-r border-base-300 text-base-content flex flex-col">
-          <div class="flex items-center justify-between mb-6 px-2">
-            <h2 class="font-bold text-lg">Fila de Candidaturas</h2>
-            <span class="badge badge-primary">{length(@applications)}</span>
-          </div>
-
-          <div class="flex-1 overflow-y-auto space-y-3 -mx-2 px-2">
+        <div class="flex-1 overflow-y-auto overflow-x-hidden p-4 bg-base-200/50">
+          <div class="space-y-3">
             <%= for app <- @applications do %>
               <% stats = get_application_stats(app) %>
               <div
                 class={[
                   "card bg-base-100 shadow-sm border transition-all cursor-pointer hover:border-primary/50 hover:shadow-md group text-left",
-                  @selected_application_id == app.id && "border-primary ring-1 ring-primary bg-primary/5"
+                  @selected_application_id == app.id &&
+                    "border-primary ring-1 ring-primary bg-primary/5"
                 ]}
                 phx-click="select_application"
                 phx-value-id={app.id}
+                onclick="if (window.innerWidth < 1024) { window.dispatchEvent(new CustomEvent('close_panel')); }"
               >
                 <div class="card-body p-4 gap-2">
                   <div>
                     <h3 class="font-bold text-sm leading-tight">{app.job_listing.title}</h3>
                     <p class="text-xs text-base-content/60 mt-0.5">{app.job_listing.company.name}</p>
                   </div>
-
-                  <!-- Stats -->
+                  
+    <!-- Stats -->
                   <div class="space-y-2 mt-2">
                     <%= if stats.missing_answers_count > 0 do %>
                       <div class="bg-error/10 rounded-lg p-2 border border-error/20">
                         <div class="text-error text-xs font-bold mb-1 flex items-center gap-1">
                           <.icon name="hero-pencil-square" class="w-3 h-3" />
-                          {stats.missing_answers_count} perguntas pendentes
+                          {stats.missing_answers_count} Perguntas Pendentes
                         </div>
                         <ul class="list-disc list-inside text-[10px] opacity-80 space-y-0.5">
-                          <%= for q <- Enum.take(stats.missing_questions, 2) do %>
+                          <%= for q <- stats.missing_questions do %>
                             <li class="truncate">{q}</li>
                           <% end %>
                         </ul>
@@ -376,10 +458,10 @@ defmodule CurriclickWeb.ApplicationQueueLive do
                       <div class="bg-warning/10 rounded-lg p-2 border border-warning/20">
                         <div class="text-warning-content text-xs font-bold mb-1 flex items-center gap-1">
                           <.icon name="hero-exclamation-triangle" class="w-3 h-3" />
-                          {stats.missing_info_count} info faltante
+                          {stats.missing_info_count} Informações Faltantes
                         </div>
                         <ul class="list-disc list-inside text-[10px] opacity-80 space-y-0.5">
-                          <%= for info <- Enum.take(stats.missing_infos, 2) do %>
+                          <%= for info <- stats.missing_infos do %>
                             <li class="truncate">{info}</li>
                           <% end %>
                         </ul>
@@ -387,18 +469,43 @@ defmodule CurriclickWeb.ApplicationQueueLive do
                     <% end %>
 
                     <%= if stats.low_confidence_count > 0 do %>
-                      <div class="flex items-center gap-1 text-xs text-warning font-medium">
-                        <.icon name="hero-sparkles" class="w-3 h-3" />
-                        {stats.low_confidence_count} baixa/média confiança
+                      <div class="flex items-center gap-1 text-xs text-error font-medium">
+                        <.icon name="hero-exclamation-triangle" class="w-3 h-3" />
+                        {stats.low_confidence_count} baixa confiança
                       </div>
                     <% end %>
 
-                    <%= if stats.missing_answers_count == 0 && stats.missing_info_count == 0 && stats.low_confidence_count == 0 do %>
-                      <div class="text-success text-xs font-bold flex items-center gap-1">
-                        <.icon name="hero-check-circle" class="w-3 h-3" />
-                        Pronto para enviar
+                    <%= if stats.medium_confidence_count > 0 do %>
+                      <div class="flex items-center gap-1 text-xs text-warning font-medium">
+                        <.icon name="hero-exclamation-circle" class="w-3 h-3" />
+                        {stats.medium_confidence_count} média confiança
                       </div>
                     <% end %>
+
+                    <%= if stats.missing_answers_count == 0 && stats.missing_info_count == 0 && stats.low_confidence_count == 0 && stats.medium_confidence_count == 0 do %>
+                      <div class="text-success text-xs font-bold flex items-center gap-1">
+                        <.icon name="hero-check-circle" class="w-3 h-3" /> Pronto para enviar
+                      </div>
+                    <% end %>
+
+                    <button
+                      class="btn btn-ghost text-error"
+                      phx-click="remove"
+                      phx-value-id={app.id}
+                      data-confirm="Tem certeza que deseja remover esta candidatura da fila?"
+                    >
+                      <.icon name="hero-trash" class="w-5 h-5" /> Remover da Fila
+                    </button>
+
+                    <button
+                      class="btn btn-primary"
+                      disabled={stats.missing_answers_count > 0}
+                      phx-click="submit"
+                      phx-value-id={app.id}
+                    >
+                      Confirmar a Candidatura
+                      <.icon name="hero-paper-airplane" class="w-5 h-5 ml-2" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -406,6 +513,15 @@ defmodule CurriclickWeb.ApplicationQueueLive do
           </div>
         </div>
       </div>
+      
+    <!-- Mobile Overlay -->
+      <%= if @show_list do %>
+        <div
+          class="fixed inset-0 bg-black/50 z-20 lg:hidden"
+          phx-click="toggle_list"
+        >
+        </div>
+      <% end %>
     </div>
     """
   end
@@ -425,7 +541,10 @@ defmodule CurriclickWeb.ApplicationQueueLive do
     assigns = assign(assigns, label: label, class: class, icon: icon)
 
     ~H"""
-    <div class={["badge badge-lg gap-2 py-4 px-4", @class, "cursor-help tooltip tooltip-left"]} data-tip={@explanation}>
+    <div
+      class={["badge badge-lg gap-2 py-4 px-4", @class, "cursor-help tooltip tooltip-left"]}
+      data-tip={@explanation}
+    >
       <.icon name={@icon} class="w-5 h-5" />
       <span class="text-sm font-semibold">{@label}</span>
     </div>
