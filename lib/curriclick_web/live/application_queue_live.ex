@@ -571,8 +571,8 @@ defmodule CurriclickWeb.ApplicationQueueLive do
     <!-- Stats -->
                     <div class="space-y-2 mt-2">
                       <%= if stats.missing_answers_count > 0 do %>
-                        <div class="bg-error/50 rounded-lg p-2 border border-error/20">
-                          <div class="text-error-content text-sm font-bold mb-1 flex items-center gap-1">
+                        <div class="rounded-lg p-2">
+                          <div class="text-error text-sm font-bold mb-1 flex items-center gap-1">
                             <.icon name="hero-pencil-square" class="w-3 h-3" />
                             {stats.missing_answers_count} Perguntas Pendentes
                           </div>
@@ -585,8 +585,8 @@ defmodule CurriclickWeb.ApplicationQueueLive do
                       <% end %>
 
                       <%= if stats.missing_info_count > 0 do %>
-                        <div class="bg-warning/50 rounded-lg p-2 border border-warning/20">
-                          <div class="text-warning-content text-sm font-bold mb-1 flex items-center gap-1">
+                        <div class="rounded-lg p-2">
+                          <div class="text-warning text-sm font-bold mb-1 flex items-center gap-1">
                             <.icon name="hero-exclamation-triangle" class="w-3 h-3" />
                             {stats.missing_info_count} Informações Faltantes
                           </div>
@@ -600,14 +600,12 @@ defmodule CurriclickWeb.ApplicationQueueLive do
 
                       <%= if stats.low_confidence_count > 0 do %>
                         <div class="flex items-center gap-1 text-sm text-error font-medium">
-                          <.icon name="hero-exclamation-triangle" class="w-3 h-3" />
                           {stats.low_confidence_count} baixa confiança
                         </div>
                       <% end %>
 
                       <%= if stats.medium_confidence_count > 0 do %>
                         <div class="flex items-center gap-1 text-sm text-warning font-medium">
-                          <.icon name="hero-exclamation-circle" class="w-3 h-3" />
                           {stats.medium_confidence_count} média confiança
                         </div>
                       <% end %>
