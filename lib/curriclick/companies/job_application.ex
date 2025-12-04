@@ -94,7 +94,7 @@ defmodule Curriclick.Companies.JobApplication do
         require Logger
         Logger.info("Initializing manual LLM chain for chat_with_assistant")
 
-        app_id = input.arguments.id
+        app_id = input.arguments[:id]
         user_id = input.arguments.user_id
         
         topic = if app_id, do: "job_application_chat:#{app_id}", else: "job_application_queue_chat:#{user_id}"

@@ -5,7 +5,14 @@ defmodule Curriclick.Companies.JobApplicationAnswer do
   use Ash.Resource,
     otp_app: :curriclick,
     domain: Curriclick.Companies,
-    data_layer: AshPostgres.DataLayer
+    data_layer: AshPostgres.DataLayer,
+    notifiers: [Ash.Notifier.PubSub]
+
+  pub_sub do
+    module CurriclickWeb.Endpoint
+    prefix "job_applications"
+    publish_all :update, "answer_updated"
+  end
 
   postgres do
     table "job_application_answers"

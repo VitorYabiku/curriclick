@@ -20,7 +20,7 @@ defmodule Curriclick.Companies do
     tool :update_answer,
          Curriclick.Companies.JobApplicationAnswer,
          :update_by_ai do
-      description "Update a specific job application answer. Requires the answer's ID."
+      description "Update a specific job application answer. Requires the answer's ID. You can update the answer text, confidence_score, confidence_explanation, and missing_info. Set missing_info to null if the information has been fully provided. If only partially provided, update missing_info to describe what is still missing."
       identity :id
     end
   end

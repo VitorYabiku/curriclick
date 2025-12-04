@@ -52,7 +52,7 @@ defmodule Curriclick.Companies.JobApplication.ChatPrompt do
         others =
           Curriclick.Companies.JobApplication
           |> Ash.Query.filter(user_id == ^user_id and status == :draft and id != ^application_id)
-          |> Ash.Query.load([:job_listing, answers: [:requirement]])
+          |> Ash.Query.load([job_listing: [:company], answers: [:requirement]])
           |> Ash.read!()
 
         {app, others}
@@ -60,7 +60,7 @@ defmodule Curriclick.Companies.JobApplication.ChatPrompt do
         apps =
           Curriclick.Companies.JobApplication
           |> Ash.Query.filter(user_id == ^user_id and status == :draft)
-          |> Ash.Query.load([:job_listing, answers: [:requirement]])
+          |> Ash.Query.load([job_listing: [:company], answers: [:requirement]])
           |> Ash.read!()
 
         {nil, apps}
@@ -119,6 +119,7 @@ defmodule Curriclick.Companies.JobApplication.ChatPrompt do
 
         """
         Job: #{app.job_listing.title} at #{app.job_listing.company.name}
+        Date: #{app.inserted_at}
         ---
         #{answers_str}
         """
@@ -130,6 +131,7 @@ defmodule Curriclick.Companies.JobApplication.ChatPrompt do
         """
         Job Title: #{target_application.job_listing.title}
         Company: #{target_application.job_listing.company.name}
+        Date: #{target_application.inserted_at}
         """
       else
         "Focus: Managing the Job Application Queue (Overview)"
@@ -162,9 +164,11 @@ defmodule Curriclick.Companies.JobApplication.ChatPrompt do
     2. If the user provides new information or asks to improve an answer:
        - Identify which application(s) the info applies to.
        - Use the `update_answer` tool to update the application record using the answer IDs provided in the context.
+       - IMPORTANT: If the user provides information that was previously missing, check if it is complete. If fully provided, set `missing_info` to null. If only partially provided, update `missing_info` to describe what is still missing.
     3. Be proactive in pointing out low confidence answers or missing information across the queue.
     4. Always address the user directly (2nd person) in their language (Portuguese usually).
     5. When updating an answer, explain briefly what you changed and why.
+    6. When referencing an application, ALWAYS use the Job Title, Company Name, and Date. NEVER use the ID.
     </instructions>
     """
 

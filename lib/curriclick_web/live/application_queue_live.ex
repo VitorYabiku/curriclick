@@ -11,11 +11,16 @@ defmodule CurriclickWeb.ApplicationQueueLive do
   on_mount {CurriclickWeb.LiveUserAuth, :live_user_required}
 
   def mount(_params, _session, socket) do
+    user = socket.assigns.current_user
+
     if connected?(socket) do
       Phoenix.PubSub.subscribe(Curriclick.PubSub, "job_applications")
+      Phoenix.PubSub.subscribe(Curriclick.PubSub, "job_applications:answer_updated")
+      # Subscribe to JobApplication resource events
+      Phoenix.PubSub.subscribe(Curriclick.PubSub, "user_applications:create:#{user.id}")
+      Phoenix.PubSub.subscribe(Curriclick.PubSub, "user_applications:update:#{user.id}")
+      Phoenix.PubSub.subscribe(Curriclick.PubSub, "user_applications:destroy:#{user.id}")
     end
-
-    user = socket.assigns.current_user
 
     applications = fetch_applications(user.id)
 
@@ -182,7 +187,6 @@ defmodule CurriclickWeb.ApplicationQueueLive do
     user_id = socket.assigns.current_user.id
 
     # Pass id: nil for queue chat
-    app_id = nil
 
     messages = socket.assigns.chat_messages
 
@@ -268,7 +272,7 @@ defmodule CurriclickWeb.ApplicationQueueLive do
             <!-- Header -->
             <div class="flex items-center justify-between p-4 border-b border-base-300 bg-base-200/30">
               <h2 class="font-bold text-lg flex items-center gap-2">
-                <.icon name="hero-chat-bubble-left-right" class="w-5 h-5" /> Assistente
+                <.icon name="hero-sparkles" class="w-5 h-5" /> Assistente
               </h2>
               <button
                 type="button"
@@ -280,53 +284,88 @@ defmodule CurriclickWeb.ApplicationQueueLive do
             </div>
             
     <!-- Messages -->
-            <div class="flex-1 overflow-y-auto p-4 space-y-4" id="chat-messages">
+            <div
+              class="flex-1 overflow-y-auto overflow-x-hidden p-4 flex flex-col items-center scroll-smooth"
+              id="chat-messages"
+              phx-hook="ChatScroll"
+            >
               <%= if @chat_messages == [] do %>
-                <div class="text-center text-base-content/50 py-10 px-4">
-                  <p class="text-sm">Olá! Sou o assistente desta candidatura.</p>
-                  <p class="text-sm mt-2">
-                    Posso ajudar você a melhorar suas respostas, analisar a vaga ou tirar dúvidas.
-                  </p>
-                </div>
-              <% end %>
-
-              <%= for {msg, _index} <- Enum.with_index(@chat_messages) do %>
-                <div class={[
-                  "flex flex-col max-w-[85%]",
-                  msg.source == :user && "self-end items-end",
-                  msg.source == :assistant && "self-start items-start"
-                ]}>
-                  <div class={[
-                    "px-4 py-2 rounded-2xl text-sm",
-                    msg.source == :user && "bg-primary text-primary-content rounded-tr-none",
-                    msg.source == :assistant && "bg-base-200 rounded-tl-none"
-                  ]}>
-                    {msg.text}
+                <div class="hero h-full flex items-center justify-center">
+                  <div class="text-center px-6">
+                    <div class="mb-4 inline-block p-3 bg-primary/10 rounded-full text-primary">
+                      <.icon name="hero-chat-bubble-left-right" class="w-8 h-8" />
+                    </div>
+                    <h1 class="text-lg font-bold mb-4">
+                      Como posso ajudar com suas candidaturas?
+                    </h1>
+                    <p class="text-sm text-base-content/70 font-medium leading-relaxed">
+                      Pergunte sobre seus rascunhos ou forneça informações faltantes para eu gerar as respostas.
+                    </p>
                   </div>
                 </div>
               <% end %>
 
-              <%= if @chat_loading do %>
-                <div class="flex self-start items-center gap-1 px-4 py-2 bg-base-200 rounded-2xl rounded-tl-none">
-                  <span class="loading loading-dots loading-xs"></span>
-                </div>
-              <% end %>
+              <div class="w-full flex flex-col items-center gap-6">
+                <%= for msg <- @chat_messages do %>
+                  <div class={["w-full max-w-3xl", msg.source == :user && "flex justify-end"]}>
+                    <%= if msg.source == :user do %>
+                      <div class="chat-bubble chat-bubble-primary text-primary-content shadow-sm text-[15px] py-2.5 px-4 max-w-[85%]">
+                        {to_markdown(msg.text)}
+                      </div>
+                    <% else %>
+                      <div class="flex gap-4 w-full pr-4">
+                        <div class="flex-1 min-w-0 py-1">
+                          <div class="markdown-content prose prose-sm max-w-none">
+                            {to_markdown(msg.text)}
+                          </div>
+                        </div>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+
+                <%= if @chat_loading do %>
+                  <div class="w-full max-w-3xl">
+                    <div class="flex gap-4 w-full pr-4">
+                      <div class="flex-1 min-w-0 py-1">
+                        <div class="flex items-center gap-2 text-base-content/50">
+                          <span class="loading loading-dots loading-md"></span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
             </div>
             
-    <!-- Input -->
-            <div class="p-4 border-t border-base-300 bg-base-100">
-              <form phx-submit="send_chat_message">
-                <div class="flex gap-2">
+    <!-- Input Area -->
+            <div class="p-4 bg-gradient-to-t from-base-100 to-base-100/80 backdrop-blur-md z-10 w-full border-t border-base-300/50">
+              <form phx-submit="send_chat_message" class="relative">
+                <div class="flex w-full shadow-sm rounded-3xl border border-base-300 bg-base-100 p-1.5 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/50 transition-all duration-200">
                   <input
                     type="text"
                     name="text"
                     placeholder="Digite sua mensagem..."
-                    class="input input-bordered w-full"
+                    class="input input-ghost flex-1 focus:outline-none focus:bg-transparent h-auto py-2 text-sm border-none bg-transparent pl-4"
                     autocomplete="off"
+                    required
                   />
-                  <button type="submit" class="btn btn-primary btn-square">
-                    <.icon name="hero-paper-airplane" class="w-5 h-5" />
+                  <button
+                    type="submit"
+                    class="btn btn-primary btn-circle btn-sm h-9 w-9 self-center shadow-md hover:shadow-lg transition-all duration-200"
+                    disabled={@chat_loading}
+                  >
+                    <%= if @chat_loading do %>
+                      <span class="loading loading-spinner loading-xs"></span>
+                    <% else %>
+                      <.icon name="hero-arrow-up" class="w-4 h-4" />
+                    <% end %>
                   </button>
+                </div>
+                <div class="text-center mt-2">
+                  <span class="text-[10px] text-base-content/40">
+                    A IA pode cometer erros.
+                  </span>
                 </div>
               </form>
             </div>
@@ -531,18 +570,29 @@ defmodule CurriclickWeb.ApplicationQueueLive do
       </div>
       
     <!-- List (Right) -->
-      <div class="h-full border-l border-base-300 bg-base-100 flex flex-col transition-all duration-300 w-auto flex-1 max-w-[40%] xl:max-w-[35%]">
+      <div class={[
+        "h-full border-l border-base-300 bg-base-100 flex flex-col transition-all duration-300 w-auto flex-1",
+        if(@show_chat, do: "max-w-[25%] xl:max-w-[20%]", else: "max-w-[40%] xl:max-w-[35%]")
+      ]}>
         <!-- Application List -->
         <div class="flex flex-col h-full">
           <!-- Desktop Header -->
-          <div class="flex items-center justify-between p-4 border-b border-base-300 bg-base-200/30">
-            <div class="flex items-center gap-2">
-              <h2 class="font-bold text-lg">Fila de Candidaturas</h2>
-              <span class="badge badge-primary">{length(@applications)}</span>
+          <div class="flex items-center justify-between p-4 border-b border-base-300 bg-base-200/30 gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <h2 class="font-bold text-lg truncate">
+                {if @show_chat, do: "Fila", else: "Fila de Candidaturas"}
+              </h2>
+              <span class="badge badge-primary shrink-0">{length(@applications)}</span>
             </div>
-            <div class="flex items-center gap-2">
-              <button class="btn btn-accent btn-sm text-accent-content" phx-click="toggle_chat">
-                <.icon name="hero-sparkles" class="w-4 h-4" /> Assistente
+            <div class="flex items-center gap-2 shrink-0">
+              <button
+                class={["btn btn-accent btn-sm text-accent-content", @show_chat && "btn-square"]}
+                phx-click="toggle_chat"
+              >
+                <.icon name="hero-sparkles" class="w-4 h-4" />
+                <%= if !@show_chat do %>
+                  Assistente
+                <% end %>
               </button>
             </div>
           </div>
@@ -592,7 +642,7 @@ defmodule CurriclickWeb.ApplicationQueueLive do
                           </div>
                           <ul class="list-disc list-inside text-xs opacity-80 space-y-0.5">
                             <%= for info <- stats.missing_infos do %>
-                              <li class="truncate">{info}</li>
+                              <li class="truncate cursor-help" title={info}>{info}</li>
                             <% end %>
                           </ul>
                         </div>
@@ -671,5 +721,40 @@ defmodule CurriclickWeb.ApplicationQueueLive do
       <span class="text-sm font-semibold">{@label}</span>
     </div>
     """
+  end
+
+  @spec to_markdown(String.t()) :: Phoenix.HTML.Safe.t() | String.t()
+  defp to_markdown(text) do
+    # Note that you must pass the "unsafe: true" option to first generate the raw HTML
+    # in order to sanitize it. https://hexdocs.pm/mdex/MDEx.html#module-sanitize
+    MDEx.to_html(text,
+      extension: [
+        strikethrough: true,
+        tagfilter: true,
+        table: true,
+        autolink: true,
+        tasklist: true,
+        footnotes: true,
+        shortcodes: true
+      ],
+      parse: [
+        smart: true,
+        relaxed_tasklist_matching: true,
+        relaxed_autolinks: true
+      ],
+      render: [
+        github_pre_lang: true,
+        unsafe: true
+      ],
+      sanitize: MDEx.Document.default_sanitize_options()
+    )
+    |> case do
+      {:ok, html} ->
+        html
+        |> Phoenix.HTML.raw()
+
+      {:error, _} ->
+        text
+    end
   end
 end
