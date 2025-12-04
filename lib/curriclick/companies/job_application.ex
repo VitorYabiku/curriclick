@@ -85,6 +85,89 @@ defmodule Curriclick.Companies.JobApplication do
           )
     end
 
+    action :chat_with_assistant, :string do
+      argument :messages, {:array, :map}, allow_nil?: false
+      argument :user_id, :uuid, allow_nil?: false
+      argument :id, :uuid, allow_nil?: true
+
+      run fn input, context ->
+        require Logger
+        Logger.info("Initializing manual LLM chain for chat_with_assistant")
+
+        app_id = input.arguments.id
+        user_id = input.arguments.user_id
+        
+        topic = if app_id, do: "job_application_chat:#{app_id}", else: "job_application_queue_chat:#{user_id}"
+
+        # Load user for actor
+        user = Curriclick.Accounts.User |> Ash.get!(user_id, authorize?: false)
+
+        messages = Curriclick.Companies.JobApplication.ChatPrompt.generate_messages(input, context)
+
+        # Define tools
+        tools = [:update_answer]
+
+        # Setup Chain
+        chain =
+          LangChain.Chains.LLMChain.new!(%{
+            llm:
+              LangChain.ChatModels.ChatOpenAI.new!(%{
+                model: "gpt-5.1",
+                stream: true
+              })
+          })
+          |> LangChain.Chains.LLMChain.add_messages(messages)
+          |> AshAi.setup_ash_ai(
+            otp_app: :curriclick,
+            tools: tools,
+            actor: user
+          )
+          |> LangChain.Chains.LLMChain.add_callback(%{
+            on_llm_new_delta: fn _chain, deltas ->
+              Logger.debug("Received deltas in callback")
+              deltas = List.wrap(deltas)
+
+              Phoenix.PubSub.broadcast(
+                Curriclick.PubSub,
+                topic,
+                {:chat_delta, topic, deltas}
+              )
+
+              :ok
+            end,
+            on_tool_error: fn _chain, error, _tool_call ->
+              Logger.error("Tool execution error: #{inspect(error)}")
+              {:ok, "Error executing tool: #{inspect(error)}"}
+            end,
+            on_tool_result: fn _chain, tool_result, _tool_call ->
+              # If we are editing a specific app, we might know its ID from the tool call? 
+              # But for now, let's just broadcast a generic update or try to infer.
+              # The tool `update_answer` likely updates an answer which belongs to an app.
+              # We can just broadcast a general "queue_updated" or specific app update if we can.
+              
+              # For simplicity, let's broadcast to the user's queue topic that something changed
+              # Or rely on the liveview to refresh based on standard Ash notifications if enabled.
+              # The original code broadcasted :application_updated.
+              
+              # We'll try to broadcast to the generic topic as well for feedback?
+              # Actually, the LiveView listens to "job_applications" (general pubsub) for Ash notifications.
+              # So normal Ash notifications should handle the data refresh.
+              
+              {:ok, tool_result}
+            end
+          })
+
+        case LangChain.Chains.LLMChain.run(chain, mode: :while_needs_response) do
+          {:ok, _chain} ->
+            {:ok, "Complete"}
+
+          {:error, reason} ->
+            Logger.error("LLM Chain failed: #{inspect(reason)}")
+            {:error, inspect(reason)}
+        end
+      end
+    end
+
     update :nilify_conversation do
       accept []
       change set_attribute(:conversation_id, nil)
@@ -119,6 +202,7 @@ defmodule Curriclick.Companies.JobApplication do
     define :add_to_queue, args: [:params, :conversation_id]
     define :submit
     define :generate_draft, args: [:job_listing_id, :user_id, :conversation_id]
+    define :chat_with_assistant, args: [:user_id, :messages]
   end
 
   policies do

@@ -24,11 +24,18 @@ defmodule Curriclick.Companies.JobApplicationAnswer do
       primary? true
       accept [:answer, :confidence_score, :confidence_explanation, :missing_info]
     end
+
+    update :update_by_ai do
+      description "Updates the answer content, confidence score, and missing info status based on user input and AI analysis. Use this tool to save improvements to the answer."
+      accept [:answer, :confidence_score, :confidence_explanation, :missing_info]
+      require_atomic? false
+    end
   end
 
   code_interface do
     define :create
     define :update
+    define :update_by_ai
   end
 
   attributes do
@@ -66,5 +73,9 @@ defmodule Curriclick.Companies.JobApplicationAnswer do
     belongs_to :requirement, Curriclick.Companies.JobListingRequirement do
       allow_nil? false
     end
+  end
+
+  identities do
+    identity :id, [:id]
   end
 end

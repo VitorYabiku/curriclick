@@ -16,6 +16,13 @@ defmodule Curriclick.Companies do
          :set_chat_job_cards do
       description "Display filtered job cards in the chat UI side panel. Call after find_suitable_job_postings_for_user with enriched data (pros, cons, success_probability). Requires conversation_id from current context."
     end
+
+    tool :update_answer,
+         Curriclick.Companies.JobApplicationAnswer,
+         :update_by_ai do
+      description "Update a specific job application answer. Requires the answer's ID."
+      identity :id
+    end
   end
 
   admin do

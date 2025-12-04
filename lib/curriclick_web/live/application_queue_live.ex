@@ -26,7 +26,9 @@ defmodule CurriclickWeb.ApplicationQueueLive do
         :selected_application_id,
         if(applications != [], do: hd(applications).id, else: nil)
       )
-      |> assign(:show_list, true)
+      |> assign(:show_chat, false)
+      |> assign(:chat_messages, [])
+      |> assign(:chat_loading, false)
 
     {:ok, socket, layout: {CurriclickWeb.Layouts, :chat}}
   end
@@ -36,7 +38,9 @@ defmodule CurriclickWeb.ApplicationQueueLive do
     {:noreply, assign(socket, :applications, fetch_applications(user.id))}
   end
 
-  def handle_info({:application_updated, _id}, socket) do
+  def handle_info({:application_updated, id}, socket) do
+    require Logger
+    Logger.debug("Received application update for #{id}")
     user = socket.assigns.current_user
     applications = fetch_applications(user.id)
 
@@ -48,6 +52,42 @@ defmodule CurriclickWeb.ApplicationQueueLive do
      socket
      |> assign(:applications, applications)
      |> assign(:selected_application_id, selected_id)}
+  end
+
+  def handle_info({:chat_delta, topic, deltas}, socket) do
+    user_id = socket.assigns.current_user.id
+    expected_topic = "job_application_queue_chat:#{user_id}"
+
+    if topic == expected_topic do
+      # Extract content from deltas
+      content =
+        Enum.reduce(deltas, "", fn delta, acc ->
+          acc <> (delta.content || "")
+        end)
+
+      if content != "" do
+        messages = socket.assigns.chat_messages
+
+        updated_messages =
+          case List.last(messages) do
+            %{source: :assistant} = last ->
+              List.replace_at(messages, -1, Map.update!(last, :text, &(&1 <> content)))
+
+            _ ->
+              messages ++ [%{source: :assistant, text: content}]
+          end
+
+        {:noreply, assign(socket, :chat_messages, updated_messages)}
+      else
+        {:noreply, socket}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info({:chat_complete, _}, socket) do
+    {:noreply, assign(socket, :chat_loading, false)}
   end
 
   def handle_event("remove", %{"id" => id}, socket) do
@@ -116,12 +156,63 @@ defmodule CurriclickWeb.ApplicationQueueLive do
     end
   end
 
-  def handle_event("toggle_list", _, socket) do
-    {:noreply, assign(socket, :show_list, !socket.assigns.show_list)}
-  end
-
   def handle_event("select_application", %{"id" => id}, socket) do
     {:noreply, assign(socket, :selected_application_id, id)}
+  end
+
+  def handle_event("toggle_chat", _, socket) do
+    user_id = socket.assigns.current_user.id
+    topic = "job_application_queue_chat:#{user_id}"
+
+    if socket.assigns.show_chat do
+      # Closing chat
+      Phoenix.PubSub.unsubscribe(Curriclick.PubSub, topic)
+      {:noreply, assign(socket, :show_chat, false)}
+    else
+      # Opening chat
+      Phoenix.PubSub.subscribe(Curriclick.PubSub, topic)
+
+      {:noreply, assign(socket, :show_chat, true)}
+    end
+  end
+
+  def handle_event("send_chat_message", %{"text" => text}, socket) do
+    require Logger
+    Logger.info("Sending chat message: #{text}")
+    user_id = socket.assigns.current_user.id
+
+    # Pass id: nil for queue chat
+    app_id = nil
+
+    messages = socket.assigns.chat_messages
+
+    # Add user message immediately
+    new_messages = messages ++ [%{source: :user, text: text}]
+
+    # Prepare messages for the LLM (including the new one)
+    action_messages =
+      Enum.map(new_messages, fn msg ->
+        %{"source" => to_string(msg.source), "text" => msg.text}
+      end)
+
+    pid = self()
+
+    Task.start(fn ->
+      try do
+        # Call chat_with_assistant with id: nil (implicitly)
+        Curriclick.Companies.JobApplication.chat_with_assistant!(user_id, action_messages)
+        send(pid, {:chat_complete, nil})
+      rescue
+        e ->
+          Logger.error("Chat failed: #{inspect(e)}")
+          Logger.error(Exception.format(:error, e, __STACKTRACE__))
+      end
+    end)
+
+    {:noreply,
+     socket
+     |> assign(:chat_messages, new_messages)
+     |> assign(:chat_loading, true)}
   end
 
   defp fetch_applications(user_id) do
@@ -171,37 +262,80 @@ defmodule CurriclickWeb.ApplicationQueueLive do
     <% app =
       @selected_application_id && Enum.find(@applications, &(&1.id == @selected_application_id)) %>
     <div class="flex h-full overflow-hidden relative bg-base-100">
-      <!-- Detailed View (Left/Middle) -->
-      <div class={[
-        "flex flex-col h-full overflow-hidden transition-all duration-300 bg-base-100",
-        @show_list && "flex-1 lg:max-w-[60%] xl:max-w-[65%]",
-        !@show_list && "flex-1"
-      ]}>
-        <!-- Mobile Header -->
-        <div class="navbar bg-base-100 w-full md:hidden border-b border-base-200 min-h-12">
-          <div class="flex-none">
-            <button
-              type="button"
-              class="btn btn-square btn-ghost btn-sm"
-              phx-click="toggle_list"
-            >
-              <.icon name="hero-bars-3" class="w-5 h-5" />
-            </button>
-          </div>
-          <div class="flex-1 px-2 mx-2 text-sm font-semibold">Candidaturas</div>
-          <div class="flex-none lg:hidden">
-            <button
-              type="button"
-              class="btn btn-square btn-ghost btn-sm"
-              phx-click="toggle_list"
-            >
-              <.icon name="hero-list-bullet" class="w-5 h-5" />
-              <span class="badge badge-primary badge-xs absolute -top-1 -right-1">
-                {length(@applications)}
-              </span>
-            </button>
+      <%= if @show_chat do %>
+        <div class="h-full border-r border-base-300 bg-base-100 flex flex-col z-20 shadow-lg w-auto flex-1 max-w-[40%] xl:max-w-[35%]">
+          <div class="flex flex-col h-full">
+            <!-- Header -->
+            <div class="flex items-center justify-between p-4 border-b border-base-300 bg-base-200/30">
+              <h2 class="font-bold text-lg flex items-center gap-2">
+                <.icon name="hero-chat-bubble-left-right" class="w-5 h-5" /> Assistente
+              </h2>
+              <button
+                type="button"
+                class="btn btn-ghost btn-sm btn-circle"
+                phx-click="toggle_chat"
+              >
+                <.icon name="hero-x-mark" class="w-5 h-5" />
+              </button>
+            </div>
+            
+    <!-- Messages -->
+            <div class="flex-1 overflow-y-auto p-4 space-y-4" id="chat-messages">
+              <%= if @chat_messages == [] do %>
+                <div class="text-center text-base-content/50 py-10 px-4">
+                  <p class="text-sm">Olá! Sou o assistente desta candidatura.</p>
+                  <p class="text-sm mt-2">
+                    Posso ajudar você a melhorar suas respostas, analisar a vaga ou tirar dúvidas.
+                  </p>
+                </div>
+              <% end %>
+
+              <%= for {msg, _index} <- Enum.with_index(@chat_messages) do %>
+                <div class={[
+                  "flex flex-col max-w-[85%]",
+                  msg.source == :user && "self-end items-end",
+                  msg.source == :assistant && "self-start items-start"
+                ]}>
+                  <div class={[
+                    "px-4 py-2 rounded-2xl text-sm",
+                    msg.source == :user && "bg-primary text-primary-content rounded-tr-none",
+                    msg.source == :assistant && "bg-base-200 rounded-tl-none"
+                  ]}>
+                    {msg.text}
+                  </div>
+                </div>
+              <% end %>
+
+              <%= if @chat_loading do %>
+                <div class="flex self-start items-center gap-1 px-4 py-2 bg-base-200 rounded-2xl rounded-tl-none">
+                  <span class="loading loading-dots loading-xs"></span>
+                </div>
+              <% end %>
+            </div>
+            
+    <!-- Input -->
+            <div class="p-4 border-t border-base-300 bg-base-100">
+              <form phx-submit="send_chat_message">
+                <div class="flex gap-2">
+                  <input
+                    type="text"
+                    name="text"
+                    placeholder="Digite sua mensagem..."
+                    class="input input-bordered w-full"
+                    autocomplete="off"
+                  />
+                  <button type="submit" class="btn btn-primary btn-square">
+                    <.icon name="hero-paper-airplane" class="w-5 h-5" />
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
+      <% end %>
+      
+    <!-- Detailed View (Left/Middle) -->
+      <div class="flex flex-col h-full overflow-hidden transition-all duration-300 bg-base-100 flex-1 min-w-0">
         
     <!-- Main Content Area -->
         <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -216,12 +350,14 @@ defmodule CurriclickWeb.ApplicationQueueLive do
                         {app.job_listing.company.name}
                       </p>
                     </div>
-                    <p class="text-base-content/70">
-                      Adicionado à fila em {Calendar.strftime(
-                        app.inserted_at,
-                        "%d/%m/%Y às %H:%M"
-                      )}
-                    </p>
+                    <div class="flex items-center gap-2">
+                      <p class="text-base-content/70 text-sm">
+                        {Calendar.strftime(
+                          app.inserted_at,
+                          "%d/%m %H:%M"
+                        )}
+                      </p>
+                    </div>
                   </div>
 
                   <%= if app.answers == [] do %>
@@ -305,6 +441,7 @@ defmodule CurriclickWeb.ApplicationQueueLive do
                           <% end %>
 
                           <textarea
+                            id={"answer-#{answer.id}"}
                             class={[
                               "textarea textarea-bordered h-32 w-full text-base leading-relaxed focus:border-primary focus:ring-1 focus:ring-primary bg-base-100"
                             ]}
@@ -394,134 +531,121 @@ defmodule CurriclickWeb.ApplicationQueueLive do
       </div>
       
     <!-- List (Right) -->
-      <div class={[
-        "h-full border-l border-base-300 bg-base-100 flex flex-col transition-all duration-300",
-        "fixed inset-y-0 right-0 z-30 w-full sm:w-[420px] lg:relative lg:w-auto lg:flex-1 lg:max-w-[40%] xl:max-w-[35%]",
-        @show_list && "translate-x-0",
-        !@show_list && "translate-x-full lg:translate-x-0 lg:hidden"
-      ]}>
-        <!-- Mobile Close Button/Header -->
-        <div class="flex items-center justify-between p-4 border-b border-base-300 lg:hidden">
-          <h2 class="font-bold text-lg">Fila de Candidaturas</h2>
-          <button
-            type="button"
-            class="btn btn-ghost btn-sm btn-circle"
-            phx-click="toggle_list"
-          >
-            <.icon name="hero-x-mark" class="w-5 h-5" />
-          </button>
-        </div>
-        
-    <!-- Desktop Header -->
-        <div class="hidden lg:flex items-center justify-between p-4 border-b border-base-300 bg-base-200/30">
-          <h2 class="font-bold text-lg">Fila de Candidaturas</h2>
-          <span class="badge badge-primary">{length(@applications)}</span>
-        </div>
+      <div class="h-full border-l border-base-300 bg-base-100 flex flex-col transition-all duration-300 w-auto flex-1 max-w-[40%] xl:max-w-[35%]">
+        <!-- Application List -->
+        <div class="flex flex-col h-full">
+          <!-- Desktop Header -->
+          <div class="flex items-center justify-between p-4 border-b border-base-300 bg-base-200/30">
+            <div class="flex items-center gap-2">
+              <h2 class="font-bold text-lg">Fila de Candidaturas</h2>
+              <span class="badge badge-primary">{length(@applications)}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="btn btn-accent btn-sm text-accent-content" phx-click="toggle_chat">
+                <.icon name="hero-sparkles" class="w-4 h-4" /> Assistente
+              </button>
+            </div>
+          </div>
 
-        <div class="flex-1 overflow-y-auto overflow-x-hidden p-4 bg-base-200/50">
-          <div class="space-y-3">
-            <%= for app <- @applications do %>
-              <% stats = get_application_stats(app) %>
-              <div
-                class={[
-                  "card bg-base-100 shadow-sm border transition-all cursor-pointer hover:border-primary/50 hover:shadow-md group text-left",
-                  @selected_application_id == app.id &&
-                    "border-primary ring-1 ring-primary bg-primary/5"
-                ]}
-                phx-click="select_application"
-                phx-value-id={app.id}
-                onclick="if (window.innerWidth < 1024) { window.dispatchEvent(new CustomEvent('close_panel')); }"
-              >
-                <div class="card-body p-4 gap-2">
-                  <div>
-                    <h3 class="font-bold text-sm leading-tight">{app.job_listing.title}</h3>
-                    <p class="text-xs text-base-content/60 mt-0.5">{app.job_listing.company.name}</p>
-                  </div>
-                  
+          <div class="flex-1 overflow-y-auto overflow-x-hidden p-4 bg-base-200/50">
+            <div class="space-y-3">
+              <%= for app <- @applications do %>
+                <% stats = get_application_stats(app) %>
+                <div
+                  class={[
+                    "card bg-base-100 shadow-sm border transition-all cursor-pointer hover:border-primary/50 hover:shadow-md group text-left",
+                    @selected_application_id == app.id &&
+                      "border-primary ring-1 ring-primary bg-primary/5"
+                  ]}
+                  phx-click="select_application"
+                  phx-value-id={app.id}
+                >
+                  <div class="card-body p-4 gap-2">
+                    <div>
+                      <h3 class="font-bold text-base leading-tight">{app.job_listing.title}</h3>
+                      <p class="text-sm text-base-content/60 mt-0.5">
+                        {app.job_listing.company.name}
+                      </p>
+                    </div>
+                    
     <!-- Stats -->
-                  <div class="space-y-2 mt-2">
-                    <%= if stats.missing_answers_count > 0 do %>
-                      <div class="bg-error/10 rounded-lg p-2 border border-error/20">
-                        <div class="text-error text-xs font-bold mb-1 flex items-center gap-1">
-                          <.icon name="hero-pencil-square" class="w-3 h-3" />
-                          {stats.missing_answers_count} Perguntas Pendentes
+                    <div class="space-y-2 mt-2">
+                      <%= if stats.missing_answers_count > 0 do %>
+                        <div class="bg-error/50 rounded-lg p-2 border border-error/20">
+                          <div class="text-error-content text-sm font-bold mb-1 flex items-center gap-1">
+                            <.icon name="hero-pencil-square" class="w-3 h-3" />
+                            {stats.missing_answers_count} Perguntas Pendentes
+                          </div>
+                          <ul class="list-disc list-inside text-xs opacity-80 space-y-0.5">
+                            <%= for q <- stats.missing_questions do %>
+                              <li class="truncate">{q}</li>
+                            <% end %>
+                          </ul>
                         </div>
-                        <ul class="list-disc list-inside text-[10px] opacity-80 space-y-0.5">
-                          <%= for q <- stats.missing_questions do %>
-                            <li class="truncate">{q}</li>
-                          <% end %>
-                        </ul>
-                      </div>
-                    <% end %>
+                      <% end %>
 
-                    <%= if stats.missing_info_count > 0 do %>
-                      <div class="bg-warning/10 rounded-lg p-2 border border-warning/20">
-                        <div class="text-warning-content text-xs font-bold mb-1 flex items-center gap-1">
+                      <%= if stats.missing_info_count > 0 do %>
+                        <div class="bg-warning/50 rounded-lg p-2 border border-warning/20">
+                          <div class="text-warning-content text-sm font-bold mb-1 flex items-center gap-1">
+                            <.icon name="hero-exclamation-triangle" class="w-3 h-3" />
+                            {stats.missing_info_count} Informações Faltantes
+                          </div>
+                          <ul class="list-disc list-inside text-xs opacity-80 space-y-0.5">
+                            <%= for info <- stats.missing_infos do %>
+                              <li class="truncate">{info}</li>
+                            <% end %>
+                          </ul>
+                        </div>
+                      <% end %>
+
+                      <%= if stats.low_confidence_count > 0 do %>
+                        <div class="flex items-center gap-1 text-sm text-error font-medium">
                           <.icon name="hero-exclamation-triangle" class="w-3 h-3" />
-                          {stats.missing_info_count} Informações Faltantes
+                          {stats.low_confidence_count} baixa confiança
                         </div>
-                        <ul class="list-disc list-inside text-[10px] opacity-80 space-y-0.5">
-                          <%= for info <- stats.missing_infos do %>
-                            <li class="truncate">{info}</li>
-                          <% end %>
-                        </ul>
+                      <% end %>
+
+                      <%= if stats.medium_confidence_count > 0 do %>
+                        <div class="flex items-center gap-1 text-sm text-warning font-medium">
+                          <.icon name="hero-exclamation-circle" class="w-3 h-3" />
+                          {stats.medium_confidence_count} média confiança
+                        </div>
+                      <% end %>
+
+                      <%= if stats.missing_answers_count == 0 && stats.missing_info_count == 0 && stats.low_confidence_count == 0 && stats.medium_confidence_count == 0 do %>
+                        <div class="text-success text-sm font-bold flex items-center gap-1">
+                          <.icon name="hero-check-circle" class="w-3 h-3" /> Pronto para enviar
+                        </div>
+                      <% end %>
+
+                      <div class="hidden group-hover:flex justify-between items-center gap-2">
+                        <button
+                          class="btn btn-ghost text-error btn-sm"
+                          phx-click="remove"
+                          phx-value-id={app.id}
+                          data-confirm="Tem certeza que deseja remover esta candidatura da fila?"
+                        >
+                          <.icon name="hero-trash" class="w-4 h-4" /> Remover
+                        </button>
+
+                        <button
+                          class="btn btn-primary btn-sm flex-1"
+                          disabled={stats.missing_answers_count > 0}
+                          phx-click="submit"
+                          phx-value-id={app.id}
+                        >
+                          Confirmar a Candidatura
+                          <.icon name="hero-paper-airplane" class="w-4 h-4 ml-2" />
+                        </button>
                       </div>
-                    <% end %>
-
-                    <%= if stats.low_confidence_count > 0 do %>
-                      <div class="flex items-center gap-1 text-xs text-error font-medium">
-                        <.icon name="hero-exclamation-triangle" class="w-3 h-3" />
-                        {stats.low_confidence_count} baixa confiança
-                      </div>
-                    <% end %>
-
-                    <%= if stats.medium_confidence_count > 0 do %>
-                      <div class="flex items-center gap-1 text-xs text-warning font-medium">
-                        <.icon name="hero-exclamation-circle" class="w-3 h-3" />
-                        {stats.medium_confidence_count} média confiança
-                      </div>
-                    <% end %>
-
-                    <%= if stats.missing_answers_count == 0 && stats.missing_info_count == 0 && stats.low_confidence_count == 0 && stats.medium_confidence_count == 0 do %>
-                      <div class="text-success text-xs font-bold flex items-center gap-1">
-                        <.icon name="hero-check-circle" class="w-3 h-3" /> Pronto para enviar
-                      </div>
-                    <% end %>
-
-                    <button
-                      class="btn btn-ghost text-error"
-                      phx-click="remove"
-                      phx-value-id={app.id}
-                      data-confirm="Tem certeza que deseja remover esta candidatura da fila?"
-                    >
-                      <.icon name="hero-trash" class="w-5 h-5" /> Remover da Fila
-                    </button>
-
-                    <button
-                      class="btn btn-primary"
-                      disabled={stats.missing_answers_count > 0}
-                      phx-click="submit"
-                      phx-value-id={app.id}
-                    >
-                      Confirmar a Candidatura
-                      <.icon name="hero-paper-airplane" class="w-5 h-5 ml-2" />
-                    </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            <% end %>
+              <% end %>
+            </div>
           </div>
         </div>
       </div>
-      
-    <!-- Mobile Overlay -->
-      <%= if @show_list do %>
-        <div
-          class="fixed inset-0 bg-black/50 z-20 lg:hidden"
-          phx-click="toggle_list"
-        >
-        </div>
-      <% end %>
     </div>
     """
   end
