@@ -56,9 +56,9 @@ defmodule CurriclickWeb.ChatLive do
             <% end %>
           </div>
           
-      <!-- Job Details Content -->
-      <div class="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-8 scroll-smooth">
-        <% expanded_job = Enum.find(@job_cards, &(&1.job_id == @expanded_job_id)) %>
+    <!-- Job Details Content -->
+          <div class="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-8 scroll-smooth">
+            <% expanded_job = Enum.find(@job_cards, &(&1.job_id == @expanded_job_id)) %>
             <%= if expanded_job do %>
               <% is_applied = MapSet.member?(@applied_job_ids, expanded_job.job_id) %>
               <div class="max-w-4xl mx-auto space-y-6">
@@ -128,11 +128,14 @@ defmodule CurriclickWeb.ChatLive do
                     <div class="flex flex-wrap gap-3">
                       <%= if expanded_job.keywords && expanded_job.keywords != [] do %>
                         <div class="w-full flex flex-wrap gap-2 mb-4">
-                      <%= for keyword <- expanded_job.keywords do %>
-                        <span class="badge badge-ghost badge-lg p-3 cursor-help" data-smart-tooltip={keyword.explanation}>
-                          {keyword.term}
-                        </span>
-                      <% end %>
+                          <%= for keyword <- expanded_job.keywords do %>
+                            <span
+                              class="badge badge-ghost badge-lg p-3 cursor-help"
+                              data-smart-tooltip={keyword.explanation}
+                            >
+                              {keyword.term}
+                            </span>
+                          <% end %>
                         </div>
                       <% end %>
 
@@ -238,8 +241,7 @@ defmodule CurriclickWeb.ChatLive do
                               <% else %>
                                 <div class="bg-base-100/50 rounded-lg p-4 border border-base-300 border-dashed text-sm text-base-content/40 italic flex items-center gap-2">
                                   <%= if is_applied do %>
-                                    <.icon name="hero-minus-circle" class="w-4 h-4" />
-                                    Sem resposta
+                                    <.icon name="hero-minus-circle" class="w-4 h-4" /> Sem resposta
                                   <% else %>
                                     <.icon name="hero-sparkles" class="w-4 h-4" />
                                     Será preenchido pela IA
@@ -304,12 +306,12 @@ defmodule CurriclickWeb.ChatLive do
             <% end %>
           </div>
           
-      <!-- Messages Area -->
-      <div
-        class="flex-1 overflow-y-auto overflow-x-hidden p-4 flex flex-col items-center scroll-smooth"
-        id="message-container"
-        phx-hook="ChatScroll"
-      >
+    <!-- Messages Area -->
+          <div
+            class="flex-1 overflow-y-auto overflow-x-hidden p-4 flex flex-col items-center scroll-smooth"
+            id="message-container"
+            phx-hook="ChatScroll"
+          >
             <div id="message-stream" phx-update="stream" class="w-full flex flex-col items-center">
               <%= for {id, message} <- @streams.messages do %>
                 <div
@@ -483,10 +485,10 @@ defmodule CurriclickWeb.ChatLive do
 
               <div class="flex items-center justify-between px-4 pb-3 gap-2">
                 <div class="flex items-center gap-2">
-                  <label class="cursor-pointer flex items-center gap-2 text-xs font-medium text-base-content/70 hover:text-base-content select-none">
+                  <label class="cursor-pointer flex items-center gap-2 text-sm font-medium text-base-content/70 hover:text-base-content select-none">
                     <input
                       type="checkbox"
-                      class="checkbox checkbox-xs checkbox-primary rounded"
+                      class="checkbox checkbox-sm checkbox-primary rounded"
                       checked={
                         @job_cards != [] &&
                           MapSet.size(@selected_job_ids) ==
@@ -495,7 +497,7 @@ defmodule CurriclickWeb.ChatLive do
                             )
                       }
                       phx-click="toggle_select_all"
-                    /> Selecionar todos
+                    /> Selecionar todas as vagas
                   </label>
                 </div>
 
@@ -503,7 +505,7 @@ defmodule CurriclickWeb.ChatLive do
                   <div
                     tabindex="0"
                     role="button"
-                    class="btn btn-ghost btn-xs gap-1 font-normal text-base-content/70"
+                    class="btn btn-ghost btn-md gap-1 font-normal text-base-content/70"
                   >
                     <.icon name="hero-arrows-up-down" class="w-3 h-3" />
                     {if @sort_by == :match, do: "Relevância", else: "Probabilidade"}
@@ -537,9 +539,9 @@ defmodule CurriclickWeb.ChatLive do
               </div>
             </div>
             
-        <!-- Panel Content -->
-        <div class="flex-1 overflow-y-auto overflow-x-hidden p-4">
-          <!-- Job Cards List -->
+    <!-- Panel Content -->
+            <div class="flex-1 overflow-y-auto overflow-x-hidden p-4">
+              <!-- Job Cards List -->
               <div class="space-y-3" id="job-cards-stream" phx-update="stream">
                 <%= for {dom_id, job_card} <- @streams.job_cards do %>
                   <% is_applied = MapSet.member?(@applied_job_ids, job_card.job_id) %>
@@ -579,16 +581,16 @@ defmodule CurriclickWeb.ChatLive do
                             disabled={is_applied}
                           />
                         </label>
-                      <div class="flex-1 min-w-0">
-                        <h3 class="font-bold text-lg leading-tight">{job_card.title}</h3>
-                        <p class="text-sm text-base-content/60 mt-0.5">{job_card.company_name}</p>
-                        <%= if job_card.location do %>
-                          <p class="text-sm text-base-content/50 flex items-center gap-1 mt-1">
-                            <.icon name="hero-map-pin" class="w-4 h-4" />
-                            {job_card.location}
-                          </p>
-                        <% end %>
-                      </div>
+                        <div class="flex-1 min-w-0">
+                          <h3 class="font-bold text-lg leading-tight">{job_card.title}</h3>
+                          <p class="text-sm text-base-content/60 mt-0.5">{job_card.company_name}</p>
+                          <%= if job_card.location do %>
+                            <p class="text-sm text-base-content/50 flex items-center gap-1 mt-1">
+                              <.icon name="hero-map-pin" class="w-4 h-4" />
+                              {job_card.location}
+                            </p>
+                          <% end %>
+                        </div>
                         <.match_quality_badge
                           quality={job_card.match_quality.score}
                           explanation={job_card.match_quality.explanation}
@@ -598,11 +600,14 @@ defmodule CurriclickWeb.ChatLive do
     <!-- Keywords -->
                       <%= if job_card.keywords && job_card.keywords != [] do %>
                         <div class="flex flex-wrap gap-1.5 mt-1 mb-2">
-                      <%= for keyword <- Enum.take(job_card.keywords, 5) do %>
-                        <span class="badge badge-ghost text-base-content/60 cursor-help" data-smart-tooltip={keyword.explanation}>
-                          {keyword.term}
-                        </span>
-                      <% end %>
+                          <%= for keyword <- Enum.take(job_card.keywords, 5) do %>
+                            <span
+                              class="badge badge-ghost text-base-content/60 cursor-help"
+                              data-smart-tooltip={keyword.explanation}
+                            >
+                              {keyword.term}
+                            </span>
+                          <% end %>
                           <%= if length(job_card.keywords) > 5 do %>
                             <span class="badge badge-ghost text-base-content/60">
                               +{length(job_card.keywords) - 5}
@@ -610,12 +615,12 @@ defmodule CurriclickWeb.ChatLive do
                           <% end %>
                         </div>
                       <% end %>
-
+                      
     <!-- Summary -->
                       <p class="text-sm text-base-content/70 line-clamp-3 mb-3">
                         {job_card.summary}
                       </p>
-
+                      
     <!-- Pros & Cons -->
                       <div class="grid grid-cols-1 gap-2 mb-3">
                         <%= if job_card.pros && job_card.pros != [] do %>
@@ -637,7 +642,8 @@ defmodule CurriclickWeb.ChatLive do
                         <%= if job_card.cons && job_card.cons != [] do %>
                           <div class="bg-base-200/30 rounded-lg p-3">
                             <h4 class="text-sm font-semibold text-warning flex items-center gap-1.5 mb-2">
-                              <.icon name="hero-exclamation-triangle" class="w-4 h-4" /> Pontos de Atenção
+                              <.icon name="hero-exclamation-triangle" class="w-4 h-4" />
+                              Pontos de Atenção
                             </h4>
                             <ul class="space-y-1">
                               <%= for con <- Enum.take(job_card.cons, 3) do %>
@@ -648,22 +654,6 @@ defmodule CurriclickWeb.ChatLive do
                               <% end %>
                             </ul>
                           </div>
-                        <% end %>
-                      </div>
-
-                      
-    <!-- Quick info badges -->
-                      <div class="flex flex-wrap gap-2 mb-3">
-                        <%= if job_card.remote_allowed do %>
-                          <span class="badge badge-ghost badge-sm gap-1.5">
-                            <.icon name="hero-home" class="w-3.5 h-3.5" /> Remoto
-                          </span>
-                        <% end %>
-                        <%= if job_card.salary_range do %>
-                          <span class="badge badge-ghost badge-sm gap-1.5">
-                            <.icon name="hero-currency-dollar" class="w-3.5 h-3.5" />
-                            {job_card.salary_range}
-                          </span>
                         <% end %>
                       </div>
                       
@@ -746,9 +736,9 @@ defmodule CurriclickWeb.ChatLive do
             </.link>
           </div>
 
-      <div class="flex-1 overflow-y-auto overflow-x-hidden -mx-2 px-2">
-        <div class="divider text-[10px] font-bold text-base-content/50 uppercase tracking-wider mx-1 my-2">
-          Chats Anteriores
+          <div class="flex-1 overflow-y-auto overflow-x-hidden -mx-2 px-2">
+            <div class="divider text-[10px] font-bold text-base-content/50 uppercase tracking-wider mx-1 my-2">
+              Chats Anteriores
             </div>
             <ul class="space-y-1" phx-update="stream" id="conversations-list">
               <%= for {id, conversation} <- @streams.conversations do %>
@@ -838,7 +828,9 @@ defmodule CurriclickWeb.ChatLive do
 
                   <div class="form-control">
                     <label class="label">
-                      <span class="label-text font-bold text-base">{get_req_field(req, :question)}</span>
+                      <span class="label-text font-bold text-base">
+                        {get_req_field(req, :question)}
+                      </span>
                       <%= if confidence do %>
                         <div class="inline-flex" data-smart-tooltip={explanation}>
                           <%= case confidence do %>
@@ -937,7 +929,10 @@ defmodule CurriclickWeb.ChatLive do
 
     ~H"""
     <%= if @explanation do %>
-      <span class={["badge badge-sm font-medium cursor-help", @badge_class]} data-smart-tooltip={@explanation}>
+      <span
+        class={["badge badge-sm font-medium cursor-help", @badge_class]}
+        data-smart-tooltip={@explanation}
+      >
         {@label}
       </span>
     <% else %>
@@ -1033,7 +1028,6 @@ defmodule CurriclickWeb.ChatLive do
     |> Ash.create()
   end
 
-
   @spec mount(map(), map(), Phoenix.LiveView.Socket.t()) :: {:ok, Phoenix.LiveView.Socket.t()}
   def mount(_params, _session, socket) do
     socket = assign_new(socket, :current_user, fn -> nil end)
@@ -1098,7 +1092,9 @@ defmodule CurriclickWeb.ChatLive do
 
     selected_ids =
       job_cards
-      |> Enum.filter(& &1.selected)
+      |> Enum.filter(fn card ->
+        card.selected && !MapSet.member?(socket.assigns.applied_job_ids, card.job_id)
+      end)
       |> Enum.map(& &1.job_id)
       |> MapSet.new()
 
@@ -1246,14 +1242,19 @@ defmodule CurriclickWeb.ChatLive do
       conversation_id =
         if socket.assigns.conversation, do: socket.assigns.conversation.id, else: nil
 
-      params = prepare_application_params(socket.assigns.current_user, job_card, "Chat job search", conversation_id)
+      params =
+        prepare_application_params(
+          socket.assigns.current_user,
+          job_card,
+          "Chat job search",
+          conversation_id
+        )
 
       case JobApplication.add_to_queue(params, conversation_id) do
         {:ok, _} ->
           socket =
             socket
             |> assign(:applied_job_ids, MapSet.put(socket.assigns.applied_job_ids, job_id))
-            |> put_flash(:info, "Vaga adicionada à fila de candidaturas. As respostas estão sendo geradas.")
 
           {:noreply, socket}
 
@@ -1302,7 +1303,6 @@ defmodule CurriclickWeb.ChatLive do
             socket
             |> assign(:applied_job_ids, MapSet.put(socket.assigns.applied_job_ids, draft.job_id))
             |> assign(:application_draft, nil)
-            |> put_flash(:info, "Candidatura enviada com sucesso!")
 
           {:noreply, socket}
 
@@ -1333,12 +1333,14 @@ defmodule CurriclickWeb.ChatLive do
 
     results =
       Enum.map(selected_jobs, fn job_card ->
-        params = prepare_application_params(
-          socket.assigns.current_user,
-          job_card,
-          "Chat job search (batch)",
-          conversation_id
-        )
+        params =
+          prepare_application_params(
+            socket.assigns.current_user,
+            job_card,
+            "Chat job search (batch)",
+            conversation_id
+          )
+
         {job_card.job_id, JobApplication.add_to_queue(params, conversation_id)}
       end)
 
@@ -1356,7 +1358,7 @@ defmodule CurriclickWeb.ChatLive do
     socket =
       cond do
         success_count > 0 && error_count == 0 ->
-          put_flash(socket, :info, "#{success_count} vaga(s) adicionada(s) à fila!")
+          socket
 
         success_count > 0 && error_count > 0 ->
           put_flash(socket, :warning, "#{success_count} adicionada(s), #{error_count} falharam.")
@@ -1449,12 +1451,14 @@ defmodule CurriclickWeb.ChatLive do
         },
         socket
       ) do
-    {:noreply,
-     assign(
-       socket,
-       :applied_job_ids,
-       MapSet.put(socket.assigns.applied_job_ids, application.job_listing_id)
-     )}
+    socket =
+      assign(
+        socket,
+        :applied_job_ids,
+        MapSet.put(socket.assigns.applied_job_ids, application.job_listing_id)
+      )
+
+    {:noreply, refresh_job_card(socket, application.job_listing_id)}
   end
 
   def handle_info(
@@ -1468,12 +1472,14 @@ defmodule CurriclickWeb.ChatLive do
         },
         socket
       ) do
-    {:noreply,
-     assign(
-       socket,
-       :applied_job_ids,
-       MapSet.delete(socket.assigns.applied_job_ids, application.job_listing_id)
-     )}
+    socket =
+      assign(
+        socket,
+        :applied_job_ids,
+        MapSet.delete(socket.assigns.applied_job_ids, application.job_listing_id)
+      )
+
+    {:noreply, refresh_job_card(socket, application.job_listing_id)}
   end
 
   def handle_info(
@@ -1609,7 +1615,9 @@ defmodule CurriclickWeb.ChatLive do
       # Pre-select jobs marked as selected by the LLM
       selected_ids =
         job_cards
-        |> Enum.filter(& &1.selected)
+        |> Enum.filter(fn card ->
+          card.selected && !MapSet.member?(socket.assigns.applied_job_ids, card.job_id)
+        end)
         |> Enum.map(& &1.job_id)
         |> MapSet.new()
 
@@ -1650,7 +1658,7 @@ defmodule CurriclickWeb.ChatLive do
     if socket.assigns.conversation && socket.assigns.conversation.id == conversation_id do
       # Handle pre-selection for this card
       selected_ids =
-        if job_card.selected do
+        if job_card.selected && !MapSet.member?(socket.assigns.applied_job_ids, job_card.job_id) do
           MapSet.put(socket.assigns.selected_job_ids, job_card.job_id)
         else
           socket.assigns.selected_job_ids
@@ -1752,12 +1760,22 @@ defmodule CurriclickWeb.ChatLive do
     end
   end
 
+  @spec refresh_job_card(Phoenix.LiveView.Socket.t(), String.t()) :: Phoenix.LiveView.Socket.t()
+  defp refresh_job_card(socket, job_id) do
+    case Enum.find(socket.assigns.job_cards, &(&1.job_id == job_id)) do
+      nil -> socket
+      card -> stream_insert(socket, :job_cards, card)
+    end
+  end
+
   @spec update_job_cards_selection(Phoenix.LiveView.Socket.t(), [map()]) ::
           Phoenix.LiveView.Socket.t()
   defp update_job_cards_selection(socket, updated_job_cards) do
     selected_job_ids =
       updated_job_cards
-      |> Enum.filter(& &1.selected)
+      |> Enum.filter(fn card ->
+        card.selected && !MapSet.member?(socket.assigns.applied_job_ids, card.job_id)
+      end)
       |> Enum.map(& &1.job_id)
       |> MapSet.new()
 

@@ -13,6 +13,7 @@
 - [ ] Add a chat to the queue page so the user can ask the LLM questions about their job applications
 - [ ] Remove or fix the invisible button to toggle the list on the right in the queue page
 - [ ] Fix the indicator on the notification icon disappearing sometimes for some unknown reason
+- [ ] Increase the text size of the header elements in the non-detailed cards in the chat page
 
 <!-- Non-goals below: -->
 <!-- - [ ] Add a list of steps in the hiring process that are tracked by the app in the user dashboard page. -->

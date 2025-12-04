@@ -103,11 +103,10 @@ defmodule CurriclickWeb.ApplicationQueueLive do
         applications = fetch_applications(socket.assigns.current_user.id)
         new_selected_id = if applications != [], do: hd(applications).id, else: nil
 
-        {:noreply,
-         socket
-         |> put_flash(:info, "Candidatura removida da fila.")
-         |> assign(:applications, applications)
-         |> assign(:selected_application_id, new_selected_id)}
+         {:noreply,
+          socket
+          |> assign(:applications, applications)
+          |> assign(:selected_application_id, new_selected_id)}
 
       _ ->
         {:noreply, put_flash(socket, :error, "Candidatura não encontrada.")}
@@ -134,7 +133,6 @@ defmodule CurriclickWeb.ApplicationQueueLive do
 
               {:noreply,
                socket
-               |> put_flash(:info, "Candidatura enviada com sucesso!")
                |> assign(:applications, applications)
                |> assign(:selected_application_id, new_selected_id)}
 

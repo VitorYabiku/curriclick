@@ -1,5 +1,5 @@
 <div class="flex flex-col h-[100dvh] w-full overflow-hidden bg-base-100 text-base-content">
-  <.app_header current_user={@current_user} />
+  <.app_header current_user={@current_user} draft_count={assigns[:draft_count] || 0} />
 
   <main class="flex-1 overflow-hidden relative">
     {@inner_content}
