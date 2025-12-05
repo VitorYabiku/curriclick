@@ -7,24 +7,11 @@ defmodule Curriclick.Accounts.User do
     domain: Curriclick.Accounts,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshAuthentication, AshAi]
+    extensions: [AshAuthentication, AshAi, AshTypescript.Resource]
 
-  require Ash.Query
-
-  @profile_fields [
-    :profile_job_interests,
-    :profile_education,
-    :profile_skills,
-    :profile_experience,
-    :profile_remote_preference,
-    :profile_custom_instructions,
-    :profile_first_name,
-    :profile_last_name,
-    :profile_birth_date,
-    :profile_location,
-    :profile_cpf,
-    :profile_phone
-  ]
+typescript do
+    type_name "User"
+  end
 
   authentication do
     add_ons do
@@ -77,6 +64,17 @@ defmodule Curriclick.Accounts.User do
         api_key_hash_attribute :api_key_hash
       end
     end
+  end
+
+  vectorize do
+    # Vectorize the user's ideal job description for matching
+    attributes ideal_job_description: :ideal_job_vector
+    
+    # Use after_action strategy to automatically generate embeddings
+    strategy :after_action
+    
+    # Use the same embedding model as job listings
+    embedding_model Curriclick.Ai.OpenAiEmbeddingModel
   end
 
   postgres do
@@ -299,156 +297,28 @@ defmodule Curriclick.Accounts.User do
       prepare AshAuthentication.Strategy.ApiKey.SignInPreparation
     end
 
-    read :my_profile do
-      description "Return the authenticated user's saved profile"
-      get? true
-      prepare build(load: @profile_fields ++ [:profile_full_name])
-    end
+    # Update the current (actor) user's ideal_job_description without requiring an ID
+    action :update_ideal_job_description do
+      description "Update the authenticated user's ideal job description"
+      argument :ideal_job_description, :string, allow_nil?: false
 
-    update :update_profile do
-      description "Edit the authenticated user's saved profile fields"
-      require_atomic? false
-      accept @profile_fields
+      run fn input, %{actor: actor} ->
+        case actor do
+          user when is_struct(user, __MODULE__) ->
+            changeset =
+              user
+              |> Ash.Changeset.for_update(:update, %{ideal_job_description: input.ideal_job_description})
 
-      change fn changeset, _context ->
-        normalize_profile_fields(changeset)
-      end
-    end
-
-    action :chat_with_profile_assistant, :string do
-      argument :messages, {:array, :map}, allow_nil?: false
-      argument :user_id, :uuid, allow_nil?: false
-
-      run fn input, context ->
-        require Logger
-
-        Logger.info("Initializing manual LLM chain for chat_with_profile_assistant")
-
-        user_id = input.arguments.user_id
-        topic = "user_profile_chat:#{user_id}"
-
-        # Load user for actor
-        user =
-          Curriclick.Accounts.User
-          |> Ash.get!(user_id, authorize?: false)
-          |> Ash.load!(:profile_full_name)
-
-        system_msg = LangChain.Message.new_system!(profile_assistant_system_prompt(user))
-
-        history_messages =
-          input.arguments.messages
-          |> Enum.map(fn
-            %{"source" => "user", "text" => text} -> LangChain.Message.new_user!(text)
-            %{"source" => "assistant", "text" => text} -> LangChain.Message.new_assistant!(text)
-            %{"source" => :user, "text" => text} -> LangChain.Message.new_user!(text)
-            %{"source" => :assistant, "text" => text} -> LangChain.Message.new_assistant!(text)
-            _ -> nil
-          end)
-          |> Enum.reject(&is_nil/1)
-
-        messages = [system_msg | history_messages]
-
-        # Define tools
-        tools = [:update_user_profile]
-
-        # Setup Chain
-        chain =
-          LangChain.Chains.LLMChain.new!(%{
-            llm:
-              LangChain.ChatModels.ChatOpenAI.new!(%{
-                model: "gpt-5.1",
-                stream: true
-              })
-          })
-          |> LangChain.Chains.LLMChain.add_messages(messages)
-          |> AshAi.setup_ash_ai(
-            otp_app: :curriclick,
-            tools: tools,
-            actor: user
-          )
-          |> LangChain.Chains.LLMChain.add_callback(%{
-            on_llm_new_delta: fn _chain, deltas ->
-              Logger.debug("Received deltas in callback")
-              deltas = List.wrap(deltas)
-
-              Phoenix.PubSub.broadcast(
-                Curriclick.PubSub,
-                topic,
-                {:chat_delta, topic, deltas}
-              )
-
-              :ok
-            end,
-            on_tool_error: fn _chain, error, _tool_call ->
-              Logger.error("Tool execution error: #{inspect(error)}")
-              {:ok, "Error executing tool: #{inspect(error)}"}
-            end,
-            on_tool_result: fn _chain, tool_result, _tool_call ->
-              Logger.info("Tool execution success: #{inspect(tool_result)}")
-              # Broadcast that profile was updated so UI can refresh
-              Phoenix.PubSub.broadcast(
-                Curriclick.PubSub,
-                topic,
-                {:profile_updated, user_id}
-              )
-              {:ok, tool_result}
+            case Ash.update(changeset) do
+              {:ok, updated} -> {:ok, %{id: updated.id, ideal_job_description: updated.ideal_job_description}}
+              {:error, reason} -> {:error, reason}
             end
-          })
 
-        case LangChain.Chains.LLMChain.run(chain, mode: :while_needs_response) do
-          {:ok, _chain} ->
-            {:ok, "Complete"}
-
-          {:error, reason} ->
-            Logger.error("LLM Chain failed: #{inspect(reason)}")
-            {:error, inspect(reason)}
+          _ ->
+            {:error, %{message: "not_authenticated"}}
         end
       end
     end
-  end
-
-  defp profile_assistant_system_prompt(user) do
-    """
-    <role>
-    You are a friendly and helpful career assistant for Curriclick.
-    Your primary goal is to interview the user to complete their profile.
-    A complete profile allows Curriclick to generate high-quality job applications automatically.
-    </role>
-
-    <context>
-    Current User Profile:
-    #{summarize_profile_for_assistant(user)}
-    </context>
-
-    <instructions>
-    1. Analyze the user's current profile. Identify missing or incomplete information (e.g. skills, experience, education, contact info).
-    2. Ask the user focused questions to fill in these gaps. Do not ask for everything at once. Pick 1-2 most important missing fields.
-    3. If the user provides profile information:
-       - Use the `update_user_profile` tool to save it.
-       - Confirm to the user that you have updated their profile.
-    4. If the user asks about job applications, job search, or the queue:
-       - Politely remind them that you are their Profile Assistant.
-       - Suggest they visit the Job Application Queue or Chat page for application-specific tasks.
-    5. Be professional, encouraging, and concise.
-    6. Speak in the language of the user (likely Portuguese, based on context).
-    </instructions>
-    """
-  end
-
-  defp summarize_profile_for_assistant(user) do
-    """
-    Name: #{user.profile_full_name || "#{user.profile_first_name} #{user.profile_last_name}"}
-    Email: #{user.email}
-    Phone: #{user.profile_phone || "Not provided"}
-    CPF: #{user.profile_cpf || "Not provided"}
-    Location: #{user.profile_location || "Not provided"}
-    Skills: #{user.profile_skills || "Not provided"}
-    Experience: #{user.profile_experience || "Not provided"}
-    Education: #{user.profile_education || "Not provided"}
-    Job Interests: #{user.profile_job_interests || "Not provided"}
-    Remote Preference: #{user.profile_remote_preference || "Not provided"}
-    Custom Instructions/About: #{user.profile_custom_instructions || "Not provided"}
-    """
   end
 
   policies do
@@ -485,6 +355,13 @@ defmodule Curriclick.Accounts.User do
 
     attribute :hashed_password, :string do
       sensitive? true
+    end
+
+    attribute :ideal_job_description, :string do
+      description "Description of the ideal job for the user"
+      allow_nil? true
+      public? true
+      constraints max_length: 2000
     end
 
     attribute :confirmed_at, :utc_datetime_usec

@@ -32,10 +32,6 @@ defmodule Curriclick.Companies.JobListing do
     authorizers: [Ash.Policy.Authorizer],
     extensions: [AshTypescript.Resource]
 
-  @result_count_default_limit 20
-
-  require Ash.Query
-
   postgres do
     table "job_listings"
     repo Curriclick.Repo
@@ -63,11 +59,90 @@ defmodule Curriclick.Companies.JobListing do
       description "Read job listings"
       primary? true
 
-      pagination do
-        keyset? true
-        default_limit @result_count_default_limit
-        max_page_size 25
+    read :find_matching_jobs do
+      description "Find job listings that match the user's ideal job description using AI embeddings"
+      
+      argument :ideal_job_description, :string do
+        description "The user's ideal job description to match against"
+        allow_nil? false
+        constraints max_length: 2000
       end
+      
+      argument :limit, :integer do
+        description "Maximum number of matching jobs to return"
+        allow_nil? true
+        default 25
+        constraints min: 1, max: 100
+      end
+
+      prepare before_action(fn query, _context ->
+        require Ash.Query
+        
+        # Generate embedding for the search query
+        case Curriclick.Ai.OpenAiEmbeddingModel.generate([query.arguments.ideal_job_description], []) do
+          {:ok, [search_vector]} ->
+            query
+            # Filter by cosine distance threshold (< 0.8 means > 20% similarity)
+            |> Ash.Query.filter(fragment("description_vector <=> ?::vector", ^search_vector) < 0.8)
+            |> Ash.Query.limit(query.arguments.limit || 25)
+            |> Ash.Query.load(:company)
+            # Store search vector for match score calculation
+            |> Ash.Query.set_context(%{search_vector: search_vector})
+            |> Ash.Query.after_action(fn _query, job_listings ->
+              search_vector = _query.context[:search_vector]
+              
+              if search_vector do
+                # Calculate match scores for all jobs in a single query
+                job_ids_str = job_listings |> Enum.map(&"'#{&1.id}'") |> Enum.join(",")
+                
+                batch_query = """
+                  SELECT 
+                    id::text as job_id,
+                    (1 - (description_vector <=> $1::vector)) * 100 as match_score
+                  FROM job_listings 
+                  WHERE id IN (#{job_ids_str}) AND description_vector IS NOT NULL
+                """
+                
+                case Curriclick.Repo.query(batch_query, [search_vector]) do
+                  {:ok, %{rows: rows}} ->
+                    # Create a map of job_id -> match_score
+                    scores_map = 
+                      rows
+                      |> Enum.into(%{}, fn [job_id, score] -> 
+                        {job_id, Float.round(score, 1)}
+                      end)
+                    
+                    # Add match scores to job listings
+                    job_listings_with_scores = 
+                      job_listings
+                      |> Enum.map(fn job_listing ->
+                        score = Map.get(scores_map, job_listing.id, 0.0)
+                        Map.put(job_listing, :match_score, score)
+                      end)
+                      # Sort by match score (highest first)
+                      |> Enum.sort_by(fn job_listing -> job_listing.match_score end, :desc)
+                      
+                    {:ok, job_listings_with_scores}
+                    
+                  {:error, error} ->
+                    IO.puts("Batch query error: #{inspect(error)}")
+                    # Fallback: add 0 scores and return unsorted
+                    job_listings_with_scores = 
+                      job_listings
+                      |> Enum.map(fn job_listing ->
+                        Map.put(job_listing, :match_score, 0.0)
+                      end)
+                    {:ok, job_listings_with_scores}
+                end
+              else
+                {:ok, job_listings}
+              end
+            end)
+
+          {:error, error} ->
+            {:error, error}
+        end
+      end)
     end
 
     action :set_chat_job_cards, :boolean do
