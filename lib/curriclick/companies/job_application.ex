@@ -105,7 +105,13 @@ defmodule Curriclick.Companies.JobApplication do
         messages = Curriclick.Companies.JobApplication.ChatPrompt.generate_messages(input, context)
 
         # Define tools
-        tools = [:update_answer]
+        tools = [
+          :update_answer,
+          :update_user_profile,
+          :confirm_applications,
+          :delete_applications,
+          :select_applications
+        ]
 
         # Setup Chain
         chain =
@@ -193,6 +199,75 @@ defmodule Curriclick.Companies.JobApplication do
 
           {:ok, application}
         end
+      end
+    end
+    action :update_user_profile, :struct do
+      constraints instance_of: Curriclick.Accounts.User
+      argument :profile_job_interests, :string
+      argument :profile_education, :string
+      argument :profile_skills, :string
+      argument :profile_experience, :string
+      argument :profile_remote_preference, :atom do
+        constraints one_of: [:remote_only, :remote_friendly, :hybrid, :on_site, :no_preference]
+      end
+      argument :profile_custom_instructions, :string
+      argument :profile_first_name, :string
+      argument :profile_last_name, :string
+      argument :profile_birth_date, :date
+      argument :profile_location, :string
+      argument :profile_cpf, :string
+      argument :profile_phone, :string
+
+      run fn input, context ->
+        user = context.actor
+        Curriclick.Accounts.User.update_profile(user, input.arguments)
+      end
+    end
+
+    action :confirm_applications, :map do
+      argument :application_ids, {:array, :uuid}, allow_nil?: false
+
+      run fn input, context ->
+        require Ash.Query
+
+        Curriclick.Companies.JobApplication
+        |> Ash.Query.filter(id in ^input.arguments.application_ids)
+        |> Ash.Query.filter(user_id == ^context.actor.id)
+        |> Ash.bulk_update(:submit, %{}, authorize?: true, actor: context.actor)
+
+        {:ok, %{submitted_ids: input.arguments.application_ids}}
+      end
+    end
+
+    action :delete_applications, :map do
+      argument :application_ids, {:array, :uuid}, allow_nil?: false
+
+      run fn input, context ->
+        require Ash.Query
+
+        Curriclick.Companies.JobApplication
+        |> Ash.Query.filter(id in ^input.arguments.application_ids)
+        |> Ash.Query.filter(user_id == ^context.actor.id)
+        |> Ash.bulk_destroy(:destroy, %{}, authorize?: true, actor: context.actor)
+
+        {:ok, %{deleted_ids: input.arguments.application_ids}}
+      end
+    end
+
+    action :select_applications, :map do
+      argument :application_ids, {:array, :uuid}, allow_nil?: false
+
+      run fn input, context ->
+        user_id = context.actor.id
+        topic = "job_application_queue_chat:#{user_id}"
+
+        Phoenix.PubSub.broadcast(
+          Curriclick.PubSub,
+          topic,
+          {:select_applications, input.arguments.application_ids}
+        )
+
+        {:ok, %{selected_ids: input.arguments.application_ids}}
       end
     end
   end

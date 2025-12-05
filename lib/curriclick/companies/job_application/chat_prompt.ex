@@ -71,7 +71,7 @@ defmodule Curriclick.Companies.JobApplication.ChatPrompt do
     answers_context =
       if target_application do
         (target_application.answers || [])
-        |> Enum.map(fn a ->
+        |> Enum.map_join("\n", fn a ->
           """
           ---
           ID: #{a.id}
@@ -82,14 +82,13 @@ defmodule Curriclick.Companies.JobApplication.ChatPrompt do
           Missing Info: #{a.missing_info || "None"}
           """
         end)
-        |> Enum.join("\n")
       else
         "No specific application selected. Refer to the queue below."
       end
 
     other_apps_context =
       other_applications
-      |> Enum.map(fn app ->
+      |> Enum.map_join("\n\n", fn app ->
         relevant_answers =
           (app.answers || [])
           # If we are in queue mode (target_application is nil), show ALL answers or at least significant ones
@@ -97,14 +96,16 @@ defmodule Curriclick.Companies.JobApplication.ChatPrompt do
             if target_application do
                a.confidence_score == :low or not is_nil(a.missing_info) or is_nil(a.answer) or a.answer == ""
             else
-               true # Show all answers for all apps if in queue mode? Might be too long. Let's stick to problematic ones + context
+               # Show all answers for all apps if in queue mode? Might be too long.
+               # Let's stick to problematic ones + context
+               true
             end
           end)
 
         answers_str =
           if relevant_answers != [] do
             relevant_answers
-            |> Enum.map(fn a ->
+            |> Enum.map_join("\n", fn a ->
               """
               ID: #{a.id}
               Question: #{a.requirement.question}
@@ -112,24 +113,24 @@ defmodule Curriclick.Companies.JobApplication.ChatPrompt do
               Missing Info: #{a.missing_info || "None"}
               """
             end)
-            |> Enum.join("\n")
           else
             "All answers look good or pending generation."
           end
 
         """
         Job: #{app.job_listing.title} at #{app.job_listing.company.name}
+        Application ID: #{app.id}
         Date: #{app.inserted_at}
         ---
         #{answers_str}
         """
       end)
-      |> Enum.join("\n\n")
 
     job_context_str =
       if target_application do
         """
         Job Title: #{target_application.job_listing.title}
+        Application ID: #{target_application.id}
         Company: #{target_application.job_listing.company.name}
         Date: #{target_application.inserted_at}
         """
@@ -165,10 +166,18 @@ defmodule Curriclick.Companies.JobApplication.ChatPrompt do
        - Identify which application(s) the info applies to.
        - Use the `update_answer` tool to update the application record using the answer IDs provided in the context.
        - IMPORTANT: If the user provides information that was previously missing, check if it is complete. If fully provided, set `missing_info` to null. If only partially provided, update `missing_info` to describe what is still missing.
-    3. Be proactive in pointing out low confidence answers or missing information across the queue.
-    4. Always address the user directly (2nd person) in their language (Portuguese usually).
-    5. When updating an answer, explain briefly what you changed and why.
-    6. When referencing an application, ALWAYS use the Job Title, Company Name, and Date. NEVER use the ID.
+    3. If the user provides general profile information (e.g., "My phone number is...", "Add React to my skills"):
+       - Use the `update_user_profile` tool to update their global profile.
+       - Note: This will help generate better answers for future applications.
+    4. If the user wants to perform actions on applications (submit, delete, select):
+       - Identify the application IDs from the context (Application ID field).
+       - Use `confirm_applications` to submit/apply (only if the user explicitly asks to submit/apply).
+       - Use `delete_applications` to remove/discard (only if the user explicitly asks to delete).
+       - Use `select_applications` if the user explicitly asks to select them or if you want to highlight them for the user (e.g. "Which applications are for Google?").
+    5. Be proactive in pointing out low confidence answers or missing information across the queue.
+    6. Always address the user directly (2nd person) in their language (Portuguese usually).
+    7. When updating an answer, explain briefly what you changed and why.
+    8. When referencing an application, ALWAYS use the Job Title, Company Name, and Date. NEVER use the ID in the response text (only in tool calls).
     </instructions>
     """
 

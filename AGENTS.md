@@ -36,6 +36,7 @@ It already includes rich, package-specific usage rules that you should follow wh
 - **Job Application Queue Page**: `lib/curriclick_web/live/application_queue_live.ex`
     - LLM Definition (`chat_with_assistant` Ash action): `lib/curriclick/companies/job_application.ex`
 - **User Profile Page**: `lib/curriclick_web/live/user_profile_live.ex`
+    - LLM Definition (`chat_with_profile_assistant` Ash action): `lib/curriclick/accounts/user.ex`
 - **User Dashboard Page (contains all confirmed job application)**: `lib/curriclick_web/live/user_dashboard_live.ex`
 - **Header**: `app_header` LiveView component in `lib/curriclick_web/components/layouts.ex`
 

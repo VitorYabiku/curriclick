@@ -31,6 +31,7 @@ defmodule CurriclickWeb.ApplicationQueueLive do
         :selected_application_id,
         if(applications != [], do: hd(applications).id, else: nil)
       )
+      |> assign(:selected_application_ids, MapSet.new())
       |> assign(:show_chat, false)
       |> assign(:chat_messages, [])
       |> assign(:chat_loading, false)
@@ -91,8 +92,75 @@ defmodule CurriclickWeb.ApplicationQueueLive do
     end
   end
 
+  def handle_info({:select_applications, ids}, socket) do
+    {:noreply, assign(socket, :selected_application_ids, MapSet.new(ids))}
+  end
+
   def handle_info({:chat_complete, _}, socket) do
     {:noreply, assign(socket, :chat_loading, false)}
+  end
+
+  def handle_event("toggle_select_all", _params, socket) do
+    all_ids = Enum.map(socket.assigns.applications, & &1.id)
+    current_ids = socket.assigns.selected_application_ids
+
+    new_ids =
+      if MapSet.size(current_ids) == length(all_ids) do
+        MapSet.new()
+      else
+        MapSet.new(all_ids)
+      end
+
+    {:noreply, assign(socket, :selected_application_ids, new_ids)}
+  end
+
+  def handle_event("toggle_selection", %{"id" => id}, socket) do
+    current_ids = socket.assigns.selected_application_ids
+
+    new_ids =
+      if MapSet.member?(current_ids, id) do
+        MapSet.delete(current_ids, id)
+      else
+        MapSet.put(current_ids, id)
+      end
+
+    {:noreply, assign(socket, :selected_application_ids, new_ids)}
+  end
+
+  def handle_event("remove_selected", _params, socket) do
+    ids = MapSet.to_list(socket.assigns.selected_application_ids)
+    user = socket.assigns.current_user
+
+    Curriclick.Companies.JobApplication
+    |> Ash.Query.filter(id in ^ids)
+    |> Ash.bulk_destroy(:destroy, %{}, authorize?: true, actor: user)
+
+    applications = fetch_applications(user.id)
+    new_selected_id = if applications != [], do: hd(applications).id, else: nil
+
+    {:noreply,
+     socket
+     |> assign(:applications, applications)
+     |> assign(:selected_application_ids, MapSet.new())
+     |> assign(:selected_application_id, new_selected_id)}
+  end
+
+  def handle_event("confirm_selected", _params, socket) do
+    ids = MapSet.to_list(socket.assigns.selected_application_ids)
+    user = socket.assigns.current_user
+
+    Curriclick.Companies.JobApplication
+    |> Ash.Query.filter(id in ^ids)
+    |> Ash.bulk_update(:submit, %{}, authorize?: true, actor: user)
+
+    applications = fetch_applications(user.id)
+    new_selected_id = if applications != [], do: hd(applications).id, else: nil
+
+    {:noreply,
+     socket
+     |> assign(:applications, applications)
+     |> assign(:selected_application_ids, MapSet.new())
+     |> assign(:selected_application_id, new_selected_id)}
   end
 
   def handle_event("remove", %{"id" => id}, socket) do
@@ -575,24 +643,79 @@ defmodule CurriclickWeb.ApplicationQueueLive do
         <!-- Application List -->
         <div class="flex flex-col h-full">
           <!-- Desktop Header -->
-          <div class="flex items-center justify-between p-4 border-b border-base-300 bg-base-200/30 gap-2">
-            <div class="flex items-center gap-2 min-w-0">
-              <h2 class="font-bold text-lg truncate">
-                {if @show_chat, do: "Fila", else: "Fila de Candidaturas"}
-              </h2>
-              <span class="badge badge-primary shrink-0">{length(@applications)}</span>
-            </div>
-            <div class="flex items-center gap-2 shrink-0">
-              <button
-                class={["btn btn-accent btn-sm text-accent-content", @show_chat && "btn-square"]}
-                phx-click="toggle_chat"
-              >
-                <.icon name="hero-sparkles" class="w-4 h-4" />
-                <%= if !@show_chat do %>
-                  Assistente
+          <div class="flex items-center justify-between p-4 border-b border-base-300 bg-base-200/30 gap-2 h-16">
+            <%= if MapSet.size(@selected_application_ids) > 0 do %>
+              <%
+                 selected_ids = @selected_application_ids
+                 selected_count = MapSet.size(selected_ids)
+
+                 # Determine if we can confirm
+                 selected_apps = Enum.filter(@applications, &MapSet.member?(selected_ids, &1.id))
+                 can_confirm = Enum.all?(selected_apps, fn app ->
+                   stats = get_application_stats(app)
+                   stats.missing_answers_count == 0
+                 end)
+              %>
+              <div class="flex items-center gap-3 w-full animate-fade-in">
+                <input
+                  type="checkbox"
+                  checked={selected_count == length(@applications)}
+                  phx-click="toggle_select_all"
+                  class="checkbox checkbox-sm checkbox-primary"
+                />
+                <span class="font-bold text-primary whitespace-nowrap">{selected_count} selecionado(s)</span>
+
+                <div class="flex items-center gap-2 ml-auto">
+                  <button
+                    class="btn btn-ghost btn-sm text-error btn-square"
+                    phx-click="remove_selected"
+                    data-confirm="Tem certeza que deseja remover os itens selecionados?"
+                    title="Remover selecionados"
+                  >
+                    <.icon name="hero-trash" class="w-4 h-4" />
+                  </button>
+                  <button
+                    class="btn btn-primary btn-sm"
+                    phx-click="confirm_selected"
+                    disabled={!can_confirm}
+                    title={if !can_confirm, do: "Alguns itens selecionados possuem pendências"}
+                  >
+                    <.icon name="hero-check" class="w-4 h-4" />
+                    <span class="hidden sm:inline">Confirmar</span>
+                  </button>
+                </div>
+              </div>
+            <% else %>
+              <div class="flex items-center gap-3 w-full">
+                <%= if @applications != [] do %>
+                  <input
+                    type="checkbox"
+                    checked={false}
+                    phx-click="toggle_select_all"
+                    class="checkbox checkbox-sm opacity-50 hover:opacity-100 transition-opacity"
+                    title="Selecionar todos"
+                  />
                 <% end %>
-              </button>
-            </div>
+
+                <div class="flex items-center gap-2 min-w-0">
+                  <h2 class="font-bold text-lg truncate">
+                    {if @show_chat, do: "Fila", else: "Fila de Candidaturas"}
+                  </h2>
+                  <span class="badge badge-primary shrink-0">{length(@applications)}</span>
+                </div>
+                <div class="flex items-center gap-2 shrink-0 ml-auto">
+                  <button
+                    class={["btn btn-accent btn-sm text-accent-content", @show_chat && "btn-square"]}
+                    phx-click="toggle_chat"
+                  >
+                    <.icon name="hero-sparkles" class="w-4 h-4" />
+                    <%= if !@show_chat do %>
+                      Assistente
+                    <% end %>
+                  </button>
+                </div>
+              </div>
+            <% end %>
           </div>
 
           <div class="flex-1 overflow-y-auto overflow-x-hidden p-4 bg-base-200/50">
@@ -601,14 +724,26 @@ defmodule CurriclickWeb.ApplicationQueueLive do
                 <% stats = get_application_stats(app) %>
                 <div
                   class={[
-                    "card bg-base-100 shadow-sm border transition-all cursor-pointer hover:border-primary/50 hover:shadow-md group text-left",
+                    "card bg-base-100 shadow-sm border transition-all hover:border-primary/50 hover:shadow-md group text-left relative",
                     @selected_application_id == app.id &&
                       "border-primary ring-1 ring-primary bg-primary/5"
                   ]}
-                  phx-click="select_application"
-                  phx-value-id={app.id}
                 >
-                  <div class="card-body p-4 gap-2">
+                  <div class="absolute top-4 left-4 z-20">
+                    <input
+                      type="checkbox"
+                      checked={MapSet.member?(@selected_application_ids, app.id)}
+                      phx-click="toggle_selection"
+                      phx-value-id={app.id}
+                      class="checkbox checkbox-primary checkbox-sm"
+                    />
+                  </div>
+
+                  <div
+                    class="card-body p-4 gap-2 pl-12 cursor-pointer"
+                    phx-click="select_application"
+                    phx-value-id={app.id}
+                  >
                     <div>
                       <h3 class="font-bold text-base leading-tight">{app.job_listing.title}</h3>
                       <p class="text-sm text-base-content/60 mt-0.5">
