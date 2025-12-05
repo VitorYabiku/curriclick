@@ -19,12 +19,7 @@ Curriclick.Companies.JobListing
 # |> Ash.read!()
 # |> dbg()
 
-|> Ash.Query.for_read(:find_matching_jobs, %{ideal_job_description: test_description, limit: 5})
-# |> Ash.Query.load([
-#   dummy_test: %{test_argument: 6669},
-#   test_calculation: %{test_argument: 69.420}
-# ])
-|> Ash.read!()
+Curriclick.Companies.find_matching_jobs(%{query: test_description, limit: 5})
 |> dbg()
 
 # {:ok, %{"results" => []}} ->

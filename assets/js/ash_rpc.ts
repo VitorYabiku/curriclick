@@ -43,8 +43,6 @@ export type JobListingResourceSchema = {
   normalizedSalary: Decimal | null;
   zipCode: string | null;
   fips: string | null;
-  matchScore: { __type: "ComplexCalculation"; __returnType: number | null; __args: { searchVector?: Array<number> }; };
-  cosineDistance: { __type: "ComplexCalculation"; __returnType: number | null; __args: { vector1?: Array<number>; vector2?: Array<number> }; };
   company: { __type: "Relationship"; __resource: CompanyResourceSchema | null; };
 };
 
@@ -295,26 +293,6 @@ export type JobListingFilterInput = {
     eq?: string;
     notEq?: string;
     in?: Array<string>;
-  };
-
-  matchScore?: {
-    eq?: number;
-    notEq?: number;
-    greaterThan?: number;
-    greaterThanOrEqual?: number;
-    lessThan?: number;
-    lessThanOrEqual?: number;
-    in?: Array<number>;
-  };
-
-  cosineDistance?: {
-    eq?: number;
-    notEq?: number;
-    greaterThan?: number;
-    greaterThanOrEqual?: number;
-    lessThan?: number;
-    lessThanOrEqual?: number;
-    in?: Array<number>;
   };
 
 
@@ -1056,37 +1034,42 @@ export async function validateGetJobListing(
 
 
 export type FindMatchingJobsInput = {
-  idealJobDescription: string;
+  query?: string;
+  profileContext?: string;
   limit?: number;
+  minScore?: number;
+  semanticAggregateBoost?: number;
+  semanticTitleBoost?: number;
+  semanticDescriptionBoost?: number;
+  semanticSkillsBoost?: number;
+  semanticQueryProfileBoost?: number;
+  textTitleBoost?: number;
+  textDescriptionBoost?: number;
+  textSkillsBoost?: number;
+  textQueryProfileBoost?: number;
+  profileRemotePreference?: "remote_only" | "remote_friendly" | "hybrid" | "on_site" | "no_preference";
+  workTypes?: Array<"CONTRACT" | "FULL_TIME" | "INTERNSHIP" | "OTHER" | "PART_TIME" | "TEMPORARY" | "VOLUNTEER">;
+  remoteAllowed?: boolean;
 };
 
-export type FindMatchingJobsFields = UnifiedFieldSelection<JobListingResourceSchema>[];
-export type InferFindMatchingJobsResult<
-  Fields extends FindMatchingJobsFields,
-> = Array<InferResult<JobListingResourceSchema, Fields>>;
+export type InferFindMatchingJobsResult = Array<CurriclickCompaniesJobListingMatchResourceSchema>;
 
-export type FindMatchingJobsResult<Fields extends FindMatchingJobsFields> = | { success: true; data: InferFindMatchingJobsResult<Fields>; }
+export type FindMatchingJobsResult = | { success: true; data: InferFindMatchingJobsResult; }
 | { success: false; errors: AshRpcError[]; }
 
 ;
 
-export async function findMatchingJobs<Fields extends FindMatchingJobsFields>(
+export async function findMatchingJobs(
   config: {
-  input: FindMatchingJobsInput;
-  fields: Fields;
-  filter?: JobListingFilterInput;
-  sort?: string;
+  input?: FindMatchingJobsInput;
   headers?: Record<string, string>;
   fetchOptions?: RequestInit;
   customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
-): Promise<FindMatchingJobsResult<Fields>> {
+): Promise<FindMatchingJobsResult> {
   const payload = {
     action: "find_matching_jobs",
-    input: config.input,
-    ...(config.fields !== undefined && { fields: config.fields }),
-    ...(config.filter && { filter: config.filter }),
-    ...(config.sort && { sort: config.sort })
+    input: config.input
   };
 
   const headers: Record<string, string> = {
@@ -1124,7 +1107,7 @@ export async function findMatchingJobs<Fields extends FindMatchingJobsFields>(
 
 export async function validateFindMatchingJobs(
   config: {
-  input: FindMatchingJobsInput;
+  input?: FindMatchingJobsInput;
   headers?: Record<string, string>;
   fetchOptions?: RequestInit;
   customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;

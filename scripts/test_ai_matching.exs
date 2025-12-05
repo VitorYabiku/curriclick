@@ -11,13 +11,10 @@ IO.puts("Testing with current embeddings...")
 test_description = "Data Science engineer"
 
 try do
-  result = JobListing
-  |> Ash.Query.for_read(:find_matching_jobs, %{
-    ideal_job_description: test_description,
+  result = Curriclick.Companies.find_matching_jobs(%{
+    query: test_description,
     limit: 10
   })
-  |> Ash.Query.ensure_selected([:match_score])
-  |> Ash.read()
   
   case result do
     {:ok, job_listings} ->

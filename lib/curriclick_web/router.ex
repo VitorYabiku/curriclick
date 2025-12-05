@@ -1,4 +1,7 @@
 defmodule CurriclickWeb.Router do
+  @moduledoc """
+  The application router.
+  """
   use CurriclickWeb, :router
 
   import Oban.Web.Router
@@ -50,6 +53,8 @@ defmodule CurriclickWeb.Router do
       # on_mount {CurriclickWeb.LiveUserAuth, :live_no_user}
 
       live "/dashboard", UserDashboardLive
+      live "/profile", UserProfileLive
+      live "/applications/queue", ApplicationQueueLive
     end
 
     post "/rpc/run", AshTypescriptRpcController, :run

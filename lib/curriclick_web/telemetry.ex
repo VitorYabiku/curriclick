@@ -1,4 +1,7 @@
 defmodule CurriclickWeb.Telemetry do
+  @moduledoc """
+  Telemetry supervisor and metrics definition.
+  """
   use Supervisor
   import Telemetry.Metrics
 

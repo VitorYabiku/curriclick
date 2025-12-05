@@ -1,4 +1,7 @@
 defmodule Mix.Tasks.Curriclick.ImportCsv do
+  @moduledoc """
+  Imports job postings from CSV to Postgres.
+  """
   use Mix.Task
   require Logger
 

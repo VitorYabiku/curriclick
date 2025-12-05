@@ -1,13 +1,27 @@
 defmodule Curriclick.Companies do
+  @moduledoc """
+  The Companies domain, managing job listings, applications, and companies.
+  """
   use Ash.Domain, otp_app: :curriclick, extensions: [AshAi, AshAdmin.Domain, AshTypescript.Rpc]
 
   tools do
-    tool :find_matching_job_listing_for_job_description,
+    tool :find_suitable_job_postings_for_user,
          Curriclick.Companies.JobListing,
          :find_matching_jobs do
-      description """
-      Find job listings that match the provided job description using vector embeddings for semantic search.
-      """
+      description "Search job postings using the user's request plus saved profile (interests, skills, experience, location, remote preference, custom instructions). Always include profile_context and profile_remote_preference when available."
+    end
+
+    tool :set_chat_job_cards,
+         Curriclick.Companies.JobListing,
+         :set_chat_job_cards do
+      description "Display filtered job cards in the chat UI side panel. Call after find_suitable_job_postings_for_user with enriched data (pros, cons, success_probability). Requires conversation_id from current context."
+    end
+
+    tool :update_answer,
+         Curriclick.Companies.JobApplicationAnswer,
+         :update_by_ai do
+      description "Update a specific job application answer. Requires the answer's ID. You can update the answer text, confidence_score, confidence_explanation, and missing_info. Set missing_info to null if the information has been fully provided. If only partially provided, update missing_info to describe what is still missing."
+      identity :id
     end
   end
 
@@ -31,11 +45,11 @@ defmodule Curriclick.Companies do
     resource Curriclick.Companies.Company
     resource Curriclick.Companies.JobListing
     resource Curriclick.Companies.JobApplication
+    resource Curriclick.Companies.JobListingRequirement
+    resource Curriclick.Companies.JobApplicationAnswer
 
     resource Curriclick.Companies.JobListing do
-      define :find_matching_jobs,
-        action: :find_matching_jobs,
-        args: [:ideal_job_description, :limit]
+      define :find_matching_jobs, action: :find_matching_jobs
     end
   end
 end

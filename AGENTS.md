@@ -29,6 +29,17 @@ It already includes rich, package-specific usage rules that you should follow wh
 - The web layer (Phoenix controllers, LiveView, components, router) lives under `lib/curriclick_web`.
 - Application entrypoints and shared web helpers are defined in `lib/curriclick.ex` and `lib/curriclick_web.ex`.
 
+### Key Locations
+
+- **Chat Page**: `lib/curriclick_web/live/chat_live.ex`
+    - LLM Definition: `lib/curriclick/chat/message/changes/respond.ex`
+- **Job Application Queue Page**: `lib/curriclick_web/live/application_queue_live.ex`
+    - LLM Definition (`chat_with_assistant` Ash action): `lib/curriclick/companies/job_application.ex`
+- **User Profile Page**: `lib/curriclick_web/live/user_profile_live.ex`
+    - LLM Definition (`chat_with_profile_assistant` Ash action): `lib/curriclick/accounts/user.ex`
+- **User Dashboard Page (contains all confirmed job application)**: `lib/curriclick_web/live/user_dashboard_live.ex`
+- **Header**: `app_header` LiveView component in `lib/curriclick_web/components/layouts.ex`
+
 ### How to use documentation effectively
 
 - Use the usage rules and mix tasks below (`mix usage_rules.docs`, `mix usage_rules.search_docs`) to find official library documentation.

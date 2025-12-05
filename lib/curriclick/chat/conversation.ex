@@ -1,10 +1,16 @@
 defmodule Curriclick.Chat.Conversation do
+  @moduledoc """
+  Represents a chat conversation.
+  """
   use Ash.Resource,
     otp_app: :curriclick,
     domain: Curriclick.Chat,
     extensions: [AshOban],
     data_layer: AshPostgres.DataLayer,
     notifiers: [Ash.Notifier.PubSub]
+
+  require Ash.Query
+  import Ash.Resource.Change.Builtins, only: [cascade_destroy: 2]
 
   oban do
     triggers do
@@ -27,8 +33,6 @@ defmodule Curriclick.Chat.Conversation do
   end
 
   actions do
-    defaults [:destroy]
-
     read :read do
       primary? true
       pagination keyset?: true, required?: false
@@ -45,11 +49,35 @@ defmodule Curriclick.Chat.Conversation do
       filter expr(user_id == ^actor(:id))
     end
 
+    update :update_job_cards do
+      accept [:job_cards]
+    end
+
     update :generate_name do
       accept []
       transaction? false
       require_atomic? false
       change Curriclick.Chat.Conversation.Changes.GenerateName
+    end
+
+    destroy :destroy do
+      require_atomic? false
+
+      # Unlink job applications before removing the conversation
+      change fn changeset, _context ->
+        Ash.Changeset.before_action(changeset, fn changeset ->
+          conversation_id = changeset.data.id
+
+          Curriclick.Companies.JobApplication
+          |> Ash.Query.filter(conversation_id == ^conversation_id)
+          |> Ash.bulk_update!(:nilify_conversation, %{}, authorize?: false)
+
+          changeset
+        end)
+      end
+
+      # Delete dependent messages before removing the conversation to satisfy FK constraints.
+      change cascade_destroy(:messages, after_action?: false)
     end
   end
 
@@ -71,6 +99,11 @@ defmodule Curriclick.Chat.Conversation do
 
     attribute :title, :string do
       public? true
+    end
+
+    attribute :job_cards, {:array, Curriclick.Companies.JobCardPresentation} do
+      public? true
+      default []
     end
 
     timestamps()

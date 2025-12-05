@@ -1,4 +1,7 @@
 defmodule Curriclick.Companies.Company do
+  @moduledoc """
+  Represents a company that posts job listings.
+  """
   use Ash.Resource,
     otp_app: :curriclick,
     domain: Curriclick.Companies,

@@ -1,4 +1,7 @@
 defmodule Mix.Tasks.Curriclick.GenerateQueryProfiles do
+  @moduledoc """
+  Generates query profiles (hypothetical resumes) for job listings using OpenAI.
+  """
   use Mix.Task
   require Logger
   require Ash.Query
@@ -21,7 +24,10 @@ defmodule Mix.Tasks.Curriclick.GenerateQueryProfiles do
     
     Logger.info("Fetching job listings from database...")
     # Fetch all listings
-    listings = Curriclick.Companies.JobListing |> Ash.read!()
+    listings = 
+      Curriclick.Companies.JobListing 
+      |> Ash.Query.load(:company)
+      |> Ash.read!()
 
     Logger.info("Found #{length(listings)} listings. Starting generation...")
 
@@ -44,7 +50,7 @@ defmodule Mix.Tasks.Curriclick.GenerateQueryProfiles do
   defp generate_and_update(listing, openai_key, es_url, es_key, index) do
     # Check if query_profile is already present (optional optimization, but let's just overwrite for now)
     
-    case generate_profile(listing.description, openai_key) do
+    case generate_profile(listing, openai_key) do
       {:ok, profile} ->
         update_elasticsearch(listing.id, profile, es_url, es_key, index)
       {:error, reason} ->
@@ -53,7 +59,7 @@ defmodule Mix.Tasks.Curriclick.GenerateQueryProfiles do
     end
   end
 
-  defp generate_profile(description, key) do
+  defp generate_profile(listing, key) do
     url = "https://api.openai.com/v1/chat/completions"
     headers = [
       {"Content-Type", "application/json"},
@@ -61,13 +67,58 @@ defmodule Mix.Tasks.Curriclick.GenerateQueryProfiles do
     ]
     
     # Truncate description if too long to save tokens/money
-    truncated_desc = String.slice(description, 0, 5000)
+    description = String.slice(listing.description || "", 0, 3000)
+    skills = listing.skills_desc || ""
+    company_name = if listing.company, do: listing.company.name, else: "Unknown Company"
+
+    system_prompt = """
+    You are an expert career coach and recruiter.
+    Given a <job_listing>, create a detailed **query profile** written from a **candidate's perspective**.
+    This profile should describe what the perfect candidate is looking for when searching for this exact job.
+
+    # Instructions
+    - Focus on aspects a candidate would naturally mention in their resume or job search query.
+    - Include key characteristics like:
+      - Role and Title
+      - Technical Skills and Tools
+      - Experience Level
+      - Industry and Domain
+      - Work preferences (Remote, Salary, Culture)
+    - **Format**: Descriptive text without bullet points or sections.
+    - **Goal**: The output will be used to match candidates to this job using semantic search.
+
+    # Example
+    "Senior Backend Engineer looking for a remote role in a fintech startup working with Elixir, Phoenix, and PostgreSQL. Experienced in building scalable APIs and distributed systems. Valuing engineering excellence, test-driven development, and a collaborative culture. Seeking a salary range of $140k-$180k USD."
+    """
+
+    user_prompt = """
+    Please generate a query profile for the following job listing:
+
+    <job_listing>
+      <title>#{listing.title}</title>
+      <company>#{company_name}</company>
+      <location>#{listing.location}</location>
+      <work_type>#{listing.work_type}</work_type>
+      <experience_level>#{listing.formatted_experience_level}</experience_level>
+      <salary>
+        Min: #{listing.min_salary}
+        Max: #{listing.max_salary}
+        Currency: #{listing.currency}
+      </salary>
+      <description>
+    #{description}
+      </description>
+      <skills>
+    #{skills}
+      </skills>
+    </job_listing>
+    """
 
     body = %{
       "model" => "gpt-4o-mini", 
       "messages" => [
-        %{"role" => "system", "content" => "You are an expert career coach. Create a hypothetical candidate profile (resume summary) for a candidate who is perfectly qualified for the following job description. Do not include the job description in the output, only the candidate profile. Limit to 150 words."},
-        %{"role" => "user", "content" => "Job Description:\n#{truncated_desc}"}
+        %{"role" => "system", "content" => system_prompt},
+        %{"role" => "user", "content" => user_prompt}
       ],
       "max_tokens" => 300
     }

@@ -1,4 +1,7 @@
 defmodule Curriclick.Chat.Conversation.Changes.GenerateName do
+  @moduledoc """
+  Generates a title for a conversation using an LLM based on its messages.
+  """
   use Ash.Resource.Change
   require Ash.Query
 

@@ -1,4 +1,7 @@
 defmodule Mix.Tasks.Curriclick.ReindexJobs do
+  @moduledoc """
+  Re-indexes all job listings from Postgres to Elasticsearch.
+  """
   use Mix.Task
 
   require Logger

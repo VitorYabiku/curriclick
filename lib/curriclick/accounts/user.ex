@@ -1,4 +1,7 @@
 defmodule Curriclick.Accounts.User do
+  @moduledoc """
+  Represents a user in the system, including their profile and authentication data.
+  """
   use Ash.Resource,
     otp_app: :curriclick,
     domain: Curriclick.Accounts,
@@ -77,6 +80,12 @@ typescript do
   postgres do
     table "users"
     repo Curriclick.Repo
+  end
+
+  code_interface do
+    define :update_profile
+    define :get_by_email, args: [:email]
+    define :chat_with_profile_assistant, args: [:user_id, :messages]
   end
 
   actions do
@@ -316,6 +325,24 @@ typescript do
     bypass AshAuthentication.Checks.AshAuthenticationInteraction do
       authorize_if always()
     end
+
+    # Allow reads of a user record when the actor is that user.
+    # This is used both for normal reads and for the bulk-read
+    # authorization that happens before bulk updates (e.g. tools).
+    policy action_type(:read) do
+      authorize_if expr(id == ^actor(:id))
+    end
+
+    # Allow updating the profile only when the actor is the user
+    # being updated. This must align with the bulk-update
+    # authorization path used by AshAi.Tools.execute/3.
+    policy action(:update_profile) do
+      authorize_if expr(id == ^actor(:id))
+    end
+
+    policy action(:chat_with_profile_assistant) do
+      authorize_if expr(^arg(:user_id) == ^actor(:id))
+    end
   end
 
   attributes do
@@ -338,6 +365,71 @@ typescript do
     end
 
     attribute :confirmed_at, :utc_datetime_usec
+
+    attribute :profile_job_interests, :string do
+      public? true
+      allow_nil? true
+    end
+
+    attribute :profile_education, :string do
+      public? true
+      allow_nil? true
+    end
+
+    attribute :profile_skills, :string do
+      public? true
+      allow_nil? true
+    end
+
+    attribute :profile_experience, :string do
+      public? true
+      allow_nil? true
+    end
+
+    attribute :profile_remote_preference, :atom do
+      public? true
+      allow_nil? true
+      constraints one_of: [:remote_only, :remote_friendly, :hybrid, :on_site, :no_preference]
+    end
+
+    attribute :profile_custom_instructions, :string do
+      public? true
+      allow_nil? true
+    end
+
+    attribute :profile_first_name, :string do
+      public? true
+      allow_nil? true
+    end
+
+    attribute :profile_last_name, :string do
+      public? true
+      allow_nil? true
+    end
+
+    attribute :profile_birth_date, :date do
+      public? true
+      allow_nil? true
+      sensitive? true
+    end
+
+    attribute :profile_location, :string do
+      public? true
+      allow_nil? true
+      sensitive? true
+    end
+
+    attribute :profile_cpf, :string do
+      public? true
+      allow_nil? true
+      sensitive? true
+    end
+
+    attribute :profile_phone, :string do
+      public? true
+      allow_nil? true
+      sensitive? true
+    end
   end
 
   relationships do
@@ -348,7 +440,39 @@ typescript do
     has_many :applications, Curriclick.Companies.JobApplication
   end
 
+  calculations do
+    calculate :profile_full_name, :string do
+      public? true
+
+      calculation fn records, _ctx ->
+        Enum.map(records, fn record ->
+          [record.profile_first_name, record.profile_last_name]
+          |> Enum.reject(&nil_or_blank?/1)
+          |> Enum.join(" ")
+          |> case do
+            "" -> nil
+            full -> full
+          end
+        end)
+      end
+    end
+  end
+
   identities do
     identity :unique_email, [:email]
   end
+
+  @spec normalize_profile_fields(Ash.Changeset.t()) :: Ash.Changeset.t()
+  defp normalize_profile_fields(changeset) do
+    Enum.reduce(@profile_fields, changeset, fn field, cs ->
+      case Ash.Changeset.fetch_change(cs, field) do
+        {:ok, ""} -> Ash.Changeset.force_change_attribute(cs, field, nil)
+        {:ok, _} -> cs
+        :error -> cs
+      end
+    end)
+  end
+
+  @spec nil_or_blank?(any()) :: boolean()
+  defp nil_or_blank?(value), do: is_nil(value) or value == ""
 end

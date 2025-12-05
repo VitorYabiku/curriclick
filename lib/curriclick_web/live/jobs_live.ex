@@ -1,13 +1,17 @@
 defmodule CurriclickWeb.JobsLive do
+  @moduledoc """
+  Unused and abandoned LiveView for searching and viewing job listings. Replaced by CurriclickWeb.ChatLive.
+  """
   use CurriclickWeb, :live_view
 
-  alias Curriclick.Companies.{JobListing, JobApplication}
+  alias Curriclick.Companies.JobApplication
   require Ash.Query
 
   on_mount {CurriclickWeb.LiveUserAuth, :live_user_optional}
 
   @page_size 20
 
+  @spec mount(map(), map(), Phoenix.LiveView.Socket.t()) :: {:ok, Phoenix.LiveView.Socket.t()}
   def mount(_params, _session, socket) do
     {:ok,
      socket
@@ -18,6 +22,7 @@ defmodule CurriclickWeb.JobsLive do
      |> assign(:submitted?, false)}
   end
 
+  @spec handle_params(map(), String.t(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_params(params, _url, socket) do
     case params["q"] do
       nil -> {:noreply, socket}
@@ -26,6 +31,7 @@ defmodule CurriclickWeb.JobsLive do
     end
   end
 
+  @spec handle_event(String.t(), map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_event("submit_form", %{"ideal_job_description" => desc}, socket) do
     desc = String.trim(desc || "")
 
@@ -41,7 +47,7 @@ defmodule CurriclickWeb.JobsLive do
     end
   end
 
-  def handle_event("apply_to_job", %{"job_id" => job_id, "match" => match_score}, socket) do
+  def handle_event("apply_to_job", %{"job_id" => job_id}, socket) do
     case socket.assigns[:current_user] do
       nil ->
         desc = socket.assigns.ideal_job_description
@@ -49,18 +55,11 @@ defmodule CurriclickWeb.JobsLive do
         {:noreply, redirect(socket, to: ~p"/sign-in?#{[return_to: return_to]}")}
 
       user ->
-        match_score =
-          case Float.parse(match_score) do
-            {val, _} -> val
-            :error -> nil
-          end
-
         case JobApplication
              |> Ash.Changeset.for_create(:create, %{
                user_id: user.id,
                job_listing_id: job_id,
-               search_query: socket.assigns.ideal_job_description,
-               match_score: match_score
+               search_query: socket.assigns.ideal_job_description
              })
              |> Ash.create() do
           {:ok, _} ->
@@ -89,8 +88,7 @@ defmodule CurriclickWeb.JobsLive do
                  |> Ash.Changeset.for_create(:create, %{
                    user_id: user.id,
                    job_listing_id: job.id,
-                   search_query: socket.assigns.ideal_job_description,
-                   match_score: job.match
+                   search_query: socket.assigns.ideal_job_description
                  })
                  |> Ash.create() do
               {:ok, _} -> acc + 1
@@ -118,13 +116,13 @@ defmodule CurriclickWeb.JobsLive do
     {:noreply, assign(socket, :current_page, min(socket.assigns.current_page + 1, total_pages))}
   end
 
+  @spec search_jobs(Phoenix.LiveView.Socket.t(), String.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
   defp search_jobs(socket, desc) do
-    query =
-      JobListing
-      |> Ash.Query.for_read(:find_matching_jobs, %{ideal_job_description: desc, limit: @page_size})
-      |> Ash.Query.load([:company])
+    input =
+      Curriclick.Companies.JobListing
+      |> Ash.ActionInput.for_action(:find_matching_jobs, %{query: desc, limit: @page_size})
 
-    case Ash.read(query) do
+    case Ash.run_action(input) do
       {:ok, records} ->
         results =
           Enum.map(records, fn r ->
@@ -138,7 +136,7 @@ defmodule CurriclickWeb.JobsLive do
             %{
               id: r.id,
               title: r.title,
-              company: (r.company && r.company.name) || "",
+              company: r.company_name || "",
               description: r.description,
               match: score
             }
@@ -164,16 +162,19 @@ defmodule CurriclickWeb.JobsLive do
     end
   end
 
+  @spec total_pages([any()], integer()) :: integer()
   defp total_pages(results, page_size) do
     count = length(results)
     if count == 0, do: 1, else: div(count + page_size - 1, page_size)
   end
 
+  @spec page_slice([any()], integer(), integer()) :: [any()]
   defp page_slice(results, page, page_size) do
     start = (page - 1) * page_size
     Enum.slice(results, start, page_size)
   end
 
+  @spec render(map()) :: Phoenix.LiveView.Rendered.t()
   def render(assigns) do
     ~H"""
     <div class="h-[calc(100vh-10rem)] flex flex-col max-w-5xl mx-auto">
@@ -259,7 +260,6 @@ defmodule CurriclickWeb.JobsLive do
                             class="btn btn-sm btn-primary"
                             phx-click="apply_to_job"
                             phx-value-job_id={job.id}
-                            phx-value-match={job.match}
                           >
                             Candidatar-se
                           </button>
@@ -299,7 +299,7 @@ defmodule CurriclickWeb.JobsLive do
         <form phx-submit="submit_form" class="max-w-3xl mx-auto relative">
           <div class="join w-full shadow-lg rounded-2xl border border-base-300 bg-base-100 p-1.5">
             <!-- Filter Toggle -->
-            <div class="dropdown dropdown-top dropdown-hover join-item">
+            <div class="dropdown dropdown-top join-item">
               <div tabindex="0" role="button" class="btn btn-ghost btn-circle btn-sm h-full w-10">
                 <.icon name="hero-adjustments-horizontal" class="w-5 h-5 opacity-70" />
               </div>

@@ -1,4 +1,7 @@
 defmodule CurriclickWeb.Endpoint do
+  @moduledoc """
+  The main Phoenix endpoint.
+  """
   use Phoenix.Endpoint, otp_app: :curriclick
 
   # The session will be stored in the cookie and signed,

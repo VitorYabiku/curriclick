@@ -1,4 +1,7 @@
 defmodule Curriclick.Chat.Message do
+  @moduledoc """
+  Represents a message in a conversation.
+  """
   use Ash.Resource,
     otp_app: :curriclick,
     domain: Curriclick.Chat,
@@ -151,7 +154,9 @@ defmodule Curriclick.Chat.Message do
           source: message.source,
           tool_calls: message.tool_calls,
           tool_results: message.tool_results,
-          complete: message.complete
+          complete: message.complete,
+          inserted_at: message.inserted_at,
+          updated_at: message.updated_at
         }
       end
     end
@@ -164,7 +169,9 @@ defmodule Curriclick.Chat.Message do
           source: message.source,
           tool_calls: message.tool_calls,
           tool_results: message.tool_results,
-          complete: message.complete
+          complete: message.complete,
+          inserted_at: message.inserted_at,
+          updated_at: message.updated_at
         }
       end
     end
