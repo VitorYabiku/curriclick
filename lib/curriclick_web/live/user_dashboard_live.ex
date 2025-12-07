@@ -234,7 +234,7 @@ defmodule CurriclickWeb.UserDashboardLive do
                     />
                     <%= if app.hiring_probability do %>
                         <span class={[
-                            "badge badge-lg font-medium gap-1 cursor-help",
+                            "badge badge-md font-medium gap-1 cursor-help",
                             probability_color(app.hiring_probability.score)
                           ]}
                           data-smart-tooltip={app.hiring_probability.explanation}
@@ -257,7 +257,6 @@ defmodule CurriclickWeb.UserDashboardLive do
                   </div>
                 </div>
               </div>
-              
     <!-- Summary Section (Expands via parent) -->
               <div class="pl-9">
                 <div class="mt-1">

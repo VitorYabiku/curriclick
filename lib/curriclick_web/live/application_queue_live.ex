@@ -753,35 +753,50 @@ defmodule CurriclickWeb.ApplicationQueueLive do
                     
     <!-- Stats -->
                     <div class="space-y-2 mt-2">
-                      <%= if stats.missing_answers_count > 0 do %>
-                        <div class="rounded-lg p-2">
-                          <div class="text-error text-sm font-bold mb-1 flex items-center gap-1">
-                            <.icon name="hero-pencil-square" class="w-3 h-3" />
-                            {stats.missing_answers_count} Perguntas Pendentes
-                          </div>
-                          <ul class="list-disc list-inside text-xs opacity-80 space-y-0.5">
-                            <%= for q <- stats.missing_questions do %>
-                              <li class="truncate">{q}</li>
-                            <% end %>
-                          </ul>
-                        </div>
-                      <% end %>
+                  <%= if stats.missing_answers_count > 0 do %>
+                    <details class="collapse collapse-arrow border border-error/20 bg-base-100 rounded-lg mb-2">
+                      <summary
+                        class="collapse-title text-error text-sm font-bold min-h-0 py-2 pl-3 pr-8 flex items-center gap-1"
+                        phx-click-stop
+                      >
+                        <.icon name="hero-pencil-square" class="w-4 h-4" />
+                        {stats.missing_answers_count} Perguntas Pendentes
+                      </summary>
+                      <div class="collapse-content text-sm opacity-80 px-3 pb-2">
+                        <ul class="list-disc list-inside space-y-0.5 pt-1">
+                          <%= for q <- stats.missing_questions do %>
+                            <li class="cursor-help truncate" title={q}>
+                              {q}
+                            </li>
+                          <% end %>
+                        </ul>
+                      </div>
+                    </details>
+                  <% end %>
 
-                      <%= if stats.missing_info_count > 0 do %>
-                        <div class="rounded-lg p-2">
-                          <div class="text-warning text-sm font-bold mb-1 flex items-center gap-1">
-                            <.icon name="hero-exclamation-triangle" class="w-3 h-3" />
-                            {stats.missing_info_count} Informações Faltantes
-                          </div>
-                          <ul class="list-disc list-inside text-xs opacity-80 space-y-0.5">
-                            <%= for info <- stats.missing_infos do %>
-                              <li class="truncate cursor-help" title={info}>{info}</li>
-                            <% end %>
-                          </ul>
-                        </div>
-                      <% end %>
-
-                      <%= if stats.low_confidence_count > 0 do %>
+                  <%= if stats.missing_info_count > 0 do %>
+                    <details
+                      class="collapse collapse-arrow border border-warning/20 bg-base-100 rounded-lg mb-2"
+                      open
+                    >
+                      <summary
+                        class="collapse-title text-warning text-sm font-bold min-h-0 py-2 pl-3 pr-8 flex items-center gap-1"
+                        phx-click-stop
+                      >
+                        <.icon name="hero-exclamation-triangle" class="w-4 h-4" />
+                        {stats.missing_info_count} Informações Faltantes
+                      </summary>
+                      <div class="collapse-content text-sm opacity-80 px-3 pb-2">
+                        <ul class="list-disc list-inside space-y-0.5 pt-1">
+                          <%= for info <- stats.missing_infos do %>
+                            <li class="cursor-help truncate" title={info}>
+                              {info}
+                            </li>
+                          <% end %>
+                        </ul>
+                      </div>
+                    </details>
+                  <% end %>
                         <div class="flex items-center gap-1 text-sm text-error font-medium">
                           {stats.low_confidence_count} baixa confiança
                         </div>
